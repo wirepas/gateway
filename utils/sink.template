@@ -1,0 +1,24 @@
+
+    wm-sink-${WM_SINK_ID}:
+        container_name: wm-sink-${WM_SINK_ID}
+        image: ${WM_LXGW_IMAGE}:${WM_LXGW_VERSION}
+
+        user: root
+        privileged: true
+        stdin_open: true
+        tty: true
+
+        restart: always
+        environment:
+            - WM_SINK_UART_PORT=${WM_SINK_UART_PORT}
+            - WM_SINK_UART_BITRATE=${WM_SINK_UART_BITRATE}
+            - WM_SINK_ID=${WM_SINK_ID}
+
+        volumes:
+            - /dev:/dev
+            - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+
+        logging:
+           driver: journald
+
+        command: sink

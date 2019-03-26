@@ -1,0 +1,28 @@
+version: '3'
+services:
+
+    wm-dbus-transport:
+        container_name: wm-dbus-transport
+        image: ${WM_LXGW_IMAGE}:${WM_LXGW_VERSION}
+
+        user: root
+        privileged: true
+        stdin_open: true
+        tty: true
+        ${TRANSPORT_NETWORK_MODE}
+
+        restart: always
+        environment:
+            - WM_SERVICES_HOST=${WM_SERVICES_HOST}
+            - WM_SERVICES_MQTT_PORT=${WM_SERVICES_MQTT_PORT}
+            - WM_SERVICES_MQTT_USER=${WM_SERVICES_MQTT_USER}
+            - WM_SERVICES_MQTT_PASSWORD=${WM_SERVICES_MQTT_PASSWORD}
+            - WM_SERVICES_CERTIFICATE_CHAIN=${WM_SERVICES_CERTIFICATE_CHAIN}
+
+        volumes:
+            - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+
+        logging:
+            driver: journald
+
+        command: transport
