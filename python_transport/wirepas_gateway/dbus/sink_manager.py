@@ -6,14 +6,19 @@
 DBUS_SINK_PREFIX = "com.wirepas.sink."
 
 import logging
-from wirepas_messaging.gateway.api import GatewayResultCode, ScratchpadStatus, ScratchpadType
+from wirepas_messaging.gateway.api import (
+    GatewayResultCode,
+    ScratchpadStatus,
+    ScratchpadType,
+)
 from gi.repository import GLib
 from .return_code import ReturnCode
 
 
 class Sink(object):
-
-    def __init__(self, bus, proxy, sink_id, unique_name, on_stack_started, logger=None, **kwargs):
+    def __init__(
+        self, bus, proxy, sink_id, unique_name, on_stack_started, logger=None, **kwargs
+    ):
 
         self.proxy = proxy
         self.sink_id = sink_id
@@ -28,11 +33,12 @@ class Sink(object):
     def register_for_stack_started(self):
         # Use the subscribe directly to be able to specify the sender
         self.on_started_handle = self.bus.subscribe(
-            signal='StackStarted',
+            signal="StackStarted",
             object="/com/wirepas/sink",
             iface="com.wirepas.sink.config1",
             sender=self.unique_name,
-            signal_fired=self._on_stack_started)
+            signal_fired=self._on_stack_started,
+        )
 
     def unregister_from_stack_started(self):
         if self.on_started_handle is not None:
@@ -49,11 +55,28 @@ class Sink(object):
 
         return self.network_address
 
-    def send_data(self, dst, src_ep, dst_ep, qos, initial_time, data,
-                  is_unack_csma_ca=False, hop_limit=0):
+    def send_data(
+        self,
+        dst,
+        src_ep,
+        dst_ep,
+        qos,
+        initial_time,
+        data,
+        is_unack_csma_ca=False,
+        hop_limit=0,
+    ):
         try:
             res = self.proxy.SendMessage(
-                dst, src_ep, dst_ep, initial_time, qos, is_unack_csma_ca, hop_limit, data)
+                dst,
+                src_ep,
+                dst_ep,
+                initial_time,
+                qos,
+                is_unack_csma_ca,
+                hop_limit,
+                data,
+            )
             if res != 0:
                 self.logger.error("Cannot send message err={}\n".format(res))
                 return ReturnCode.error_from_dbus_return_code(res)
@@ -85,7 +108,9 @@ class Sink(object):
             att1_val = getattr(self.proxy, att1)
             att2_val = getattr(self.proxy, att2)
         except GLib.Error:
-            self.logger.debug("Cannot get one of the pair value ({}-{})".format(key1, key2))
+            self.logger.debug(
+                "Cannot get one of the pair value ({}-{})".format(key1, key2)
+            )
             return None
 
         dic[key1] = att1_val
@@ -109,7 +134,9 @@ class Sink(object):
         self._get_param(config, "network_channel", "NetworkChannel")
         self._get_param(config, "channel_map", "ChannelMap")
         self._get_pair_params(config, "max_ac", "ACRangeMax", "min_ac", "ACRangeMin")
-        self._get_pair_params(config, "max_ac_cur", "ACRangeMaxCur", "min_ac_cur", "ACRangeMinCur")
+        self._get_pair_params(
+            config, "max_ac_cur", "ACRangeMaxCur", "min_ac_cur", "ACRangeMinCur"
+        )
         self._get_pair_params(config, "max_ch", "ChRangeMax", "min_ch", "ChRangeMin")
         self._get_param(config, "max_mtu", "MaxMtu")
         self._get_param(config, "hw_magic", "HwMagic")
@@ -118,10 +145,9 @@ class Sink(object):
         self._get_param(config, "app_config_max_size", "AppConfigMaxSize")
 
         try:
-            are_keys_set = self.proxy.AuthenticationKeySet and \
-                self.proxy.CipherKeySet
+            are_keys_set = self.proxy.AuthenticationKeySet and self.proxy.CipherKeySet
 
-            config['are_keys_set'] = are_keys_set
+            config["are_keys_set"] = are_keys_set
         except GLib.Error:
             self.logger.error("Cannot get key status")
 
@@ -152,17 +178,19 @@ class Sink(object):
             pass
         except GLib.Error as e:
             # Exception raised when setting attribute
-            self.logger.error("Cannot set {} for param {} on sink {}: {}\n".format(
-                value, key, self.sink_id, e.message))
+            self.logger.error(
+                "Cannot set {} for param {} on sink {}: {}\n".format(
+                    value, key, self.sink_id, e.message
+                )
+            )
             raise RuntimeError(ReturnCode.error_from_dbus_exception(e.message))
 
     def write_config(self, config):
         # Should always be available
         try:
-            stack_started = ((self.proxy.StackStatus & 0x01) == 0)
+            stack_started = (self.proxy.StackStatus & 0x01) == 0
         except GLib.Error as e:
-            self.logger.error(
-                "Cannot get Stack state. Problem in com probably")
+            self.logger.error("Cannot get Stack state. Problem in com probably")
             return ReturnCode.error_from_dbus_exception(e.message)
 
         # The write config has only one return code possible
@@ -175,30 +203,33 @@ class Sink(object):
             diag = config["app_config_diag"]
             data = config["app_config_data"]
 
-            self.logger.info("Set app config with "
-                             "{app_config_seq}:"
-                             "{app_config_diag}:"
-                             "{app_config_data}".format(**config))
+            self.logger.info(
+                "Set app config with "
+                "{app_config_seq}:"
+                "{app_config_diag}:"
+                "{app_config_data}".format(**config)
+            )
 
             self.proxy.SetAppConfig(seq, diag, data)
         except KeyError:
             # App config not defined in new config
-            self.logger.debug(
-                'Missing key app_config key in config: {}'.format(config))
+            self.logger.debug("Missing key app_config key in config: {}".format(config))
             pass
         except GLib.Error as e:
             res = ReturnCode.error_from_dbus_exception(e.message)
             self.logger.exception("Cannot set App Config {}".format(e.message))
 
-        config_to_dbus_param = dict([
-            ("node_address", "NodeAddress"),
-            ("node_role", "NodeRole"),
-            ("network_address", "NetworkAddress"),
-            ("network_channel", "NetworkChannel"),
-            ("channel_map", "ChannelMap"),
-            ("authentication_key", "AuthenticationKey"),
-            ("cipher_key", "CipherKey")
-        ])
+        config_to_dbus_param = dict(
+            [
+                ("node_address", "NodeAddress"),
+                ("node_role", "NodeRole"),
+                ("network_address", "NetworkAddress"),
+                ("network_channel", "NetworkChannel"),
+                ("channel_map", "ChannelMap"),
+                ("authentication_key", "AuthenticationKey"),
+                ("cipher_key", "CipherKey"),
+            ]
+        )
 
         # Any following call will stop the stack
         for param in config_to_dbus_param:
@@ -219,8 +250,7 @@ class Sink(object):
         try:
             self.proxy.SetStackState(new_state)
         except GLib.Error:
-            self.logger.exception(
-                "Cannot set Stack state. Problem in com probably")
+            self.logger.exception("Cannot set Stack state. Problem in com probably")
             return ReturnCode.error_from_dbus_exception(e.message)
 
         # In case the network address was updated, read it back for our cached
@@ -232,11 +262,13 @@ class Sink(object):
     def get_scratchpad_status(self):
         d = {}
 
-        dbus_to_gateway_satus = dict([
-            (0, ScratchpadStatus.SCRATCHPAD_STATUS_SUCCESS),
-            (255, ScratchpadStatus.SCRATCHPAD_STATUS_NEW)
-            # Anything else is ERROR
-        ])
+        dbus_to_gateway_satus = dict(
+            [
+                (0, ScratchpadStatus.SCRATCHPAD_STATUS_SUCCESS),
+                (255, ScratchpadStatus.SCRATCHPAD_STATUS_NEW)
+                # Anything else is ERROR
+            ]
+        )
         try:
             status = self.proxy.StoredStatus
             d["stored_status"] = dbus_to_gateway_satus[status]
@@ -245,15 +277,16 @@ class Sink(object):
             self.logger.error("Cannot get stored status in config\n")
         except KeyError:
             # Between 1 and 254 => Error
-            self.logger.error(
-                "Scratchpad stored status has error: {}".format(status))
+            self.logger.error("Scratchpad stored status has error: {}".format(status))
             d["stored_status"] = ScratchpadStatus.SCRATCHPAD_STATUS_ERROR
 
-        dbus_to_gateway_type = dict([
-            (0, ScratchpadType.SCRATCHPAD_TYPE_BLANK),
-            (1, ScratchpadType.SCRATCHPAD_TYPE_PRESENT),
-            (2, ScratchpadType.SCRATCHPAD_TYPE_PROCESS)
-        ])
+        dbus_to_gateway_type = dict(
+            [
+                (0, ScratchpadType.SCRATCHPAD_TYPE_BLANK),
+                (1, ScratchpadType.SCRATCHPAD_TYPE_PRESENT),
+                (2, ScratchpadType.SCRATCHPAD_TYPE_PROCESS),
+            ]
+        )
         try:
             type = self.proxy.StoredType
             d["stored_type"] = dbus_to_gateway_type[type]
@@ -265,13 +298,13 @@ class Sink(object):
         self._get_param(stored, "seq", "StoredSeq")
         self._get_param(stored, "crc", "StoredCrc")
         self._get_param(stored, "len", "StoredLen")
-        d['stored_scartchpad'] = stored
+        d["stored_scartchpad"] = stored
 
         processed = {}
         self._get_param(processed, "seq", "ProcessedSeq")
         self._get_param(processed, "crc", "ProcessedCrc")
         self._get_param(processed, "len", "ProcessedLen")
-        d['processed_scartchpad'] = processed
+        d["processed_scartchpad"] = processed
 
         self._get_param(d, "firmware_area_id", "FirmwareAreaId")
 
@@ -316,8 +349,9 @@ class Sink(object):
 
         try:
             self.proxy.UploadScratchpad(seq, file)
-            self.logger.info("Scratchpad loaded with seq {} on sink {}"
-                             .format(seq, self.sink_id))
+            self.logger.info(
+                "Scratchpad loaded with seq {} on sink {}".format(seq, self.sink_id)
+            )
         except GLib.Error as e:
             self.logger.exception("Cannot upload local scratchpad")
             return ReturnCode.error_from_dbus_exception(e.message)
@@ -334,9 +368,17 @@ class Sink(object):
 
 
 class SinkManager(object):
-    'Helper class to manage the Sink list'
+    "Helper class to manage the Sink list"
 
-    def __init__(self, bus, on_new_sink_cb, on_sink_removal_cb, on_stack_started, logger=None, **kwargs):
+    def __init__(
+        self,
+        bus,
+        on_new_sink_cb,
+        on_sink_removal_cb,
+        on_stack_started,
+        logger=None,
+        **kwargs
+    ):
 
         self.logger = logger or logging.getLogger(__name__)
         self.sinks = {}
@@ -353,23 +395,23 @@ class SinkManager(object):
         # Find sinks already on bus
         for name in bus_monitor.ListNames():
             if name.startswith(DBUS_SINK_PREFIX):
-                short_name = name[len(DBUS_SINK_PREFIX):]
+                short_name = name[len(DBUS_SINK_PREFIX) :]
                 self._add_sink(short_name, bus_monitor.GetNameOwner(name))
 
         # Monitor the bus for connections
-        self.bus.subscribe(sender="org.freedesktop.DBus",
-                           signal='NameOwnerChanged',
-                           signal_fired=self._on_name_owner_changed)
+        self.bus.subscribe(
+            sender="org.freedesktop.DBus",
+            signal="NameOwnerChanged",
+            signal_fired=self._on_name_owner_changed,
+        )
 
         # Set them at the end to be sure Sink Manager is ready when cb are fired
         self.add_cb = on_new_sink_cb
         self.rm_cb = on_sink_removal_cb
 
-
     def _add_sink(self, short_name, unique_name):
         if short_name in self.sinks:
-            self.logger.warning(
-                "Sink already in list sink name={}".format(short_name))
+            self.logger.warning("Sink already in list sink name={}".format(short_name))
             return
 
         # Open proxy for this sink
@@ -378,12 +420,14 @@ class SinkManager(object):
             "/com/wirepas/sink",  # Object path
         )
 
-        sink = Sink(bus=self.bus,
-                    proxy=proxy,
-                    sink_id=short_name,
-                    unique_name=unique_name,
-                    on_stack_started=self.stack_started_cb,
-                    logger=self.logger)
+        sink = Sink(
+            bus=self.bus,
+            proxy=proxy,
+            sink_id=short_name,
+            unique_name=unique_name,
+            on_stack_started=self.stack_started_cb,
+            logger=self.logger,
+        )
 
         sink.register_for_stack_started()
 
@@ -406,34 +450,37 @@ class SinkManager(object):
                 if v == short_name:
                     self.sender_to_name.pop(k)
                     self.logger.warning(
-                        "Association removed from {} => {}".format(k, v))
+                        "Association removed from {} => {}".format(k, v)
+                    )
                     break
 
             # call client cb
             if self.rm_cb is not None:
                 self.rm_cb(short_name)
         except KeyError:
-            self.logger.error(
-                "Cannot remove {} from sink list".format(short_name))
+            self.logger.error("Cannot remove {} from sink list".format(short_name))
 
         self.logger.info("Sink removed with name {}".format(short_name))
 
     def _on_name_owner_changed(self, sender, object, iface, signal, params):
         well_known_name = params[0]
         if well_known_name.startswith(DBUS_SINK_PREFIX):
-            short_name = well_known_name[len(DBUS_SINK_PREFIX):]
+            short_name = well_known_name[len(DBUS_SINK_PREFIX) :]
             # Owner change on a sink, check if it is removal or addition
             old_owner = params[1]
             new_owner = params[2]
-            if old_owner == '':
+            if old_owner == "":
                 # New sink connection
                 self._add_sink(short_name, new_owner)
-            elif new_owner == '':
+            elif new_owner == "":
                 # Removal
                 self._remove_sink(short_name)
             else:
-                self.logger.critical("Not addition nor removal ??? {}: {} => {}".format(
-                    well_known_name, old_owner, new_owner))
+                self.logger.critical(
+                    "Not addition nor removal ??? {}: {} => {}".format(
+                        well_known_name, old_owner, new_owner
+                    )
+                )
 
     def get_sinks(self):
         # Return a list that is a copy to avoid modification
@@ -444,14 +491,12 @@ class SinkManager(object):
         try:
             return self.sender_to_name[bus_name]
         except KeyError:
-            self.logger.error(
-                "Unknown sink {} from sink list".format(bus_name))
+            self.logger.error("Unknown sink {} from sink list".format(bus_name))
             return None
 
     def get_sink(self, short_name):
         try:
             return self.sinks[short_name]
         except KeyError:
-            self.logger.error(
-                "Unknown sink {} from sink list".format(short_name))
+            self.logger.error("Unknown sink {} from sink list".format(short_name))
             return None

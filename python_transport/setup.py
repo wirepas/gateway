@@ -16,15 +16,17 @@ import glob
 
 from setuptools import setup, find_packages, Extension
 
+readme_file = "README.md"
+license_file = "LICENSE"
 
-with open('README.rst') as f:
+with open(readme_file) as f:
     long_description = f.read()
 
-with open('LICENSE') as f:
+with open(license_file) as f:
     license = f.read()
 
 
-def filter(flist, rules=['private', '.out']):
+def filter(flist, rules=["private", ".out"]):
     for f in flist:
         for rule in rules:
             if rule in f:
@@ -54,47 +56,58 @@ def get_requirements(*args):
     with open(get_absolute_path(*args)) as handle:
         for line in handle:
             # Strip comments.
-            line = re.sub(r'^#.*|\s#.*', '', line)
+            line = re.sub(r"^#.*|\s#.*", "", line)
             # Ignore empty lines
             if line and not line.isspace():
-                requirements.add(re.sub(r'\s+', '', line))
+                requirements.add(re.sub(r"\s+", "", line))
     return sorted(requirements)
 
+
 setup(
-    name='wirepas_gateway',
-    version='1.1.0',
-    description='Wirepas gateway client',
+    name="wirepas_gateway",
+    version="1.1.0",
+    description="Wirepas gateway transport service",
     long_description=long_description,
-    author='Wirepas Ltd',
-    author_email='techsupport@wirepas.com',
-    url='https://wirepas.com',
-    license=license,
+    author="Wirepas Oy",
+    author_email="opensource@wirepas.com",
+    url="https://github.com/wirepas/gateway",
+    license="Apache-2",
+    license_file=license,
     classifiers=[
-        'Development Status :: 5 - Stable',
-        'Intended Audience :: Developers',
-        'Software Development :: Libraries :: Python Modules',
-        'Programming Language :: Python :: 3',
+        "Development Status :: 5 - Stable",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache Software License",
+        "Topic :: Software Development :: Libraries",
+        "Programming Language :: Python :: 3",
     ],
-    keywords='wirepas connectivity iot mesh',
-    packages=find_packages(exclude=['contrib', 'docs', 'tests', 'examples']),
-    install_requires=get_requirements('requirements.txt'),
-    ext_modules=[Extension('dbusCExtension', sources=[
-                           'wirepas_gateway/dbus/c-extension/dbus_c.c'],
-                           libraries=['systemd'])],
+    keywords="wirepas connectivity iot mesh",
+    packages=find_packages(exclude=["contrib", "docs", "tests", "examples"]),
+    install_requires=get_requirements("requirements.txt"),
+    ext_modules=[
+        Extension(
+            "dbusCExtension",
+            sources=["wirepas_gateway/dbus/c-extension/dbus_c.c"],
+            libraries=["systemd"],
+        )
+    ],
     include_package_data=True,
-    package_data={
-        'wirepas_gateway':
-        ['wirepas_gateway/wirepas_certs/extwirepas.pem']
-    },
+    package_data={"wirepas_gateway": ["wirepas_gateway/wirepas_certs/extwirepas.pem"]},
     data_files=[
-        ('./wirepas_gateway-extras/package',
-         ['LICENSE',
-          'README.rst',
-          'requirements.txt',
-          'wirepas_gateway/wirepas_certs/extwirepas.pem',
-          'setup.py'])],
+        (
+            "./wirepas_gateway-extras/package",
+            [
+                readme_file,
+                license_file,
+                "requirements.txt",
+                "wirepas_gateway/wirepas_certs/extwirepas.pem",
+                "setup.py",
+            ],
+        )
+    ],
     entry_points={
-        'console_scripts': ['wm-gw=wirepas_gateway.transport_service:main',
-                            'wm-dbus-print=wirepas_gateway.dbus_print_client:main']
+        "console_scripts": [
+            "wm-gw=wirepas_gateway.transport_service:main",
+            "wm-dbus-print=wirepas_gateway.dbus_print_client:main",
+        ]
     },
 )

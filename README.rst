@@ -1,5 +1,5 @@
-Wirepas Linux Gateway
-=====================
+# Wirepas Linux Gateway
+
 
 This repository contains the Wirepas reference implementation for a gateway
 device which offloads Wirepas Mesh data to a host.
@@ -8,43 +8,38 @@ The data is acquired from a serial UART interface, put on DBUS and published
 to MQTT per the Wirepas Mesh MQTT API definition.
 
 
-Linux Requirements
-------------------
+## Linux Requirements
+
 - The implementation is based on DBus. The C binding used to access DBus is sdbus
   from systemd library so even if systemd is not required to be running, the
   libsystemd must be available.
   Systemd version must be higher or equal to 221. You can check it with:
-
-  ::
-
+```shell
     systemd --version
-
+```
   In order to build the sink service, systemd headers are needed
-
-  ::
 
     sudo apt install libsystemd-dev
 
 - Python 3 and a recent pip version (>= 18.1)
 
-  ::
-
+```shell
     sudo apt install libsystemd-dev python3 python3-dev python3-gi
     wget https://bootstrap.pypa.io/get-pip.py \
        && sudo python3 get-pip.py && rm get-pip.py \
        && sudo pip3 install --upgrade pip
+```
 
+## Installation
 
-Installation
-------------
 Sink service
   Sink service is written in C and can be built with following command from
   sink_service folder:
 
-  ::
 
+```shell
     make
-
+```
   This implementation uses system bus that has enforced security.
   In order to obtain a service name on system bus, the user launching the sink
   service must be previously declared to system.

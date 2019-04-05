@@ -13,7 +13,11 @@ import sys
 import logging
 
 
-def setup_log(module, level='debug', log_format="%(asctime)s | [%(levelname)s] %(name)s: %(message)s"):
+def setup_log(
+    module,
+    level="debug",
+    log_format="%(asctime)s | [%(levelname)s] %(name)s: %(message)s",
+):
     """
     Prepares logging.
 
@@ -26,10 +30,10 @@ def setup_log(module, level='debug', log_format="%(asctime)s | [%(levelname)s] %
     DEBUG_LEVELV_TIMING = 55
 
     logger = logging.getLogger(module)
-    level = '{0}'.format(level.upper())
+    level = "{0}".format(level.upper())
 
     try:
-        logger.setLevel(eval('logging.{0}'.format(level)))
+        logger.setLevel(eval("logging.{0}".format(level)))
     except:
         logger.setLevel(logging.DEBUG)
 

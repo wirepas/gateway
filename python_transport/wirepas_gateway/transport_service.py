@@ -18,7 +18,11 @@ from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 
 import wirepas_messaging
-from wirepas_messaging.gateway.api import GatewayResultCode, GatewayState, GatewayAPIParsingException
+from wirepas_messaging.gateway.api import (
+    GatewayResultCode,
+    GatewayState,
+    GatewayAPIParsingException,
+)
 
 from wirepas_gateway.utils import setup_log
 from wirepas_gateway.utils import ParserHelper
@@ -26,28 +30,29 @@ from wirepas_gateway.utils import ParserHelper
 # This constant is the actual API level implemented by this transport module (cf WP-RM-128)
 IMPLEMENTED_API_VERSION = 1
 
+
 class SelectableQueue(queue.Queue):
-    '''
+    """
     Wrapper arround a Queue to make it selectable with an associated
     socket
-    '''
+    """
 
     def __init__(self):
         super().__init__()
         self._putsocket, self._getsocket = socket.socketpair()
 
     def fileno(self):
-        '''
+        """
         Implement fileno to be selectable
         :return: the reception socket fileno
-        '''
+        """
         return self._getsocket.fileno()
 
     def put(self, item):
         # Insert item in queue
         super().put(item)
         # Send 1 byte on socket to signal select
-        self._putsocket.send(b'x')
+        self._putsocket.send(b"x")
 
     def get(self):
         # Get item first so get can be called and
@@ -57,12 +62,13 @@ class SelectableQueue(queue.Queue):
         self._getsocket.recv(1)
         return item
 
+
 class MQTTWrapper(Thread):
-    '''
+    """
     Class to manage the MQTT main thread and be able to share it with other services
     In this case, it allows to have all the related mqtt activity happening on same thread
     to avoid any dead lock from mqtt client.
-    '''
+    """
 
     def __init__(self, client, logger, on_termination_cb=None):
         Thread.__init__(self)
@@ -83,7 +89,7 @@ class MQTTWrapper(Thread):
             [sock, self._publish_queue],
             [sock] if self.client.want_write() else [],
             [],
-            1
+            1,
         )
 
         # Check if we have something to publish
@@ -160,13 +166,13 @@ class MQTTWrapper(Thread):
                     self.on_termination_cb()
 
     def publish(self, topic, payload, qos=1, retain=False) -> None:
-        '''
+        """
         Method to publish to Mqtt form a different thread.
         :param topic: Topic to publish on
         :param payload: Payload
         :param qos: Qos to use
         :param retain: Is it a retain message
-        '''
+        """
         if current_thread().ident == self.ident:
             # Already on right thread
             self.client.publish(topic, payload, qos, retain)
@@ -182,29 +188,34 @@ class TransportService(BusClient):
     Get all the events from DBUS and publih it with right format
     for gateways
     """
+
     # Maximum hop limit to send a packet is limited to 15 by API (4 bits)
     MAX_HOP_LIMIT = 15
 
-    def __init__(self,
-                 host,
-                 port,
-                 username="",
-                 password=None,
-                 tlsfile=None,
-                 gw_id=None,
-                 logger=None,
-                 c_extension=False,
-                 secure_auth=False,
-                 gw_model=None,
-                 gw_version=None,
-                 ignored_endpoints_filter=None,
-                 whitened_endpoints_filter=None,
-                 **kwargs):
+    def __init__(
+        self,
+        host,
+        port,
+        username="",
+        password=None,
+        tlsfile=None,
+        gw_id=None,
+        logger=None,
+        c_extension=False,
+        secure_auth=False,
+        gw_model=None,
+        gw_version=None,
+        ignored_endpoints_filter=None,
+        whitened_endpoints_filter=None,
+        **kwargs
+    ):
 
         super(TransportService, self).__init__(
-            logger=logger, c_extension=c_extension,
+            logger=logger,
+            c_extension=c_extension,
             ignored_ep_filter=ignored_endpoints_filter,
-            **kwargs)
+            **kwargs
+        )
 
         if gw_id is None:
             self.gw_id = getnode()
@@ -219,15 +230,20 @@ class TransportService(BusClient):
         self.mqtt_client = mqtt.Client()
         if secure_auth:
             try:
-                self.mqtt_client.tls_set(tlsfile, certfile=None, keyfile=None,
-                                         cert_reqs=ssl.CERT_REQUIRED,
-                                         tls_version=ssl.PROTOCOL_TLSv1_2, ciphers=None)
+                self.mqtt_client.tls_set(
+                    tlsfile,
+                    certfile=None,
+                    keyfile=None,
+                    cert_reqs=ssl.CERT_REQUIRED,
+                    tls_version=ssl.PROTOCOL_TLSv1_2,
+                    ciphers=None,
+                )
             except:
                 self.logger.error(
-                    "Cannot use secure authentication. attempting unsecure connection")
+                    "Cannot use secure authentication. attempting unsecure connection"
+                )
 
-        self.mqtt_client.username_pw_set(username,
-                                         password)
+        self.mqtt_client.username_pw_set(username, password)
         self.mqtt_client.on_connect = self._on_connect
         self._set_last_will()
         try:
@@ -236,7 +252,9 @@ class TransportService(BusClient):
             self.logger.error("Cannot connect to mqtt {}".format(e))
             exit(-1)
 
-        self.mqtt_wrapper = MQTTWrapper(self.mqtt_client, self.logger, self._on_mqtt_wrapper_termination_cb)
+        self.mqtt_wrapper = MQTTWrapper(
+            self.mqtt_client, self.logger, self._on_mqtt_wrapper_termination_cb
+        )
         self.mqtt_wrapper.start()
 
         self.logger = logger or logging.getLogger(__name__)
@@ -253,16 +271,14 @@ class TransportService(BusClient):
         self.stop_dbus_client()
 
     def _set_last_will(self):
-        event = wirepas_messaging.gateway.api.StatusEvent(self.gw_id,
-                                                          GatewayState.OFFLINE)
+        event = wirepas_messaging.gateway.api.StatusEvent(
+            self.gw_id, GatewayState.OFFLINE
+        )
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
 
         # Set Last wil message
-        self.mqtt_client.will_set(topic,
-                                  event.payload,
-                                  qos=2,
-                                  retain=True)
+        self.mqtt_client.will_set(topic, event.payload, qos=2, retain=True)
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc != 0:
@@ -274,15 +290,15 @@ class TransportService(BusClient):
         self.logger.debug("Subscribing to: {}".format(topic))
         self.mqtt_client.subscribe(topic, qos=2)
         self.mqtt_client.message_callback_add(
-            topic, self._on_get_gateway_info_cmd_received)
+            topic, self._on_get_gateway_info_cmd_received
+        )
 
         # Register for get configs request
         topic = TopicGenerator.make_get_configs_request_topic(self.gw_id)
         self.logger.debug("Subscribing to: {}".format(topic))
         # If duplicated request, it doesn't harm so QOS could be 1
         self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_get_configs_cmd_received)
+        self.mqtt_client.message_callback_add(topic, self._on_get_configs_cmd_received)
 
         # Register for set config request for any sink
         topic = TopicGenerator.make_set_config_request_topic(self.gw_id)
@@ -290,8 +306,7 @@ class TransportService(BusClient):
         # Receiving multiple time the same config is not an issue but better to
         # have qos 2
         self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_set_config_cmd_received)
+        self.mqtt_client.message_callback_add(topic, self._on_set_config_cmd_received)
 
         # Register for send data request for any sink on the gateway
         topic = TopicGenerator.make_send_data_request_topic(self.gw_id)
@@ -300,44 +315,53 @@ class TransportService(BusClient):
         # duplicated packets and we don't know the consequences on end
         # application
         self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_send_data_cmd_received)
+        self.mqtt_client.message_callback_add(topic, self._on_send_data_cmd_received)
 
         # Register for otap commands for any sink on the gateway
         topic = TopicGenerator.make_otap_status_request_topic(self.gw_id)
         self.logger.debug("Subscribing to: {}".format(topic))
         self.mqtt_client.subscribe(topic, qos=2)
         self.mqtt_client.message_callback_add(
-            topic, self._on_otap_status_request_received)
+            topic, self._on_otap_status_request_received
+        )
 
-        topic = TopicGenerator.make_otap_load_scratchpad_request_topic(
-            self.gw_id)
+        topic = TopicGenerator.make_otap_load_scratchpad_request_topic(self.gw_id)
         self.logger.debug("Subscribing to: {}".format(topic))
         self.mqtt_client.subscribe(topic, qos=2)
         self.mqtt_client.message_callback_add(
-            topic, self._on_otap_upload_scratchpad_request_received)
+            topic, self._on_otap_upload_scratchpad_request_received
+        )
 
-        topic = TopicGenerator.make_otap_process_scratchpad_request_topic(
-            self.gw_id)
+        topic = TopicGenerator.make_otap_process_scratchpad_request_topic(self.gw_id)
         self.logger.debug("Subscribing to: {}".format(topic))
         self.mqtt_client.subscribe(topic, qos=2)
         self.mqtt_client.message_callback_add(
-            topic, self._on_otap_process_scratchpad_request_received)
+            topic, self._on_otap_process_scratchpad_request_received
+        )
 
-        event = wirepas_messaging.gateway.api.StatusEvent(self.gw_id,
-                                                          GatewayState.ONLINE)
+        event = wirepas_messaging.gateway.api.StatusEvent(
+            self.gw_id, GatewayState.ONLINE
+        )
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
         self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.publish(topic,
-                                 event.payload,
-                                 qos=1,
-                                 retain=True)
+        self.mqtt_client.publish(topic, event.payload, qos=1, retain=True)
 
         self.logger.info("MQTT connected!")
 
-    def on_data_received(self, sink_id, timestamp, src, dst, src_ep, dst_ep, travel_time,
-                         qos, hop_count, data):
+    def on_data_received(
+        self,
+        sink_id,
+        timestamp,
+        src,
+        dst,
+        src_ep,
+        dst_ep,
+        travel_time,
+        qos,
+        hop_count,
+        data,
+    ):
 
         if self.whitened_ep_filter is not None and dst_ep in self.whitened_ep_filter:
             # Only publish payload size but not the payload
@@ -359,20 +383,23 @@ class TransportService(BusClient):
             qos=qos,
             data=data,
             data_size=data_size,
-            hop_count=hop_count)
+            hop_count=hop_count,
+        )
 
         sink = self.sink_manager.get_sink(sink_id)
         if sink is None:
             # It can happen at sink connection as messages can be received
             # before sinks are identified
             self.logger.info(
-                "Message received from unknown sink at the moment {}".format(sink_id))
+                "Message received from unknown sink at the moment {}".format(sink_id)
+            )
             return None
 
         network_address = sink.get_network_address()
 
         topic = TopicGenerator.make_received_data_topic(
-            self.gw_id, sink_id, network_address, src_ep, dst_ep)
+            self.gw_id, sink_id, network_address, src_ep, dst_ep
+        )
         self.logger.debug("Sending data to: {}".format(topic))
         # Set qos to 1 to avoid loading too much the broker
         # unique id in event header can be used for duplicate filtering in
@@ -382,19 +409,14 @@ class TransportService(BusClient):
     def on_stack_started(self, name):
         sink = self.sink_manager.get_sink(name)
         if sink is None:
-            self.logger.error(
-                "Sink started {} error: unknown sink".format(name))
+            self.logger.error("Sink started {} error: unknown sink".format(name))
             return None
 
         # Generate a setconfig answer with req_id of 0
         response = wirepas_messaging.gateway.api.SetConfigResponse(
-            0,
-            self.gw_id,
-            GatewayResultCode.GW_RES_OK,
-            sink.sink_id,
-            sink.read_config())
-        topic = TopicGenerator.make_set_config_response_topic(
-            self.gw_id, sink.sink_id)
+            0, self.gw_id, GatewayResultCode.GW_RES_OK, sink.sink_id, sink.read_config()
+        )
+        topic = TopicGenerator.make_set_config_response_topic(self.gw_id, sink.sink_id)
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     def _send_asynchronous_get_configs_response(self):
@@ -408,7 +430,8 @@ class TransportService(BusClient):
         # Generate a setconfig answer with req_id of 0 as not from
         # a real request
         response = wirepas_messaging.gateway.api.GetConfigsResponse(
-            0, self.gw_id, GatewayResultCode.GW_RES_OK, configs)
+            0, self.gw_id, GatewayResultCode.GW_RES_OK, configs
+        )
         topic = TopicGenerator.make_get_configs_response_topic(self.gw_id)
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
@@ -425,7 +448,8 @@ class TransportService(BusClient):
         self.logger.info("Request to send data")
         try:
             request = wirepas_messaging.gateway.api.SendDataRequest.from_payload(
-                message.payload)
+                message.payload
+            )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return None
@@ -440,14 +464,16 @@ class TransportService(BusClient):
             if request.hop_limit > self.MAX_HOP_LIMIT:
                 res = GatewayResultCode.INVALID_MAX_HOP_COUNT
             else:
-                res = sink.send_data(request.destination_address,
-                                     request.source_endpoint,
-                                     request.destination_endpoint,
-                                     request.qos,
-                                     request.initial_delay_ms,
-                                     request.data_payload,
-                                     request.is_unack_csma_ca,
-                                     request.hop_limit)
+                res = sink.send_data(
+                    request.destination_address,
+                    request.source_endpoint,
+                    request.destination_endpoint,
+                    request.qos,
+                    request.initial_delay_ms,
+                    request.data_payload,
+                    request.is_unack_csma_ca,
+                    request.hop_limit,
+                )
         else:
             self.logger.warning("No sink with id: {}".format(sink_id))
             # No sink with  this id
@@ -455,9 +481,9 @@ class TransportService(BusClient):
 
         # Answer to backend
         response = wirepas_messaging.gateway.api.SendDataResponse(
-            request.req_id, self.gw_id, res, sink_id)
-        topic = TopicGenerator.make_send_data_response_topic(
-            self.gw_id, sink_id)
+            request.req_id, self.gw_id, res, sink_id
+        )
+        topic = TopicGenerator.make_send_data_response_topic(self.gw_id, sink_id)
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
@@ -465,7 +491,8 @@ class TransportService(BusClient):
         self.logger.info("Config request received")
         try:
             request = wirepas_messaging.gateway.api.GetConfigsRequest.from_payload(
-                message.payload)
+                message.payload
+            )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return None
@@ -478,7 +505,8 @@ class TransportService(BusClient):
                 configs.append(config)
 
         response = wirepas_messaging.gateway.api.GetConfigsResponse(
-            request.req_id, self.gw_id, GatewayResultCode.GW_RES_OK, configs)
+            request.req_id, self.gw_id, GatewayResultCode.GW_RES_OK, configs
+        )
         topic = TopicGenerator.make_get_configs_response_topic(self.gw_id)
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
@@ -487,7 +515,8 @@ class TransportService(BusClient):
         self.logger.info("Gateway info request received")
         try:
             request = wirepas_messaging.gateway.api.GetGatewayInfoRequest.from_payload(
-                message.payload)
+                message.payload
+            )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return None
@@ -499,7 +528,7 @@ class TransportService(BusClient):
             current_time_s_epoch=int(time()),
             gateway_model=self.gw_model,
             gateway_version=self.gw_version,
-            implemented_api_version=IMPLEMENTED_API_VERSION
+            implemented_api_version=IMPLEMENTED_API_VERSION,
         )
 
         topic = TopicGenerator.make_get_gateway_info_response_topic(self.gw_id)
@@ -509,7 +538,8 @@ class TransportService(BusClient):
         self.logger.info("Set config request received")
         try:
             request = wirepas_messaging.gateway.api.SetConfigRequest.from_payload(
-                message.payload)
+                message.payload
+            )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return None
@@ -524,9 +554,11 @@ class TransportService(BusClient):
             new_config = None
 
         response = wirepas_messaging.gateway.api.SetConfigResponse(
-            request.req_id, self.gw_id, res, request.sink_id, new_config)
+            request.req_id, self.gw_id, res, request.sink_id, new_config
+        )
         topic = TopicGenerator.make_set_config_response_topic(
-            self.gw_id, request.sink_id)
+            self.gw_id, request.sink_id
+        )
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
@@ -534,7 +566,8 @@ class TransportService(BusClient):
         self.logger.info("OTAP status request received")
         try:
             request = wirepas_messaging.gateway.api.GetScratchpadStatusRequest.from_payload(
-                message.payload)
+                message.payload
+            )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return None
@@ -548,21 +581,23 @@ class TransportService(BusClient):
                 self.gw_id,
                 GatewayResultCode.GW_RES_OK,
                 request.sink_id,
-                d['stored_scartchpad'],
-                d['stored_status'],
-                d['stored_type'],
-                d['processed_scartchpad'],
-                d['firmware_area_id']
+                d["stored_scartchpad"],
+                d["stored_status"],
+                d["stored_type"],
+                d["processed_scartchpad"],
+                d["firmware_area_id"],
             )
         else:
             response = wirepas_messaging.gateway.api.GetScratchpadStatusResponse(
                 request.req_id,
                 self.gw_id,
                 GatewayResultCode.GW_RES_INVALID_SINK_ID,
-                request.sink_id)
+                request.sink_id,
+            )
 
         topic = TopicGenerator.make_otap_status_response_topic(
-            self.gw_id, request.sink_id)
+            self.gw_id, request.sink_id
+        )
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
@@ -570,13 +605,13 @@ class TransportService(BusClient):
         self.logger.info("OTAP upload request received")
         try:
             request = wirepas_messaging.gateway.api.UploadScratchpadRequest.from_payload(
-                message.payload)
+                message.payload
+            )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return None
 
-        self.logger.info(
-            "OTAP upload request received for {}".format(request.sink_id))
+        self.logger.info("OTAP upload request received for {}".format(request.sink_id))
 
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
@@ -585,13 +620,12 @@ class TransportService(BusClient):
             res = GatewayResultCode.GW_RES_INVALID_SINK_ID
 
         response = wirepas_messaging.gateway.api.UploadScratchpadResponse(
-            request.req_id,
-            self.gw_id,
-            res,
-            request.sink_id)
+            request.req_id, self.gw_id, res, request.sink_id
+        )
 
         topic = TopicGenerator.make_otap_upload_scratchpad_response_topic(
-            self.gw_id, request.sink_id)
+            self.gw_id, request.sink_id
+        )
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
@@ -599,7 +633,8 @@ class TransportService(BusClient):
         self.logger.info("OTAP process request received")
         try:
             request = wirepas_messaging.gateway.api.ProcessScratchpadRequest.from_payload(
-                message.payload)
+                message.payload
+            )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return None
@@ -611,13 +646,12 @@ class TransportService(BusClient):
             res = GatewayResultCode.GW_RES_INVALID_SINK_ID
 
         response = wirepas_messaging.gateway.api.ProcessScratchpadResponse(
-            request.req_id,
-            self.gw_id,
-            res,
-            request.sink_id)
+            request.req_id, self.gw_id, res, request.sink_id
+        )
 
         topic = TopicGenerator.make_otap_process_scratchpad_response_topic(
-            self.gw_id, request.sink_id)
+            self.gw_id, request.sink_id
+        )
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
@@ -635,9 +669,9 @@ def parse_setting_list(list_setting):
     """
     if isinstance(list_setting, str):
         # List is a string from cmd line
-        list_setting = list_setting.replace('[', '')
-        list_setting = list_setting.replace(']', '')
-        list_setting = list_setting.split(',')
+        list_setting = list_setting.replace("[", "")
+        list_setting = list_setting.replace("]", "")
+        list_setting = list_setting.split(",")
 
     single_list = []
     for ep in list_setting:
@@ -661,19 +695,18 @@ def parse_setting_list(list_setting):
 
         # Check if ep is a range
         try:
-            lower, upper = ep.split('-')
+            lower, upper = ep.split("-")
             lower = int(lower)
             upper = int(upper)
-            if lower > upper or \
-                lower < 0 or \
-                upper > 255:
+            if lower > upper or lower < 0 or upper > 255:
                 raise SyntaxError("Wrong EP range value")
 
-            single_list += list(range(lower,upper + 1))
+            single_list += list(range(lower, upper + 1))
         except (AttributeError, ValueError):
             raise SyntaxError("Wrong EP range format")
 
     return single_list
+
 
 def main():
     """
@@ -689,9 +722,9 @@ def main():
     args = parse.settings(skip_undefined=False)
 
     try:
-        debug_level = os.environ['DEBUG_LEVEL']
+        debug_level = os.environ["DEBUG_LEVEL"]
     except KeyError:
-        debug_level = 'debug'
+        debug_level = "debug"
 
     logger = setup_log("transport_service", level=debug_level)
 
@@ -716,17 +749,23 @@ def main():
             ignored_endpoints_filter = parse_setting_list(args.ignored_endpoints_filter)
             logger.debug("Ignored endpoints are: {}".format(ignored_endpoints_filter))
         except SyntaxError as e:
-            logger.error("Wrong format for ignored_endpoints_filter EP list ({})".format(e))
+            logger.error(
+                "Wrong format for ignored_endpoints_filter EP list ({})".format(e)
+            )
             exit()
 
     # Parse EP list that should be published without payload
     whitened_endpoints_filter = None
     if args.whitened_endpoints_filter is not None:
         try:
-            whitened_endpoints_filter = parse_setting_list(args.whitened_endpoints_filter)
+            whitened_endpoints_filter = parse_setting_list(
+                args.whitened_endpoints_filter
+            )
             logger.debug("Whitened endpoints are: {}".format(whitened_endpoints_filter))
         except SyntaxError as e:
-            logger.error("Wrong format for whitened_endpoints_filter EP list ({})".format(e))
+            logger.error(
+                "Wrong format for whitened_endpoints_filter EP list ({})".format(e)
+            )
             exit()
 
     try:
@@ -736,11 +775,21 @@ def main():
         # One of the filter list is None
         pass
 
-    TransportService(args.host, args.port, args.username,
-                     args.password, args.tlsfile, args.gwid,
-                     logger, c_extension, secure_authentication,
-                     args.gateway_model, args.gateway_version,
-                     ignored_endpoints_filter, whitened_endpoints_filter).run()
+    TransportService(
+        args.host,
+        args.port,
+        args.username,
+        args.password,
+        args.tlsfile,
+        args.gwid,
+        logger,
+        c_extension,
+        secure_authentication,
+        args.gateway_model,
+        args.gateway_version,
+        ignored_endpoints_filter,
+        whitened_endpoints_filter,
+    ).run()
 
 
 if __name__ == "__main__":

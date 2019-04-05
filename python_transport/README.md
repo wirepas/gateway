@@ -1,5 +1,4 @@
-Installation
-============
+# Installation
 
 To install this package in development mode, please run
 

@@ -1,0 +1,25 @@
+language: python
+python:
+  - "3.6"
+
+dist: "xenial"
+jobs:
+install:
+  - pip3 install -r dev-requirements.txt
+  - pip3 install -r requirements.txt
+  - pip3 install .
+
+script:
+  - "./.ci/style-check.sh"
+  - "./.ci/build.sh"
+
+deploy:
+  provider: pypi
+  user: "wirepas"
+  server: https://test.pypi.org/legacy/
+  password:
+    secure: "JTfaa3FCh5l+uLVNwn2RAt7tbmoJ0A4b5E4uUx7alk1/D29ZM6CiXg0PhQs8MzT/MrUTkfuIgKQGhlDml3sUigaqBusoNjAfKd1yLtRRns53r54qztRPhCPJTkbR2M5+6GyRRY5Dhz4eTep3H35a4YFZqnmhPZX7cGnp9XzI6ykvXR0OX38RcqlaqOmVfn8GtTyKRdiXXa1sHTdHhBHTa+BFRoKU1NUHARuj/FPu5TD/cTjd7ZDsBGjSBtywveJZA2RFDaapqOI80Yj2HmwNirIgLoAODbZUAtVbESiz+NtXquX0zLQbUWHIwB6eKnqxNnXdF3VGbkeKHdRjRwxS6SIthMDruOOzKpWLij6KaIuubZ8gKP73T7qSu42l/Wp+voi6FrvJrUqLbXVMGw1W+XWrPqAu7LfBN3Crfv1JhTqwMz1bJeepuk2f8msGH8KpY7fnqbLN1CPTW5iLcst/9BjB3cZ7lKB/8adOPwNFZDf5onywHwsF/e7oNuBC10F54YMU5C1l2xI3ZJdot4rzVMqWBGfisAsZtrpVJ+x4ubXp15r4bcWUwVwvyN08PSjLMk9gFioPdEzFGCgYhp2LdMBJ6SDLjZOGrFEQv2z2UiqGyBeyJs9YSVL0R6s5HaFEpthv03MY0vTEcL2gI9IiaTSDv89CYGClK7AvZWHe+YI="
+  skip_existing: true
+  skip_cleanup: true
+  on:
+    branch: pypi-test
