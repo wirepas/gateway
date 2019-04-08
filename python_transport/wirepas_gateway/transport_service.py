@@ -7,6 +7,7 @@ import ssl
 import os
 import socket
 import queue
+import logging
 
 from select import select
 from socket import timeout
@@ -100,12 +101,12 @@ class MQTTWrapper(Thread):
                 while True:
                     topic, payload, qos, retain = self._publish_queue.get()
                     self.client.publish(topic, payload, qos=qos, retain=retain)
-            except timeout as e:
+            except timeout:
                 self.logger.debug("Timeout to send payload: {}".format(payload))
                 # In theory, mqtt client shouldn't loose the last packet
                 # If it is not the case, following line could be uncommented
                 # self._publish_queue.put((topic, payload, qos, retain))
-                raise e
+                raise
             except queue.Empty:
                 # No more packet to publish
                 pass
@@ -130,7 +131,7 @@ class MQTTWrapper(Thread):
             try:
                 self.client.reconnect()
                 break
-            except Exception as e:
+            except Exception:
                 # Retry to connect in 1 sec
                 sleep(1)
 
@@ -155,7 +156,7 @@ class MQTTWrapper(Thread):
             except timeout:
                 self.logger.error("Timeout in connection, force a reconnect")
                 self.client.reconnect()
-            except Exception as e:
+            except Exception:
                 # If an exception is not catched before this point
                 # All the transport module must be stopped in order to be fully
                 # restarted by the managing agent
@@ -689,7 +690,7 @@ def parse_setting_list(list_setting):
                 raise SyntaxError("EP out of bound")
             single_list.append(ep)
             continue
-        except ValueError as e:
+        except ValueError:
             # Probably a range
             pass
 

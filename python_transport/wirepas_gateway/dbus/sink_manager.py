@@ -3,7 +3,6 @@
 # See file LICENSE for full license details.
 #
 
-DBUS_SINK_PREFIX = "com.wirepas.sink."
 
 import logging
 from wirepas_messaging.gateway.api import (
@@ -13,6 +12,9 @@ from wirepas_messaging.gateway.api import (
 )
 from gi.repository import GLib
 from .return_code import ReturnCode
+
+
+DBUS_SINK_PREFIX = "com.wirepas.sink."
 
 
 class Sink(object):
@@ -49,7 +51,7 @@ class Sink(object):
             # Network address is not known or must be updated
             try:
                 self.network_address = self.proxy.NetworkAddress
-            except GLib.Error as e:
+            except GLib.Error:
                 self.logger.exception("Could not get network address")
                 pass
 
@@ -249,9 +251,9 @@ class Sink(object):
 
         try:
             self.proxy.SetStackState(new_state)
-        except GLib.Error:
+        except GLib.Error as err:
             self.logger.exception("Cannot set Stack state. Problem in com probably")
-            return ReturnCode.error_from_dbus_exception(e.message)
+            return ReturnCode.error_from_dbus_exception(err.message)
 
         # In case the network address was updated, read it back for our cached
         # value

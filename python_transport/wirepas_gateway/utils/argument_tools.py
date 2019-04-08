@@ -19,6 +19,8 @@ import yaml
 import ssl
 import pkg_resources
 
+from .serialization_tools import serialize
+
 
 class Settings(object):
     """Simple class to handle library settings"""
@@ -27,9 +29,6 @@ class Settings(object):
         super(Settings, self).__init__()
         for k, v in settings.items():
             self.__dict__[k] = v
-
-    def __str__(self):
-        return json.dumps(self.__dict__)
 
     def items(self):
         return self.__dict__.items()
