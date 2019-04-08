@@ -36,9 +36,7 @@ One liners are accepatable if the change is very minimal.
 We would like to keep the branches under order. Please try to observe the following rules
 
 -   feature-<name> : for a branch related to feature _name_
-
 -   fix-<name> : for a branch that addresses the _name_ bug
-
 -   update-<name> : for a branch that aims to update _name_ documentation or supporting _name_ files
 
 ## Coding conventions
@@ -46,18 +44,12 @@ We would like to keep the branches under order. Please try to observe the follow
 Start reading our code and you'll get the hang of it. We optimize for readability:
 
 -   We indent with spaces
-
 -   We use Linux line endings
-
 -   We use Black and flake8 for python code (automated checks on PR)
-
 -   We use shellcheck and bashate for shell scripts (automated checks on PR)
-
--   We use Allman's style for c code (https://en.wikipedia.org/wiki/Indentation_style#Allman_style)
-
+-   We use [Allman's style for c code](https://en.wikipedia.org/wiki/Indentation_style#Allman_style)
 -   We don't add a "/" on folder path variables 
 
      :heavy_check_mark: TARGET_FOLDER=example/folder 
      
      :heavy_multiplication_x: TARGET_FOLDER=example/folder/
-
