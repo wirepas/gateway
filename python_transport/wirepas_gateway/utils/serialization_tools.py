@@ -11,6 +11,7 @@
 
 import json
 import datetime
+import binascii
 
 
 def serialize(obj) -> str:

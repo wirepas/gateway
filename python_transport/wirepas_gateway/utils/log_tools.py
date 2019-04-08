@@ -27,7 +27,6 @@ def setup_log(
     Args:
         level - logging level to enable.
     """
-    DEBUG_LEVELV_TIMING = 55
 
     logger = logging.getLogger(module)
     level = "{0}".format(level.upper())
