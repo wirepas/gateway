@@ -44,10 +44,15 @@ We would like to keep the branches under order. Please try to observe the follow
 Start reading our code and you'll get the hang of it. We optimize for readability:
 
 -   We indent with spaces
+
 -   We use Linux line endings
+
 -   We use Black and flake8 for python code (automated checks on PR)
+
 -   We use shellcheck and bashate for shell scripts (automated checks on PR)
+
 -   We use [Allman's style for c code](https://en.wikipedia.org/wiki/Indentation_style#Allman_style)
+
 -   We don't add a "/" on folder path variables 
 
      :heavy_check_mark: TARGET_FOLDER=example/folder 
