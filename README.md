@@ -13,7 +13,8 @@ and a soft dependency on the [backend-apis](https://github.com/wirepas/backend-c
 
 When cloning this repository and its dependencies you can opt for:
 
--   Using repo tool and the [manifest repository](https://github.com/wirepas/manifest)
+-   Using [repo tool](https://source.android.com/setup/develop/repo)
+    and the [manifest repository](https://github.com/wirepas/manifest)
 
     > repo init -u  git@github.com:wirepas/manifest.git
     > repo init -u  git@github.com:wirepas/manifest.git -m gateway_master.xml
