@@ -130,8 +130,8 @@ function lxgw_deliverables
 
     # generates intruction files
     rst2pdf deliverable/instructions.rst -o ${ENV_RELEASE_PATH}/docker/README.pdf
-    rst2pdf README.rst -o ${ENV_RELEASE_PATH}/native/README.pdf
-    rst2pdf README_release.rst -o ${ENV_RELEASE_PATH}/README.pdf
+    md2pdf README.md ${ENV_RELEASE_PATH}/native/README.pdf
+
 
     # generate archive with release
     rm -f ${ENV_DOCKER_IMG}_${ENV_DOCKER_TAG}.7z

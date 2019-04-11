@@ -8,19 +8,17 @@ to MQTT per the Wirepas Mesh MQTT API definition.
 
 ## Cloning this repository
 
-This repository has a hard dependency on [c-mesh-api, a c library]() and a 
-soft dependency on the [backend-apis](). These dependencies are written out 
-on the repo tool manifest present at []().
+This repository has a hard dependency on [c-mesh-api](https://github.com/wirepas/c-mesh-api)
+and a soft dependency on the [backend-apis](https://github.com/wirepas/backend-client).
 
 When cloning this repository and its dependencies you can opt for:
 
--   Use repo tool and the manifest at []()
+-   Using repo tool and the [manifest repository](https://github.com/wirepas/manifest)
 
-    > repo init -u (..) -m (..)
-    
+    > repo init -u  git@github.com:wirepas/manifest.git
+    > repo init -u  git@github.com:wirepas/manifest.git -m gateway_master.xml
 
--   Clone each repo separately (see ./utils/pull_repos.sh)
-
+-   Clone each repo separately (see [pull_repos.sh](./utils/pull_repos.sh))
 
 ## Linux Requirements
 
@@ -229,7 +227,7 @@ In case you wish to push the image to a docker registry, you can do so with:
 
 The image will be tagged with
 
-> \<path_to_your_repo\>/\<image name\>:\<image tag\>.
+> *path_to_your_repo*/*image name*:*image tag*.
 
 ## Starting docker services
 

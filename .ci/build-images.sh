@@ -23,9 +23,6 @@ function _defaults
     ENV_MAKE_BUILD=${ENV_MAKE_BUILD:-"true"}
     ENV_BASH_MODULES_PATH=${ENV_BASH_MODULES_PATH:-"./modules"}
 
-    # git repo user
-    export WM_USER=${WM_USER:-"jenkins"}
-
     export ENV_DISTRO=${ENV_DISTRO:-"all"}
     export ENV_GIT_PULL_REPO=${ENV_GIT_PULL_REPO:-"true"}
     export ENV_DOCKER_IMG=${ENV_DOCKER_IMG:-"wm-gateway"}

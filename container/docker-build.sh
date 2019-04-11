@@ -139,7 +139,8 @@ _parse()
             ;;
             --arm)
             DOCKER_PLATFORM="arm"
-            DOCKER_BUILD_TARGET="--target ${DOCKER_ARM_BUILD_TARGET}"
+            DOCKER_BUILD_ARGS="--build-arg WIREPAS_BASE=wirepas-base-rpi:1.0"
+            DOCKER_FILE="container/Dockerfile-rpi"
             if [ ! -z ${DOCKER_IMAGE_ARM_NAME} ]
             then
                 DOCKER_IMAGE_NAME=${DOCKER_IMAGE_ARM_NAME}
@@ -200,11 +201,12 @@ _build()
         fi
 
         _get_build_history || true
-        echo "building ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} [${DOCKER_BUILD_CACHE}]"
+        echo "building ${DOCKER_FILE} ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} [${DOCKER_BUILD_CACHE}] ${DOCKER_BUILD_ARGS}"
         docker build \
             --compress ${DOCKER_BUILD_CACHE} \
            -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} . \
-           -f ${DOCKER_FILE} ${DOCKER_BUILD_TARGET} \
+           -f ${DOCKER_FILE} \
+           ${DOCKER_BUILD_TARGET} \
            ${DOCKER_BUILD_ARGS}
     fi
 }

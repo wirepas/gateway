@@ -85,7 +85,7 @@ function pack_docker_deliverable
     TAR_ARCHIVE_NAME=${TAR_ARCHIVE_NAME:-"build-with-docker.tar.gz"}
     TAR_TARGET=${TAR_TARGET:-"deliverable/"}
 
-    echo "Creating ${TAR_ARCHIVE_NAME} with contents from ${TAR_TARGET} (excluding ${TAR_EXCLUDE_RULES})"
+    echo "creating ${TAR_ARCHIVE_NAME} with contents from ${TAR_TARGET} (excluding ${TAR_EXCLUDE_RULES})"
 
     rm -rf ${TAR_ARCHIVE_NAME}
     tar -zcvf ${TAR_ARCHIVE_NAME} -C ${TAR_TARGET} .
@@ -100,7 +100,6 @@ function lxgw_arm_build
        echo "building arm ${ENV_DOCKER_CACHE}"
     ./container/docker-build.sh --build-defaults container/build_defaults.env \
                                 --arm \
-                                --build-target wm-lxgw-rpi \
                                 --image ${ENV_DOCKER_IMG}-rpi \
                                 --tag ${ENV_DOCKER_TAG} \
                                 ${ENV_DOCKER_CACHE}
@@ -113,7 +112,6 @@ function lxgw_x86_build
 {
         echo "building x86 ${ENV_DOCKER_CACHE}"
         ./container/docker-build.sh --build-defaults container/build_defaults.env \
-                                    --build-target wm-lxgw \
                                     --image ${ENV_DOCKER_IMG} \
                                     --tag ${ENV_DOCKER_TAG} \
                                     ${ENV_DOCKER_CACHE}
