@@ -10,7 +10,6 @@ import queue
 import logging
 
 from select import select
-from socket import timeout
 from threading import Thread, current_thread
 from time import sleep, time
 from uuid import getnode
@@ -101,7 +100,19 @@ class MQTTWrapper(Thread):
                 while True:
                     topic, payload, qos, retain = self._publish_queue.get()
                     self.client.publish(topic, payload, qos=qos, retain=retain)
-            except timeout:
+
+                    # FIX: read internal sockpairR as it is written but
+                    # never read as we don't use the internal paho loop
+                    # but we have spurious timeout / broken pipe from
+                    # this socket pair
+                    try:
+                        self.client._sockpairR.recv(1)
+                    except Exception:
+                        # This socket is not used at all, so if something is wrong,
+                        # not a big issue. Just keep going
+                        pass
+
+            except TimeoutError:
                 self.logger.debug("Timeout to send payload: {}".format(payload))
                 # In theory, mqtt client shouldn't loose the last packet
                 # If it is not the case, following line could be uncommented
@@ -153,7 +164,7 @@ class MQTTWrapper(Thread):
                 sock = self._get_socket()
 
                 self._do_select(sock)
-            except timeout:
+            except TimeoutError:
                 self.logger.error("Timeout in connection, force a reconnect")
                 self.client.reconnect()
             except Exception:
