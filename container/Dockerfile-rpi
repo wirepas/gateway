@@ -1,16 +1,12 @@
 # Wirepas Oy
-ARG WIREPAS_BASE_IMAGE=${WIREPAS_BASE:-"wirepas-base-rpi"}
-ARG WIREPAS_BASE_TAG=${WIREPAS_BASE:-"1.0"}
-ARG WIREPAS_BASE=${WIREPAS_BASE:-"${WIREPAS_BASE_IMAGE}:${WIREPAS_BASE_TAG}"}
 
 # Builds transport service
-FROM ${WIREPAS_BASE} as wm-transport-service-builder
+FROM wirepas/base:1.0-raspbian as wm-transport-service-builder
 RUN [ "cross-build-start" ]
 ENV PACKAGE_PATH=python_transport
 WORKDIR /app_build
 
 COPY ${PACKAGE_PATH}/requirements.txt requirements.txt
-#RUN pip3 install -r requirements.txt
 COPY ${PACKAGE_PATH}/ .
 RUN py3clean . || true \
     && python3 setup.py clean --all \
@@ -19,7 +15,7 @@ RUN [ "cross-build-end" ]
 
 
 # Builds sink service
-FROM ${WIREPAS_BASE} as wm-sink-service-builder
+FROM wirepas/base:1.0-raspbian as wm-sink-service-builder
 RUN [ "cross-build-start" ]
 ENV PACKAGE_PATH=sink_service
 WORKDIR /app_build
@@ -28,9 +24,8 @@ RUN make clean && make
 RUN [ "cross-build-end" ]
 
 # Builds wirepas messaging
-FROM ${WIREPAS_BASE} as messaging-builder
+FROM wirepas/base:1.0-raspbian as messaging-builder
 RUN [ "cross-build-start" ]
-RUN echo ${WIREPAS_BASE}
 ENV PACKAGE_PATH=public-apis/wrappers/python
 WORKDIR /app_build
 
@@ -46,7 +41,7 @@ RUN ls dist/
 RUN [ "cross-build-end" ]
 
 
-FROM ${WIREPAS_BASE} as wm-lxgw
+FROM wirepas/base:1.0-raspbian as wm-lxgw
 RUN [ "cross-build-start" ]
 
 USER root

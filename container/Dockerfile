@@ -1,16 +1,12 @@
 # Wirepas Oy
-ARG WIREPAS_BASE_IMAGE=${WIREPAS_BASE:-"wirepas-base"}
-ARG WIREPAS_BASE_TAG=${WIREPAS_BASE:-"1.0"}
-ARG WIREPAS_BASE=${WIREPAS_BASE:-"${WIREPAS_BASE_IMAGE}:${WIREPAS_BASE_TAG}"}
 
 # Builds wirepas messaging
-FROM ${WIREPAS_BASE} as messaging-builder
-RUN echo ${WIREPAS_BASE}
+FROM wirepas/base:1.0-ubuntu as messaging-builder
 ENV PACKAGE_PATH=public-apis/wrappers/python
 WORKDIR /app_build
 
 COPY ${PACKAGE_PATH}/requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY ${PACKAGE_PATH}/ .
 RUN ./utils/compile_protos.sh
@@ -19,7 +15,7 @@ RUN py3clean . || true \
     && python3 setup.py sdist bdist_wheel
 
 # Builds sink service
-FROM ${WIREPAS_BASE} as wm-sink-service-builder
+FROM wirepas/base:1.0-ubuntu as wm-sink-service-builder
 ENV PACKAGE_PATH=sink_service
 WORKDIR /app_build
 
@@ -27,7 +23,7 @@ COPY ${PACKAGE_PATH}/ .
 RUN make clean && make
 
 # Builds transport service
-FROM ${WIREPAS_BASE} as wm-transport-service-builder
+FROM wirepas/base:1.0-ubuntu as wm-transport-service-builder
 ENV PACKAGE_PATH=python_transport
 WORKDIR /app_build
 
@@ -42,10 +38,8 @@ RUN pip install Sphinx \
     && ./utils/generate_sphinx_docs.sh
 RUN ls dist/
 
-
-
 # builds x86 gateway services
-FROM ${WIREPAS_BASE} as wm-lxgw
+FROM wirepas/base:1.0-ubuntu as wm-lxgw
 USER root
 
 ARG WM_MESSAGING_PKG
@@ -68,11 +62,11 @@ COPY --from=wm-transport-service-builder /app_build/docs/ ${TRANSPORT_SERVICE}/d
 COPY --from=wm-sink-service-builder /app_build/build/sinkService /usr/local/bin/sinkService
 
 WORKDIR ${HOME}
-RUN pip3 install -r ${HOME}/dependencies/requirements.txt
-RUN pip3 install -r ${TRANSPORT_SERVICE}/requirements.txt
+RUN pip3 install --no-cache-dir -r ${HOME}/dependencies/requirements.txt
+RUN pip3 install --no-cache-dir -r ${TRANSPORT_SERVICE}/requirements.txt
 
-RUN pip3 install ${HOME}/dependencies/${WM_MESSAGING_PKG}
-RUN pip3 install ${TRANSPORT_SERVICE}/${WM_TRANSPORT_PKG}
+RUN pip3 install --no-cache-dir ${HOME}/dependencies/${WM_MESSAGING_PKG}
+RUN pip3 install --no-cache-dir ${TRANSPORT_SERVICE}/${WM_TRANSPORT_PKG}
 
 COPY python_transport/wirepas_gateway/wirepas_certs/extwirepas.pem /etc/extwirepas.pem
 COPY sink_service/com.wirepas.sink.conf /etc/dbus-1/system.d/
