@@ -3,9 +3,6 @@
 This repository contains the Wirepas reference implementation for a gateway
 device which offloads Wirepas Mesh data to a host.
 
-The data is acquired from a serial UART interface, put on DBUS and published
-to MQTT per the Wirepas Mesh MQTT API definition.
-
 ## Cloning this repository
 
 This repository has a hard dependency on [c-mesh-api](https://github.com/wirepas/c-mesh-api)
