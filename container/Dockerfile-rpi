@@ -1,29 +1,8 @@
 # Wirepas Oy
 
-# Builds wirepas messaging
-FROM wirepas/base:1.0-ubuntu as messaging-builder
-ENV PACKAGE_PATH=public-apis/wrappers/python
-WORKDIR /app_build
-
-COPY ${PACKAGE_PATH}/requirements.txt requirements.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-COPY ${PACKAGE_PATH}/ .
-RUN ./utils/compile_protos.sh
-RUN py3clean . || true \
-    && python3 setup.py clean --all \
-    && python3 setup.py sdist bdist_wheel
-
-# Builds sink service
-FROM wirepas/base:1.0-ubuntu as wm-sink-service-builder
-ENV PACKAGE_PATH=sink_service
-WORKDIR /app_build
-
-COPY ${PACKAGE_PATH}/ .
-RUN make clean && make
-
 # Builds transport service
-FROM wirepas/base:1.0-ubuntu as wm-transport-service-builder
+FROM wirepas/base:1.0-raspbian as wm-transport-service-builder
+RUN [ "cross-build-start" ]
 ENV PACKAGE_PATH=python_transport
 WORKDIR /app_build
 
@@ -32,15 +11,42 @@ COPY ${PACKAGE_PATH}/ .
 RUN py3clean . || true \
     && python3 setup.py clean --all \
     && python3 setup.py sdist bdist_wheel
+RUN [ "cross-build-end" ]
 
-RUN pip install Sphinx \
-    && pip install sphinxcontrib-napoleon \
-    && ./utils/generate_sphinx_docs.sh
+
+# Builds sink service
+FROM wirepas/base:1.0-raspbian as wm-sink-service-builder
+RUN [ "cross-build-start" ]
+ENV PACKAGE_PATH=sink_service
+WORKDIR /app_build
+COPY ${PACKAGE_PATH}/ .
+RUN make clean && make
+RUN [ "cross-build-end" ]
+
+# Builds wirepas messaging
+FROM wirepas/base:1.0-raspbian as messaging-builder
+RUN [ "cross-build-start" ]
+ENV PACKAGE_PATH=public-apis/wrappers/python
+WORKDIR /app_build
+
+COPY ${PACKAGE_PATH}/requirements.txt requirements.txt
+RUN pip3 install -r requirements.txt
+
+COPY ${PACKAGE_PATH}/ .
+RUN ./utils/compile_protos.sh
+RUN py3clean . || true \
+    && python3 setup.py clean --all \
+    && python3 setup.py sdist bdist_wheel
 RUN ls dist/
+RUN [ "cross-build-end" ]
 
-# builds x86 gateway services
-FROM wirepas/base:1.0-ubuntu as wm-lxgw
+
+FROM wirepas/base:1.0-raspbian as wm-lxgw
+RUN [ "cross-build-start" ]
+
 USER root
+RUN apt-get update && apt-get install --no-install-recommends python3-gi-cairo
+
 
 ARG WM_MESSAGING_PKG
 ENV WM_MESSAGING_PKG=${WM_MESSAGING_PKG:-"wirepas_messaging-*.tar*"}
@@ -62,11 +68,11 @@ COPY --from=wm-transport-service-builder /app_build/docs/ ${TRANSPORT_SERVICE}/d
 COPY --from=wm-sink-service-builder /app_build/build/sinkService /usr/local/bin/sinkService
 
 WORKDIR ${HOME}
-RUN pip3 install --no-cache-dir -r ${HOME}/dependencies/requirements.txt
-RUN pip3 install --no-cache-dir -r ${TRANSPORT_SERVICE}/requirements.txt
+RUN pip3 install -r ${HOME}/dependencies/requirements.txt
+RUN pip3 install -r ${TRANSPORT_SERVICE}/requirements.txt
 
-RUN pip3 install --no-cache-dir ${HOME}/dependencies/${WM_MESSAGING_PKG}
-RUN pip3 install --no-cache-dir ${TRANSPORT_SERVICE}/${WM_TRANSPORT_PKG}
+RUN pip3 install ${HOME}/dependencies/${WM_MESSAGING_PKG}
+RUN pip3 install ${TRANSPORT_SERVICE}/${WM_TRANSPORT_PKG}
 
 COPY python_transport/wirepas_gateway/wirepas_certs/extwirepas.pem /etc/extwirepas.pem
 COPY sink_service/com.wirepas.sink.conf /etc/dbus-1/system.d/
@@ -103,6 +109,7 @@ COPY container/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN ln -s usr/local/bin/docker-entrypoint.sh / # backwards compat
 ENTRYPOINT ["docker-entrypoint.sh"]
 
+RUN [ "cross-build-end" ]
 USER ${USER}
 CMD ["sink"]
 

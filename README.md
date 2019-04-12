@@ -3,8 +3,20 @@
 This repository contains the Wirepas reference implementation for a gateway
 device which offloads Wirepas Mesh data to a host.
 
-The data is acquired from a serial UART interface, put on DBUS and published
-to MQTT per the Wirepas Mesh MQTT API definition.
+## Cloning this repository
+
+This repository has a hard dependency on [c-mesh-api](https://github.com/wirepas/c-mesh-api)
+and a soft dependency on the [backend-apis](https://github.com/wirepas/backend-client).
+
+When cloning this repository and its dependencies you can opt for:
+
+-   Using [repo tool](https://source.android.com/setup/develop/repo)
+    and the [manifest repository](https://github.com/wirepas/manifest)
+
+    > repo init -u  git@github.com:wirepas/manifest.git
+    > repo init -u  git@github.com:wirepas/manifest.git -m gateway_master.xml
+
+-   Clone each repo separately (see [pull_repos.sh](./utils/pull_repos.sh))
 
 ## Linux Requirements
 
@@ -12,7 +24,7 @@ The implementation is based on DBus. The C binding used to access DBus is sdbus
 from systemd library so even if systemd is not required to be running, the
 libsystemd must be available.
 
-Systemd version must be higher or equal to _221_. You can check it with:
+Systemd version must be higher or equal to *221*. You can check it with:
 
 ```shell
     systemd --version
@@ -20,7 +32,9 @@ Systemd version must be higher or equal to _221_. You can check it with:
 
 In order to build the sink service, systemd headers are needed
 
+```shell
     sudo apt install libsystemd-dev
+```
 
 Python 3 and a recent pip version (>= 18.1)
 
@@ -57,7 +71,7 @@ from com.wirepas.sink.conf:
     <policy user="wirepas">
 ```
 
-_It is recommended to restart your gateway once this file is copied_
+*It is recommended to restart your gateway once this file is copied*
 
 ### Transport service
 
@@ -72,7 +86,7 @@ be built at installation time.
     pip3 install wirepas_gateway-*.tar.gz
 ```
 
-## Configuration and starting services
+#### Configuration and starting services
 
 - A sink service must be started for each connected sink on Gateway:
 
@@ -81,9 +95,7 @@ sink_service/build/sinkService -p <uart_port> -b <bitrate> -i <sink_id>
 Parameters are:
 
 - **uart_port:** uart port path (default /dev/ttyACM0)
-
 - **bitrate:** bitrate of sink uart (default 125000)
-
 - **sink_id:** value between 0 and 9 (default 0).
 
 If multiple sinks are present, they must have a different sink_id and a
@@ -101,38 +113,47 @@ Parameters can be set from cmd line of from a setting file in YAML format:
 
 where:
 
-- **server:** IP or hostname where the MQTT broker is located
-- **port:** MQTT port (default: 8883 (secure) or 1883 (local))
-- **user:** MQTT user
-- **password:** MQTT password
-- **gwid:** the desired gateway id, instead of a random generated one.
+-   **server:** IP or hostname where the MQTT broker is located
 
-  > It must be unique for each gateway reporting to same broker.
+-   **port:** MQTT port (default: 8883 (secure) or 1883 (local))
 
-- **tls_cert_file:** filepath to the root certificate to overide system one (**Cannot be used with -ua**)
+-   **user:** MQTT user
 
-* **ua:** Disable TLS secure authentication
-* **fp:** Do not use the C extension (full python version)
-* **iepf:** Destination endpoints list to ignore (not published)
+-   **password:** MQTT password
 
-  _Example:_
+-   **gwid:** the desired gateway id, instead of a random generated one.
 
-  > -iepf "[1,2, 10-12]" to filter out destination ep 1, 2, 10, 11, 12
+    > It must be unique for each gateway reporting to same broker.
 
-* **wepf:** Destination endpoints list to whiten (no payload content, only size)
+-   **tls_cert_file:** filepath to the root certificate to override
+system one (**Cannot be used with -ua**)
 
-  _Example:_
+-   **ua:** Disable TLS secure authentication
 
-  > -wepf "[1,2, 10-12]" to whiten destination ep 1, 2, 10, 11, 12
+-   **fp:** Do not use the C extension (full python version)
 
-#### From configuration file:
+-   **iepf:** Destination endpoints list to ignore (not published)
+
+    *Example:*
+
+    > -iepf "\[1,2, 10-12\]" to filter out destination ep 1, 2, 10, 11, 12
+
+-   **wepf:** Destination endpoints list to whiten
+              (no payload content, only size)
+
+    *Example:*
+
+    > -wepf "\[1,2, 10-12\]" to whiten destination ep 1, 2, 10, 11, 12
+
+#### From configuration file
 
 ```shell
     wm-gw --settings=settings_files.yml
 ```
 
 All parameters that are accepted by the transport service can be set
-through the settings file. An example of a _settings_file.yml_ file is given below:
+through the settings file. An example of a *settings_file.yml*
+file is given below:
 
 ```yaml
       #
@@ -163,7 +184,7 @@ through the settings file. An example of a _settings_file.yml_ file is given bel
       whitened_endpoints_filter: <Endpoints to whiten. Ex: [1, 2, 10-12]>
 ```
 
-## Optional
+#### Optional
 
 Launch local gateway process to see messages received from sinks at Dbus level
 It can be launched from command line:
@@ -172,7 +193,7 @@ It can be launched from command line:
     wm-dbus-print
 ```
 
-# Docker build instructions
+## Docker build instructions
 
 To build locally for x86_64 go to the root of the repository and type:
 
@@ -204,9 +225,9 @@ In case you wish to push the image to a docker registry, you can do so with:
 
 The image will be tagged with
 
-> \<path_to_your_repo\>/\<image name\>:\<image tag\>.
+> *path_to_your_repo*/*image name*:*image tag*.
 
-# Starting docker services
+## Starting docker services
 
 In the container folder, you will find the wm_gateway.env file, where you
 need to place the MQTT credentials for your gateway user.
@@ -232,7 +253,7 @@ or specify which container you want to view the logs from with
     docker logs [container-name]
 ```
 
-# License
+## License
 
 Wirepas Oy licensed under Apache License, Version 2.0 See file LICENSE for
 full license details.
