@@ -7,15 +7,11 @@ repos:
     - id: detect-aws-credentials
     - id: check-json
     - id: pretty-format-json
+      args: [--autofix]
     - id: detect-private-key
     - id: mixed-line-ending
       args: [--fix=lf]
       exclude: '\.bat$'
-
--   repo: https://github.com/openstack-dev/bashate
-    rev: cc4607070f113c308943a148172047400ec371a6
-    hooks:
-    - id: bashate
 
 -   repo: https://github.com/pryorda/dockerfilelint-precommit-hooks
     rev: v0.1.0
