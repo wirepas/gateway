@@ -5,13 +5,13 @@ python:
 dist: "xenial"
 jobs:
 install:
-  - pip3 install -r dev-requirements.txt
-  - pip3 install -r requirements.txt
-  - pip3 install .
+  - pip3 install -r python_transport/dev-requirements.txt
+  - pip3 install -r python_transport/requirements.txt
 
 script:
   - "./.ci/style-check.sh"
   - "./.ci/build.sh"
+  - pip3 install python_transport/dist/*.whl
 
 deploy:
   provider: pypi
