@@ -12,6 +12,8 @@ build-*.txt
 */*/*.egg-info/
 **/*.egg-info/
 
+Pipfile
+
 **/build/
 **/dist/
 
