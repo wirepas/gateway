@@ -6,7 +6,7 @@ dist: "xenial"
 jobs:
 
 before_install:
-  - sudo apt-get install build-essential
+  - sudo apt-get install build-essential libsystemd-dev dbus
 
 install:
   - pip3 install -r python_transport/dev-requirements.txt
