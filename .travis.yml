@@ -4,6 +4,10 @@ python:
 
 dist: "xenial"
 jobs:
+
+before_install:
+  - sudo apt-get install build-essential
+
 install:
   - pip3 install -r python_transport/dev-requirements.txt
   - pip3 install -r python_transport/requirements.txt
