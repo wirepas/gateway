@@ -5,7 +5,7 @@ set -x
 
 TARGET_DIR=${TARGET_DIR:-"python_transport"}
 
-cd ${TARGET_DIR}
+cd "${TARGET_DIR}"
 
 black --check .
 
