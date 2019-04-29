@@ -45,7 +45,9 @@ FROM wirepas/base:1.0-raspbian as wm-lxgw
 RUN [ "cross-build-start" ]
 
 USER root
-RUN apt-get update && apt-get install --no-install-recommends python3-gi-cairo
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3-gi-cairo \
+    && rm -rf /var/lib/apt/lists/*
 
 
 ARG WM_MESSAGING_PKG
