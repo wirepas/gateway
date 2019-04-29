@@ -19,15 +19,15 @@ _get_build_history()
 {
     rm build-*.txt || true
     LAST_HASH=$(git log -n 1 --oneline --format=%H)
-    date > build-${LAST_HASH}.txt
-    git log -n "${DOCKER_BUILD_GIT_HISTORY_LENGTH}" --oneline >> build-${LAST_HASH}.txt
+    date > build-"${LAST_HASH}".txt
+    git log -n "${DOCKER_BUILD_GIT_HISTORY_LENGTH}" --oneline >> build-"${LAST_HASH}".txt
 }
 
 
 _read_pypkg_version()
 {
     PYTHON_PKG_VERSION=""
-    PYTHON_PKG_VERSION=$(cat setup.py|\
+    PYTHON_PKG_VERSION=$(< setup.py \
                   awk '/version=/{print $NF}'|\
                   awk '{split($0,a,"="); print a[2]}'|\
                    tr -d ','|\
@@ -39,14 +39,15 @@ _defaults()
 {
     PATH_PROJECT_DEFAULTS_PATH=${PATH_PROJECT_DEFAULTS_PATH:-"./container/build_defaults.env"}
     echo "Reading ${PATH_PROJECT_DEFAULTS_PATH}"
-    source ${PATH_PROJECT_DEFAULTS_PATH}
+    # shellcheck disable=SC1090
+    source "${PATH_PROJECT_DEFAULTS_PATH}"
 
     # default defaults if not defined in build file
     DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:-"latest"}
     DOCKER_BUILD_CACHE=${DOCKER_BUILD_CACHE:-""}
     DOCKER_PLATFORM=${DOCKER_PLATFORM:-"x86"}
     DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET:-""}
-    DOCKER_FILE=${DOCKER_FILE:-"./container/Dockerfile"}
+    DOCKER_FILE=${DOCKER_FILE:-"./container/dev/Dockerfile"}
     DOCKER_REPO=${DOCKER_REPO:-""}
     DOCKER_PUSH=${DOCKER_PUSH:-"false"}
     DOCKER_SKIP_BUILD=${DOCKER_SKIP_BUILD:-"false"}
@@ -140,8 +141,8 @@ _parse()
             --arm)
             DOCKER_PLATFORM="arm"
             DOCKER_BUILD_ARGS="--build-arg WIREPAS_BASE=wirepas-base-rpi:1.0"
-            DOCKER_FILE="container/Dockerfile-rpi"
-            if [ ! -z ${DOCKER_IMAGE_ARM_NAME} ]
+            DOCKER_FILE="container/dev/Dockerfile-rpi"
+            if [ ! -z "${DOCKER_IMAGE_ARM_NAME}" ]
             then
                 DOCKER_IMAGE_NAME=${DOCKER_IMAGE_ARM_NAME}
             fi
@@ -203,11 +204,11 @@ _build()
         _get_build_history || true
         echo "building ${DOCKER_FILE} ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} [${DOCKER_BUILD_CACHE}] ${DOCKER_BUILD_ARGS}"
         docker build \
-            --compress ${DOCKER_BUILD_CACHE} \
-           -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} . \
-           -f ${DOCKER_FILE} \
-           ${DOCKER_BUILD_TARGET} \
-           ${DOCKER_BUILD_ARGS}
+            --compress "${DOCKER_BUILD_CACHE}" \
+           -t "${DOCKER_IMAGE_NAME}":"${DOCKER_IMAGE_TAG}" . \
+           -f "${DOCKER_FILE}" \
+           "${DOCKER_BUILD_TARGET}" \
+           "${DOCKER_BUILD_ARGS}"
     fi
 }
 
@@ -216,7 +217,7 @@ _repo()
     if [[ ! -z "${DOCKER_REPO}" ]]
     then
         echo "tagging ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --> ${DOCKER_REPO}"
-        docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_REPO}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+        docker tag "${DOCKER_IMAGE_NAME}":"${DOCKER_IMAGE_TAG}" "${DOCKER_REPO}"/"${DOCKER_IMAGE_NAME}":"${DOCKER_IMAGE_TAG}"
     fi
 }
 
@@ -225,7 +226,7 @@ _push()
     if [[ "${DOCKER_PUSH}" == "true" ]] && [[ ! -z "${DOCKER_REPO}" ]]
     then
         echo "pushing ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --> ${DOCKER_REPO}"
-        docker push ${DOCKER_REPO}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+        docker push "${DOCKER_REPO}"/"${DOCKER_IMAGE_NAME}":"${DOCKER_IMAGE_TAG}"
     fi
 }
 

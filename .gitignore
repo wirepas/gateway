@@ -1,3 +1,6 @@
+deliverable/*
+*.7z
+*.so
 *.whl
 *.pyc
 sink_service/build/
