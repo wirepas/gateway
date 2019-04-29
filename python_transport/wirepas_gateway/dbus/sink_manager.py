@@ -313,6 +313,7 @@ class Sink(object):
         return d
 
     def process_scratchpad(self):
+        ret = GatewayResultCode.GW_RES_OK
         restart = False
         try:
             # Stop the stack if not already stopped
@@ -327,18 +328,19 @@ class Sink(object):
             self.proxy.ProcessScratchpad()
         except GLib.Error as e:
             self.logger.error("Could not restart sink's state")
-            return ReturnCode.error_from_dbus_exception(e.message)
+            ret = ReturnCode.error_from_dbus_exception(e.message)
 
         if restart:
             try:
                 self.proxy.SetStackState(True)
             except GLib.Error:
                 self.logger.debug("Sink in invalid state")
-                return GatewayResultCode.GW_RES_INTERNAL_ERROR
+                ret = GatewayResultCode.GW_RES_INTERNAL_ERROR
 
-        return GatewayResultCode.GW_RES_OK
+        return ret
 
     def upload_scratchpad(self, seq, file):
+        ret = GatewayResultCode.GW_RES_OK
         restart = False
         try:
             # Stop the stack if not already stopped
@@ -356,7 +358,7 @@ class Sink(object):
             )
         except GLib.Error as e:
             self.logger.exception("Cannot upload local scratchpad")
-            return ReturnCode.error_from_dbus_exception(e.message)
+            ret = ReturnCode.error_from_dbus_exception(e.message)
 
         if restart:
             try:
@@ -364,9 +366,9 @@ class Sink(object):
                 self.proxy.SetStackState(True)
             except GLib.Error:
                 self.logger.error("Could not restart sink's state")
-                return GatewayResultCode.GW_RES_INTERNAL_ERROR
+                ret = GatewayResultCode.GW_RES_INTERNAL_ERROR
 
-        return GatewayResultCode.GW_RES_OK
+        return ret
 
 
 class SinkManager(object):
