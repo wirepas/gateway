@@ -23,3 +23,9 @@ Pipfile
 public/
 packets/
 release/
+
+.pre-commit-config.yaml
+.flake8
+.clang*
+.ci/manifest/*
+dev-requirements.txt
