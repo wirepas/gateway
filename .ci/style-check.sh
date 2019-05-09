@@ -6,14 +6,13 @@ set -x
 TARGET_CLANG_FORMAT=${TARGET_CLANG_FORMAT:-"7"}
 TARGET_DIR=${TARGET_DIR:-"python_transport"}
 
-cd "${TARGET_DIR}"
-
-# python style checks
-black --check .
-flake8
-
 # clang-format
-# shellcheck source=./.ci/manifest/tools/clangformat.sh
+# shellcheck disable=SC1091
 source ./.ci/manifest/tools/clangformat.sh
 clangformat_version "${TARGET_CLANG_FORMAT}"
 clangformat_check "${TARGET_CLANG_FORMAT}"
+
+# python style check
+cd "${TARGET_DIR}"
+black --check .
+flake8
