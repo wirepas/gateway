@@ -36,13 +36,11 @@ static sd_bus_slot * m_slot = NULL;
  * \brief   Send a message handler
  * \param   ... (from sd_bus function signature)
  */
-static int send_message(sd_bus_message *m,
-                        void *userdata,
-                        sd_bus_error * error)
+static int send_message(sd_bus_message * m, void * userdata, sd_bus_error * error)
 {
     app_message_t message;
     app_res_e res;
-    const void *data;
+    const void * data;
     size_t n;
     int r;
     uint8_t qos;
@@ -80,10 +78,10 @@ static int send_message(sd_bus_message *m,
     message.num_bytes = n;
 
     LOGD("Message to send on EP %d from EP %d to 0x%x size = %d\n",
-                    message.dst_ep,
-                    message.src_ep,
-                    message.dst_addr,
-                    message.num_bytes);
+         message.dst_ep,
+         message.src_ep,
+         message.dst_addr,
+         message.num_bytes);
 
     /* Send packet. For now, packets are not tracked to keep behavior simpler */
     message.pdu_id = 0;
@@ -116,7 +114,7 @@ static bool onDataReceived(const uint8_t * bytes,
                            uint8_t hop_count,
                            unsigned long long timestamp_ms)
 {
-    sd_bus_message *m = NULL;
+    sd_bus_message * m = NULL;
     int r;
 
     LOGD("%llu -> Data received on EP %d of len %d from 0x%x to 0x%x\n",
@@ -127,11 +125,7 @@ static bool onDataReceived(const uint8_t * bytes,
          dst_addr);
 
     /* Create a new signal to be generated on Dbus */
-    r = sd_bus_message_new_signal(m_bus,
-                                  &m,
-                                  m_object,
-                                  m_interface,
-                                  "MessageReceived");
+    r = sd_bus_message_new_signal(m_bus, &m, m_object, m_interface, "MessageReceived");
 
     if (r < 0)
     {
@@ -140,16 +134,8 @@ static bool onDataReceived(const uint8_t * bytes,
     }
 
     /* Load all parameters */
-    r = sd_bus_message_append(m,
-                              "tuuyyuyy",
-                              timestamp_ms,
-                              src_addr,
-                              dst_addr,
-                              src_ep,
-                              dst_ep,
-                              travel_time,
-                              qos,
-                              hop_count);
+    r = sd_bus_message_append(
+        m, "tuuyyuyy", timestamp_ms, src_addr, dst_addr, src_ep, dst_ep, travel_time, qos, hop_count);
     if (r < 0)
     {
         LOGE("Cannot append info error=%s\n", strerror(-r));
@@ -175,8 +161,7 @@ static bool onDataReceived(const uint8_t * bytes,
 /**********************************************************************
  *                   VTABLE for data module                           *
  **********************************************************************/
-static const sd_bus_vtable data_vtable[] =
-{
+static const sd_bus_vtable data_vtable[] = {
     SD_BUS_VTABLE_START(0),
 
     /* Method to send data */
@@ -206,8 +191,7 @@ static const sd_bus_vtable data_vtable[] =
      */
     SD_BUS_SIGNAL("MessageReceived", "tuuyyuyyay", 0),
 
-    SD_BUS_VTABLE_END
-};
+    SD_BUS_VTABLE_END};
 
 int Data_Init(sd_bus * bus, char * object, char * interface)
 {
@@ -224,12 +208,7 @@ int Data_Init(sd_bus * bus, char * object, char * interface)
     }
 
     /* Install the data vtable */
-    ret = sd_bus_add_object_vtable(bus,
-                                   &m_slot,
-                                   object,
-                                   interface,
-                                   data_vtable,
-                                   NULL);
+    ret = sd_bus_add_object_vtable(bus, &m_slot, object, interface, data_vtable, NULL);
     if (ret < 0)
     {
         LOGE("Failed to issue method call: %s\n", strerror(-ret));

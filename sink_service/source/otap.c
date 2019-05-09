@@ -57,12 +57,10 @@ static bool initialize_unmodifiable_variables();
  * \brief   Upload local scratchpad
  * \param   ... (from sd_bus function signature)
  */
-static int upload_scratchpad(sd_bus_message * m,
-                             void * userdata,
-                             sd_bus_error * error)
+static int upload_scratchpad(sd_bus_message * m, void * userdata, sd_bus_error * error)
 {
     app_res_e res;
-    const void *data;
+    const void * data;
     size_t n;
     int r;
     uint8_t seq;
@@ -95,7 +93,6 @@ static int upload_scratchpad(sd_bus_message * m,
         return -EINVAL;
     }
 
-
     /* New scratchpad uploaded, update parameters values exposed on bus */
     initialize_unmodifiable_variables();
 
@@ -120,9 +117,7 @@ static int upload_scratchpad(sd_bus_message * m,
  * \brief   Update local scratchpad
  * \param   ... (from sd_bus function signature)
  */
-static int process_scratchpad(sd_bus_message * m,
-                              void * userdata,
-                              sd_bus_error * error)
+static int process_scratchpad(sd_bus_message * m, void * userdata, sd_bus_error * error)
 {
     app_res_e res;
 
@@ -151,31 +146,29 @@ static int process_scratchpad(sd_bus_message * m,
 /**********************************************************************
  *                   VTABLE for otap module                         *
  **********************************************************************/
-static const sd_bus_vtable otap_vtable[] =
-{
+static const sd_bus_vtable otap_vtable[] = {
     SD_BUS_VTABLE_START(0),
 
     /* Read only parameters backup-ed with a table (Read each time stack starts) */
-    SD_BUS_PROPERTY("StoredLen",      "u", NULL, offsetof(sink_otap_t, stored_len), 0),
-    SD_BUS_PROPERTY("StoredCrc",      "q", NULL, offsetof(sink_otap_t, stored_crc), 0),
-    SD_BUS_PROPERTY("StoredSeq",      "y", NULL, offsetof(sink_otap_t, stored_seq), 0),
-    SD_BUS_PROPERTY("StoredStatus",   "y", NULL, offsetof(sink_otap_t, stored_status), 0),
-    SD_BUS_PROPERTY("StoredType",     "y", NULL, offsetof(sink_otap_t, stored_type), 0),
-    SD_BUS_PROPERTY("ProcessedLen",   "u", NULL, offsetof(sink_otap_t, processed_len), 0),
-    SD_BUS_PROPERTY("ProcessedCrc",   "q", NULL, offsetof(sink_otap_t, processed_crc), 0),
-    SD_BUS_PROPERTY("ProcessedSeq",   "y", NULL, offsetof(sink_otap_t, processed_seq), 0),
+    SD_BUS_PROPERTY("StoredLen", "u", NULL, offsetof(sink_otap_t, stored_len), 0),
+    SD_BUS_PROPERTY("StoredCrc", "q", NULL, offsetof(sink_otap_t, stored_crc), 0),
+    SD_BUS_PROPERTY("StoredSeq", "y", NULL, offsetof(sink_otap_t, stored_seq), 0),
+    SD_BUS_PROPERTY("StoredStatus", "y", NULL, offsetof(sink_otap_t, stored_status), 0),
+    SD_BUS_PROPERTY("StoredType", "y", NULL, offsetof(sink_otap_t, stored_type), 0),
+    SD_BUS_PROPERTY("ProcessedLen", "u", NULL, offsetof(sink_otap_t, processed_len), 0),
+    SD_BUS_PROPERTY("ProcessedCrc", "q", NULL, offsetof(sink_otap_t, processed_crc), 0),
+    SD_BUS_PROPERTY("ProcessedSeq", "y", NULL, offsetof(sink_otap_t, processed_seq), 0),
     SD_BUS_PROPERTY("FirmwareAreaId", "u", NULL, offsetof(sink_otap_t, firmware_area_id), 0),
 
     /* Methods related to config */
-    SD_BUS_METHOD("ProcessScratchpad",  "", "", process_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("ProcessScratchpad", "", "", process_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
     /* Parameters are:
      *  y -> sequence
      *  ay -> byte array containing the scratchpad to upload
      */
-    SD_BUS_METHOD("UploadScratchpad",   "yay", "", upload_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("UploadScratchpad", "yay", "", upload_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
 
-    SD_BUS_VTABLE_END
-};
+    SD_BUS_VTABLE_END};
 
 static bool initialize_unmodifiable_variables()
 {
@@ -214,12 +207,7 @@ int Otap_Init(sd_bus * bus, char * object, char * interface)
     initialize_unmodifiable_variables();
 
     /* Install the config vtable */
-    r = sd_bus_add_object_vtable(bus,
-                                 &m_slot,
-                                 object,
-                                 interface,
-                                 otap_vtable,
-                                 &m_sink_otap);
+    r = sd_bus_add_object_vtable(bus, &m_slot, object, interface, otap_vtable, &m_sink_otap);
 
     if (r < 0)
     {
