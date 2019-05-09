@@ -45,11 +45,20 @@ In the end, verify you have at least
     pip --version
     pip 18.0 from <PYTHON_PATH>/pythonX.Y/dist-packages/pip (python X.Y)
 
-Afterwards, install docker-compose with
+Afterwards, ensure you have the following depencies met on your host
+
+::
+
+     sudo apt-get install -y gcc libffi-dev libssl-dev make python-dev	
+
+and install docker-compose with
 
 ::
 
     pip install docker-compose
+
+If you run into issues, please review the official instructions at
+https://docs.docker.com/compose/install/
 
 
 .. raw:: pdf
