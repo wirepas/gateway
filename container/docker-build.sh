@@ -96,7 +96,6 @@ _parse_build_default_path()
     while [[ "${#}" -gt 0 ]]
     do
         key="${1}"
-        echo "${key}"
         case "${key}" in
             --build-defaults |--build_defaults)
             PATH_PROJECT_DEFAULTS_PATH="${2}"
@@ -119,7 +118,6 @@ _parse()
     while [[ "${#}" -gt 0 ]]
     do
         key="${1}"
-        echo "${key}"
         case "${key}" in
             --skip-build | --skip_build)
             DOCKER_SKIP_BUILD="true"
