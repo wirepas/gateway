@@ -70,24 +70,58 @@ class MQTTWrapper(Thread):
     to avoid any dead lock from mqtt client.
     """
 
-    def __init__(self, client, logger, on_termination_cb=None):
+    def __init__(self, logger, username, password, host, port, secure_auth=True, tlsfile=None,
+                 on_termination_cb=None, on_connect_cb=None):
         Thread.__init__(self)
         self.daemon = True
         self.running = False
-        self.client = client
         self.logger = logger
         self.on_termination_cb = on_termination_cb
+        self.on_connect_cb = on_connect_cb
+
+        self._client = mqtt.Client()
+        if secure_auth:
+            try:
+                self._client.tls_set(
+                    tlsfile,
+                    certfile=None,
+                    keyfile=None,
+                    cert_reqs=ssl.CERT_REQUIRED,
+                    tls_version=ssl.PROTOCOL_TLSv1_2,
+                    ciphers=None,
+                )
+            except:
+                self.logger.error(
+                    "Cannot use secure authentication. attempting unsecure connection"
+                )
+
+        self._client.username_pw_set(username, password)
+        self._client.on_connect = self._on_connect
+
+        try:
+            self._client.connect(host, port, keepalive=60)
+        except (socket.gaierror, ValueError) as e:
+            self.logger.error("Cannot connect to mqtt {}".format(e))
+            exit(-1)
 
         # Set options to initial socket
-        self.client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
+        self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
 
         self._publish_queue = SelectableQueue()
+
+    def _on_connect(self, client, userdata, flags, rc):
+        if rc != 0:
+            self.logger.error("MQTT cannot connect {}".format(rc))
+            return
+
+        if self.on_connect_cb is not None:
+            self.on_connect_cb()
 
     def _do_select(self, sock):
         # Select with a timeout of 1 sec to call loop misc from time to time
         r, w, e = select(
             [sock, self._publish_queue],
-            [sock] if self.client.want_write() else [],
+            [sock] if self._client.want_write() else [],
             [],
             1,
         )
@@ -99,14 +133,14 @@ class MQTTWrapper(Thread):
                 # next select will exit immediately if queue not empty
                 while True:
                     topic, payload, qos, retain = self._publish_queue.get()
-                    self.client.publish(topic, payload, qos=qos, retain=retain)
+                    self._client.publish(topic, payload, qos=qos, retain=retain)
 
                     # FIX: read internal sockpairR as it is written but
                     # never read as we don't use the internal paho loop
                     # but we have spurious timeout / broken pipe from
                     # this socket pair
                     try:
-                        self.client._sockpairR.recv(1)
+                        self._client._sockpairR.recv(1)
                     except Exception:
                         # This socket is not used at all, so if something is wrong,
                         # not a big issue. Just keep going
@@ -123,15 +157,15 @@ class MQTTWrapper(Thread):
                 pass
 
         if sock in r:
-            self.client.loop_read()
+            self._client.loop_read()
 
         if sock in w:
-            self.client.loop_write()
+            self._client.loop_write()
 
-        self.client.loop_misc()
+        self._client.loop_misc()
 
     def _get_socket(self):
-        sock = self.client.socket()
+        sock = self._client.socket()
         if sock is not None:
             return sock
 
@@ -140,7 +174,7 @@ class MQTTWrapper(Thread):
         # Socket is not opened anymore, try to reconnect
         while True:
             try:
-                self.client.reconnect()
+                self._client.reconnect()
                 break
             except Exception:
                 # Retry to connect in 1 sec
@@ -149,12 +183,17 @@ class MQTTWrapper(Thread):
         # Wait for socket to reopen
         # Do it in polling as we are managing the thread ourself
         # so no callback possible
-        while self.client.socket() is None:
+        while self._client.socket() is None:
             sleep(1)
 
         # Set options to new reopened socket
-        self.client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
-        return self.client.socket()
+        self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
+        return self._client.socket()
+
+    def set_last_will(self, topic, data):
+        # Set Last wil message
+        self._client.will_set(topic, data, qos=2, retain=True)
+
 
     def run(self):
         while True:
@@ -166,7 +205,7 @@ class MQTTWrapper(Thread):
                 self._do_select(sock)
             except TimeoutError:
                 self.logger.error("Timeout in connection, force a reconnect")
-                self.client.reconnect()
+                self._client.reconnect()
             except Exception:
                 # If an exception is not catched before this point
                 # All the transport module must be stopped in order to be fully
@@ -179,7 +218,7 @@ class MQTTWrapper(Thread):
 
     def publish(self, topic, payload, qos=1, retain=False) -> None:
         """
-        Method to publish to Mqtt form a different thread.
+        Method to publish to Mqtt from a different thread.
         :param topic: Topic to publish on
         :param payload: Payload
         :param qos: Qos to use
@@ -187,10 +226,15 @@ class MQTTWrapper(Thread):
         """
         if current_thread().ident == self.ident:
             # Already on right thread
-            self.client.publish(topic, payload, qos, retain)
+            self._client.publish(topic, payload, qos, retain)
         else:
             # Send it to the queue to be published from Mqtt thread
             self._publish_queue.put((topic, payload, qos, retain))
+
+    def subscribe(self, topic, cb, qos=2) -> None:
+        self.logger.debug("Subscribing to: {}".format(topic))
+        self._client.subscribe(topic, qos)
+        self._client.message_callback_add(topic, cb)
 
 
 class TransportService(BusClient):
@@ -239,34 +283,11 @@ class TransportService(BusClient):
 
         self.whitened_ep_filter = whitened_endpoints_filter
 
-        self.mqtt_client = mqtt.Client()
-        if secure_auth:
-            try:
-                self.mqtt_client.tls_set(
-                    tlsfile,
-                    certfile=None,
-                    keyfile=None,
-                    cert_reqs=ssl.CERT_REQUIRED,
-                    tls_version=ssl.PROTOCOL_TLSv1_2,
-                    ciphers=None,
-                )
-            except:
-                self.logger.error(
-                    "Cannot use secure authentication. attempting unsecure connection"
-                )
-
-        self.mqtt_client.username_pw_set(username, password)
-        self.mqtt_client.on_connect = self._on_connect
-        self._set_last_will()
-        try:
-            self.mqtt_client.connect(host, port, keepalive=60)
-        except (socket.gaierror, ValueError) as e:
-            self.logger.error("Cannot connect to mqtt {}".format(e))
-            exit(-1)
-
         self.mqtt_wrapper = MQTTWrapper(
-            self.mqtt_client, self.logger, self._on_mqtt_wrapper_termination_cb
+            self.logger, username, password, host, port, secure_auth, tlsfile,
+            self._on_mqtt_wrapper_termination_cb, self._on_connect
         )
+
         self.mqtt_wrapper.start()
 
         self.logger = logger or logging.getLogger(__name__)
@@ -282,43 +303,32 @@ class TransportService(BusClient):
         self.logger.error("MQTT wrapper ends. Terminate the program")
         self.stop_dbus_client()
 
-    def _set_last_will(self):
-        event = wirepas_messaging.gateway.api.StatusEvent(
+    def _set_status(self):
+        event_offline = wirepas_messaging.gateway.api.StatusEvent(
             self.gw_id, GatewayState.OFFLINE
+        )
+
+        event_online = wirepas_messaging.gateway.api.StatusEvent(
+            self.gw_id, GatewayState.ONLINE
         )
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
 
-        # Set Last wil message
-        self.mqtt_client.will_set(topic, event.payload, qos=2, retain=True)
+        self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
+        self.mqtt_wrapper.set_last_will(topic, event_offline.payload)
 
-    def _on_connect(self, client, userdata, flags, rc):
-        if rc != 0:
-            self.logger.error("MQTT cannot connect {}".format(rc))
-            return
-
+    def _on_connect(self):
         # Register for get gateway info
         topic = TopicGenerator.make_get_gateway_info_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_get_gateway_info_cmd_received
-        )
+        self.mqtt_wrapper.subscribe(topic, self._on_get_gateway_info_cmd_received)
 
         # Register for get configs request
         topic = TopicGenerator.make_get_configs_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        # If duplicated request, it doesn't harm so QOS could be 1
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(topic, self._on_get_configs_cmd_received)
+        self.mqtt_wrapper.subscribe(topic, self._on_get_configs_cmd_received)
 
         # Register for set config request for any sink
         topic = TopicGenerator.make_set_config_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        # Receiving multiple time the same config is not an issue but better to
-        # have qos 2
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(topic, self._on_set_config_cmd_received)
+        self.mqtt_wrapper.subscribe(topic, self._on_set_config_cmd_received)
 
         # Register for send data request for any sink on the gateway
         topic = TopicGenerator.make_send_data_request_topic(self.gw_id)
@@ -326,38 +336,19 @@ class TransportService(BusClient):
         # It is important to have a qos of 2 and also from the publisher as 1 could generate
         # duplicated packets and we don't know the consequences on end
         # application
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(topic, self._on_send_data_cmd_received)
+        self.mqtt_wrapper.subscribe(topic, self._on_send_data_cmd_received, qos=2)
 
         # Register for otap commands for any sink on the gateway
         topic = TopicGenerator.make_otap_status_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_otap_status_request_received
-        )
+        self.mqtt_wrapper.subscribe(topic, self._on_otap_status_request_received)
 
         topic = TopicGenerator.make_otap_load_scratchpad_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_otap_upload_scratchpad_request_received
-        )
+        self.mqtt_wrapper.subscribe(topic, self._on_otap_upload_scratchpad_request_received)
 
         topic = TopicGenerator.make_otap_process_scratchpad_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_otap_process_scratchpad_request_received
-        )
+        self.mqtt_wrapper.subscribe(topic, self._on_otap_process_scratchpad_request_received)
 
-        event = wirepas_messaging.gateway.api.StatusEvent(
-            self.gw_id, GatewayState.ONLINE
-        )
-
-        topic = TopicGenerator.make_status_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.publish(topic, event.payload, qos=1, retain=True)
+        self._set_status()
 
         self.logger.info("MQTT connected!")
 
