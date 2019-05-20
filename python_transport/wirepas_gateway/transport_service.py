@@ -225,6 +225,20 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    def deferred_thread(fn):
+        """
+        Decorator to handle a request on its own Thread
+        to avoid blocking the calling Thread on I/O.
+        It creates a new Thread but it shouldn't impact the performances
+        as requests are not supposed to be really frequent (few per seconds)
+        """
+        def wrapper(*args, **kwargs):
+            thread = Thread(target=fn, args=args, kwargs=kwargs)
+            thread.start()
+            return thread
+
+        return wrapper
+
     def on_sink_connected(self, name):
         self.logger.info("Sink connected, sending new configs")
         self._send_asynchronous_get_configs_response()
@@ -233,6 +247,7 @@ class TransportService(BusClient):
         self.logger.info("Sink disconnected, sending new configs")
         self._send_asynchronous_get_configs_response()
 
+    @deferred_thread
     def _on_send_data_cmd_received(self, client, userdata, message):
         self.logger.info("Request to send data")
         try:
@@ -276,6 +291,7 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_get_configs_cmd_received(self, client, userdata, message):
         self.logger.info("Config request received")
         try:
@@ -301,6 +317,10 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     def _on_get_gateway_info_cmd_received(self, client, userdata, message):
+        """
+        This function doesn't need the decorator @deferred_thread as request is handled
+        without I/O
+        """
         self.logger.info("Gateway info request received")
         try:
             request = wirepas_messaging.gateway.api.GetGatewayInfoRequest.from_payload(
@@ -323,6 +343,7 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_get_gateway_info_response_topic(self.gw_id)
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_set_config_cmd_received(self, client, userdata, message):
         self.logger.info("Set config request received")
         try:
@@ -351,6 +372,7 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_otap_status_request_received(self, client, userdata, message):
         self.logger.info("OTAP status request received")
         try:
@@ -390,6 +412,7 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_otap_upload_scratchpad_request_received(self, client, userdata, message):
         self.logger.info("OTAP upload request received")
         try:
@@ -418,6 +441,7 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_otap_process_scratchpad_request_received(self, client, userdata, message):
         self.logger.info("OTAP process request received")
         try:

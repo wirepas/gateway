@@ -19,7 +19,13 @@ class MQTTWrapper(Thread):
     to avoid any dead lock from mqtt client.
     """
 
-    def __init__(self, logger, username, password, host, port, secure_auth=True, tlsfile=None,
+    # Keep alive time with broker
+    KEEP_ALIVE_S = 60
+
+    # Reconnect timeout in Seconds
+    TIMEOUT_RECONNECT_S = 120
+
+    def __init__(self, logger, username, password, host, port, secure_auth=True, ca_certs=None,
                  on_termination_cb=None, on_connect_cb=None):
         Thread.__init__(self)
         self.daemon = True
@@ -32,7 +38,7 @@ class MQTTWrapper(Thread):
         if secure_auth:
             try:
                 self._client.tls_set(
-                    tlsfile,
+                    ca_certs=ca_certs,
                     certfile=None,
                     keyfile=None,
                     cert_reqs=ssl.CERT_REQUIRED,
@@ -48,7 +54,7 @@ class MQTTWrapper(Thread):
         self._client.on_connect = self._on_connect
 
         try:
-            self._client.connect(host, port, keepalive=60)
+            self._client.connect(host, port, keepalive=MQTTWrapper.KEEP_ALIVE_S)
         except (socket.gaierror, ValueError) as e:
             self.logger.error("Cannot connect to mqtt {}".format(e))
             exit(-1)
@@ -57,6 +63,9 @@ class MQTTWrapper(Thread):
         self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
 
         self._publish_queue = SelectableQueue()
+
+        # Thread is not started yes
+        self.running = False
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc != 0:
@@ -95,12 +104,6 @@ class MQTTWrapper(Thread):
                         # not a big issue. Just keep going
                         pass
 
-            except TimeoutError:
-                self.logger.debug("Timeout to send payload: {}".format(payload))
-                # In theory, mqtt client shouldn't loose the last packet
-                # If it is not the case, following line could be uncommented
-                # self._publish_queue.put((topic, payload, qos, retain))
-                raise
             except queue.Empty:
                 # No more packet to publish
                 pass
@@ -121,19 +124,26 @@ class MQTTWrapper(Thread):
         self.logger.error("MQTT, unexpected disconnection")
 
         # Socket is not opened anymore, try to reconnect
-        while True:
+        timeout = MQTTWrapper.TIMEOUT_RECONNECT_S
+        while timeout > 0:
             try:
-                self._client.reconnect()
-                break
+                ret = self._client.reconnect()
+                if ret == mqtt.MQTT_ERR_SUCCESS:
+                    break
             except Exception:
-                # Retry to connect in 1 sec
+                # Retry to connect in 1 sec up to timeout
                 sleep(1)
+                timeout -= 1
+                self.logger.debug("Retrying to connect in 1 sec")
 
-        # Wait for socket to reopen
-        # Do it in polling as we are managing the thread ourself
-        # so no callback possible
-        while self._client.socket() is None:
-            sleep(1)
+        if timeout <= 0:
+            self.logger.error("Unable to reconnect after {} seconds".format(MQTTWrapper.TIMEOUT_RECONNECT_S))
+            return None
+
+        # Socket must be available once reconnect is successful
+        if self._client.socket() is None:
+            self.logger.error("Cannot get socket after reconnect")
+            return None
 
         # Set options to new reopened socket
         self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
@@ -144,13 +154,19 @@ class MQTTWrapper(Thread):
         self._client.will_set(topic, data, qos=2, retain=True)
 
     def run(self):
-        while True:
+        self.running = True
+        while self.running:
             try:
                 # Get client socket to select on it
                 # This function manage the reconnect
                 sock = self._get_socket()
-
-                self._do_select(sock)
+                if sock is None:
+                    # Cannot get the socket, probably an issue
+                    # with connection. Exit the thread
+                    self.logger.error("Cannot get MQTT socket, exit...")
+                    self.running = False
+                else:
+                    self._do_select(sock)
             except TimeoutError:
                 self.logger.error("Timeout in connection, force a reconnect")
                 self._client.reconnect()
@@ -159,10 +175,12 @@ class MQTTWrapper(Thread):
                 # All the transport module must be stopped in order to be fully
                 # restarted by the managing agent
                 self.logger.exception("Unexpected exception in MQTT wrapper Thread")
-                if self.on_termination_cb is not None:
-                    # As this thread is daemonized, inform the parent that this
-                    # thread has exited
-                    self.on_termination_cb()
+                self.running = False
+
+        if self.on_termination_cb is not None:
+            # As this thread is daemonized, inform the parent that this
+            # thread has exited
+            self.on_termination_cb()
 
     def publish(self, topic, payload, qos=1, retain=False) -> None:
         """
