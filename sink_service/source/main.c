@@ -83,7 +83,6 @@ int main(int argc, char * argv[])
             case 'i':
                 /* Get the sink id to generate service name */
                 sink_id = strtoul(optarg, NULL, 0);
-                ;
                 break;
             case '?':
             default:

@@ -134,8 +134,18 @@ static bool onDataReceived(const uint8_t * bytes,
     }
 
     /* Load all parameters */
-    r = sd_bus_message_append(
-        m, "tuuyyuyy", timestamp_ms, src_addr, dst_addr, src_ep, dst_ep, travel_time, qos, hop_count);
+    // clang-format off
+    r = sd_bus_message_append(m,
+                              "tuuyyuyy",
+                              timestamp_ms,
+                              src_addr,
+                              dst_addr,
+                              src_ep,
+                              dst_ep,
+                              travel_time,
+                              qos,
+                              hop_count);
+    // clang-format on
     if (r < 0)
     {
         LOGE("Cannot append info error=%s\n", strerror(-r));

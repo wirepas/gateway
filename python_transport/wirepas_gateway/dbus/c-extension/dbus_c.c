@@ -27,8 +27,18 @@ static int on_packet_received(sd_bus_message * m, void * userdata, sd_bus_error 
     const void * bytes_arr;
 
     /* Load all parameters */
-    r = sd_bus_message_read(
-        m, "tuuyyuyy", &timestamp_ms, &src_addr, &dst_addr, &src_ep, &dst_ep, &travel_time, &qos, &hop_count);
+    // clang-format off
+    r = sd_bus_message_read(m,
+                            "tuuyyuyy",
+                            &timestamp_ms,
+                            &src_addr,
+                            &dst_addr,
+                            &src_ep,
+                            &dst_ep,
+                            &travel_time,
+                            &qos,
+                            &hop_count);
+    // clang-format on
     if (r < 0)
     {
         printf("C_extension: Cannot read parameters\n");
@@ -98,7 +108,9 @@ static PyObject * infiniteEventsLoop(PyObject * self, PyObject * args)
     /* Release the GIL. It will be acquire by the callback
      * It make this thread totally independant from python code
      */
-    Py_BEGIN_ALLOW_THREADS for (;;)
+    // clang-format off
+    Py_BEGIN_ALLOW_THREADS
+    for (;;)
     {
         /* Process requests */
         r = sd_bus_process(m_bus, NULL);
@@ -122,6 +134,7 @@ static PyObject * infiniteEventsLoop(PyObject * self, PyObject * args)
     }
     /* Should never be called */
     Py_END_ALLOW_THREADS
+    // clang-format on
 }
 
 /**
