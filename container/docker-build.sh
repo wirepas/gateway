@@ -8,6 +8,7 @@
 #
 
 trap 'echo "Aborting due to errexit on line $LINENO. Exit code: $?" >&2' ERR
+set -x
 set -e
 set -o nounset
 set -o errexit
@@ -44,17 +45,17 @@ _defaults()
 
     # default defaults if not defined in build file
     DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:-"latest"}
-    DOCKER_BUILD_CACHE=${DOCKER_BUILD_CACHE:-""}
+    DOCKER_BUILD_CACHE=${DOCKER_BUILD_CACHE:-}
     DOCKER_PLATFORM=${DOCKER_PLATFORM:-"x86"}
-    DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET:-""}
+    DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET:-}
     DOCKER_FILE=${DOCKER_FILE:-"./container/dev/Dockerfile"}
-    DOCKER_REPO=${DOCKER_REPO:-""}
+    DOCKER_REPO=${DOCKER_REPO:-}
     DOCKER_PUSH=${DOCKER_PUSH:-"false"}
     DOCKER_SKIP_BUILD=${DOCKER_SKIP_BUILD:-"false"}
-    DOCKER_BUILD_ARGS=${DOCKER_BUILD_ARGS:-""}
+    DOCKER_BUILD_ARGS=${DOCKER_BUILD_ARGS:-}
 
-    DOCKER_IMAGE_ARM_NAME=${DOCKER_IMAGE_ARM_NAME:-""}
-    DOCKER_ARM_BUILD_TARGET=${DOCKER_ARM_BUILD_TARGET:-""}
+    DOCKER_IMAGE_ARM_NAME=${DOCKER_IMAGE_ARM_NAME:-}
+    DOCKER_ARM_BUILD_TARGET=${DOCKER_ARM_BUILD_TARGET:-}
 
     DOCKER_IMAGE_TAG_PYTHON_VERSION=${DOCKER_IMAGE_TAG_PYTHON_VERSION:-"false"}
     DOCKER_BUILD_GIT_HISTORY_LENGTH=${DOCKER_BUILD_GIT_HISTORY_LENGTH:-"10"}
@@ -95,7 +96,6 @@ _parse_build_default_path()
     while [[ "${#}" -gt 0 ]]
     do
         key="${1}"
-        echo "${key}"
         case "${key}" in
             --build-defaults |--build_defaults)
             PATH_PROJECT_DEFAULTS_PATH="${2}"
@@ -118,7 +118,6 @@ _parse()
     while [[ "${#}" -gt 0 ]]
     do
         key="${1}"
-        echo "${key}"
         case "${key}" in
             --skip-build | --skip_build)
             DOCKER_SKIP_BUILD="true"
@@ -203,18 +202,20 @@ _build()
 
         _get_build_history || true
         echo "building ${DOCKER_FILE} ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} [${DOCKER_BUILD_CACHE}] ${DOCKER_BUILD_ARGS}"
+        #shellcheck disable=SC2086
         docker build \
-            --compress "${DOCKER_BUILD_CACHE}" \
+            --compress ${DOCKER_BUILD_CACHE} \
            -t "${DOCKER_IMAGE_NAME}":"${DOCKER_IMAGE_TAG}" . \
-           -f "${DOCKER_FILE}" \
-           "${DOCKER_BUILD_TARGET}" \
-           "${DOCKER_BUILD_ARGS}"
+           -f ${DOCKER_FILE} \
+           ${DOCKER_BUILD_TARGET} \
+           ${DOCKER_BUILD_ARGS}
     fi
 }
 
 _repo()
 {
-    if [[ ! -z "${DOCKER_REPO}" ]]
+    #shellcheck disable=SC2086
+    if [[ ! -z ${DOCKER_REPO} ]]
     then
         echo "tagging ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --> ${DOCKER_REPO}"
         docker tag "${DOCKER_IMAGE_NAME}":"${DOCKER_IMAGE_TAG}" "${DOCKER_REPO}"/"${DOCKER_IMAGE_NAME}":"${DOCKER_IMAGE_TAG}"
@@ -241,4 +242,3 @@ _main()
 }
 
 _main "${@}"
-
