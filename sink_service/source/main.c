@@ -26,13 +26,12 @@
 static char * port_name = "/dev/ttyACM0";
 
 /* Maximum size of dbus service name */
-#define MAX_SIZE_SERVICE_NAME   100
+#define MAX_SIZE_SERVICE_NAME 100
 /* Prefix for sink service name */
-#define BASE_SERVICE_NAME       "com.wirepas.sink.sink0"
+#define BASE_SERVICE_NAME "com.wirepas.sink.sink0"
 
 /* Dbus bus instance*/
-static sd_bus *m_bus = NULL;
-
+static sd_bus * m_bus = NULL;
 
 /**
  * \brief   Generate a unique service name based on port name
@@ -42,8 +41,7 @@ static sd_bus *m_bus = NULL;
  *          sink id used for this sink between 0 and 9
  * \return  True if successful, false otherwise
  */
-static bool get_service_name(char service_name[MAX_SIZE_SERVICE_NAME],
-                             unsigned int sink_id)
+static bool get_service_name(char service_name[MAX_SIZE_SERVICE_NAME], unsigned int sink_id)
 {
     // Change last character of service name
     if (sink_id > 9)
@@ -60,7 +58,7 @@ static bool get_service_name(char service_name[MAX_SIZE_SERVICE_NAME],
     return true;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
     unsigned long bitrate = 125000;
     char full_service_name[MAX_SIZE_SERVICE_NAME];
@@ -84,7 +82,7 @@ int main(int argc, char *argv[])
                 break;
             case 'i':
                 /* Get the sink id to generate service name */
-                sink_id = strtoul(optarg, NULL, 0);;
+                sink_id = strtoul(optarg, NULL, 0);
                 break;
             case '?':
             default:
@@ -100,7 +98,8 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    LOGI("Starting Sink service:\n\t-Port is %s\n\t-Bitrate is %d\n\t-Dbus Service name is %s\n",
+    LOGI("Starting Sink service:\n\t-Port is %s\n\t-Bitrate is %d\n\t-Dbus "
+         "Service name is %s\n",
          port_name,
          bitrate,
          full_service_name);
@@ -163,7 +162,7 @@ int main(int argc, char *argv[])
             continue;
 
         /* Wait for the next request to process */
-        r = sd_bus_wait(m_bus, (uint64_t) - 1);
+        r = sd_bus_wait(m_bus, (uint64_t) -1);
         if (r < 0)
         {
             LOGE("Failed to wait on bus: %s\n", strerror(-r));
