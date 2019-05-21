@@ -208,7 +208,7 @@ class BusClient(object):
 
     def _on_data_received(self, sender, object, iface, signal, params):
         # filter out endpoint
-        if params[4] in self.ignore_ep_filter:
+        if self.ignore_ep_filter is not None and params[4] in self.ignore_ep_filter:
             self.logger.debug(
                 "Message received on ep {} filtered out".format(params[4])
             )
