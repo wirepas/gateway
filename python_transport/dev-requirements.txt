@@ -1,4 +1,4 @@
 black==19.3b0
 flake8==3.7.7
-pre-commit==1.15.2
+pre-commit==1.17.0
 bashate==0.6.0
