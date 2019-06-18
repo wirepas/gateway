@@ -1,4 +1,4 @@
-FROM wirepas/base:1.0-raspbian as builder
+FROM wirepas/base:1.1-raspbian as builder
 RUN [ "cross-build-start" ]
 USER root
 ARG GIT_TAG=${GIT_TAG:-"master"}
@@ -27,7 +27,7 @@ RUN cd "${TRANSPORT_SERVICE}" \
 RUN [ "cross-build-end" ]
 
 # builds x86 gateway services
-FROM wirepas/base:1.0-raspbian as wm-lxgw
+FROM wirepas/base:1.1-raspbian as wm-lxgw
 RUN [ "cross-build-start" ]
 USER root
 

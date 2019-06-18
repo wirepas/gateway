@@ -1,4 +1,4 @@
-FROM wirepas/base:1.0-ubuntu as builder
+FROM wirepas/base:1.1-ubuntu as builder
 
 ARG GIT_TAG=${GIT_TAG:-"master"}
 
@@ -22,7 +22,7 @@ RUN cd "${TRANSPORT_SERVICE}" \
     && ./utils/generate_wheel.sh
 
 # builds x86 gateway services
-FROM wirepas/base:1.0-ubuntu as wm-lxgw
+FROM wirepas/base:1.1-ubuntu as wm-lxgw
 USER root
 
 ENV SERVICE_HOME="${HOME}"/gateway

@@ -1,7 +1,7 @@
 # Wirepas Oy
 
 # Builds wirepas messaging
-FROM wirepas/base:1.0-ubuntu as messaging-builder
+FROM wirepas/base:1.1-ubuntu as messaging-builder
 ENV PACKAGE_PATH=public-apis/wrappers/python
 WORKDIR /app_build
 
@@ -15,7 +15,7 @@ RUN py3clean . || true \
     && python3 setup.py sdist bdist_wheel
 
 # Builds sink service
-FROM wirepas/base:1.0-ubuntu as wm-sink-service-builder
+FROM wirepas/base:1.1-ubuntu as wm-sink-service-builder
 ENV PACKAGE_PATH=sink_service
 WORKDIR /app_build
 
@@ -23,7 +23,7 @@ COPY ${PACKAGE_PATH}/ .
 RUN make clean && make
 
 # Builds transport service
-FROM wirepas/base:1.0-ubuntu as wm-transport-service-builder
+FROM wirepas/base:1.1-ubuntu as wm-transport-service-builder
 ENV PACKAGE_PATH=python_transport
 WORKDIR /app_build
 
@@ -39,7 +39,7 @@ RUN pip install Sphinx \
 RUN ls dist/
 
 # builds x86 gateway services
-FROM wirepas/base:1.0-ubuntu as wm-lxgw
+FROM wirepas/base:1.1-ubuntu as wm-lxgw
 USER root
 
 ARG WM_MESSAGING_PKG
