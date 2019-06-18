@@ -10,6 +10,7 @@ from threading import Thread, current_thread
 from time import sleep
 
 from paho.mqtt import client as mqtt
+from paho.mqtt.client import connack_string
 
 
 class MQTTWrapper(Thread):
@@ -69,7 +70,8 @@ class MQTTWrapper(Thread):
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc != 0:
-            self.logger.error("MQTT cannot connect {}".format(rc))
+            self.logger.error("MQTT cannot connect: {}".format(connack_string(rc)))
+            self.running = False
             return
 
         if self.on_connect_cb is not None:
