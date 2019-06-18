@@ -291,6 +291,37 @@ class ParserHelper:
                  "broker is lost (0 to try forever)"),
         )
 
+    def add_black_hole_parameters(self):
+        """ Parameters used to avoid black hole case """
+        self.buffering.add_argument(
+            "--bh_max_buffered_packets",
+            default=0,
+            action="store",
+            type=int,
+            help=("Maximum number of messages to buffer before"
+                 "rising sink cost (0 will disable feature)"),
+        )
+
+        self.buffering.add_argument(
+            "--bh_max_delay_without_publish",
+            default=0,
+            action="store",
+            type=int,
+            help=("Maximum time to wait in seconds without any"
+                  "successful publish with packet queued "
+                  "before rising sink cost (0 will disable feature)"),
+        )
+
+        self.buffering.add_argument(
+            "--bh_minimal_sink_cost",
+            default=0,
+            action="store",
+            type=int,
+            help=("Minimal sink cost for a sink on this gateway"
+                  "Can be used to minimize traffic on a gateway, but"
+                  "it will reduce maximum number of hops for this gateway"),
+        )
+
     @staticmethod
     def _deprecated_message(new_arg_name, deprecated_from="2.x"):
         """ Alerts the user that an argument will be deprecated within the

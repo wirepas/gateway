@@ -4,7 +4,7 @@
 #
 import logging
 import os
-from time import time
+from time import time, sleep
 from uuid import getnode
 from threading import Thread
 
@@ -27,6 +27,127 @@ from wirepas_gateway import __pkg_name__
 IMPLEMENTED_API_VERSION = 1
 
 
+class ConnectionToBackendMonitorThread(Thread):
+
+    # Maximum cost to disable traffic
+    SINK_COST_HIGH = 254
+
+    """
+    Thread monitoring the connection with the broker.
+    Connection status is monitored thanks to the number of
+    messages pushed to the mqtt client queue but not published
+    and the latest successfully published packet
+    Mqtt connection is not used as a trigger as it may modify too often
+    the sink cost with an unstable connection that would be counterproductive
+
+    It could also be implemented without a periodic check and tested
+    each time a packet is published but on performance point of view it would
+    be the same
+    """
+    def __init__(self, logger, period, mqtt_wrapper, sink_manager,
+                 minimum_sink_cost, max_buffered_packets, max_delay_without_publish):
+        Thread.__init__(self)
+
+        self.logger = logger
+        # Daemonize thread to exit with full process
+        self.daemon = True
+
+        # How often to check the queue
+        self.period = period
+        self.mqtt_wrapper = mqtt_wrapper
+        self.sink_manager = sink_manager
+
+        self.running = False
+        self.disconnected = False
+
+        # Get parameters for black hole algorithm detection
+        self.minimum_sink_cost = minimum_sink_cost
+        self.max_buffered_packets = max_buffered_packets
+        self.max_delay_without_publish = max_delay_without_publish
+
+    def _set_sinks_cost(self, cost):
+        for sink in self.sink_manager.get_sinks():
+            sink.cost = cost
+
+    def _set_sinks_cost_high(self):
+        self._set_sinks_cost(self.SINK_COST_HIGH)
+
+    def _set_sinks_cost_low(self):
+        self._set_sinks_cost(self.minimum_sink_cost)
+
+    def _is_publish_delay_over(self):
+        if self.max_delay_without_publish <= 0:
+            # No max delay set, not enabled
+            return False
+
+        if self.mqtt_wrapper.publish_gueue_size <= 0:
+            # No packet queued, so nothing to check
+            return False
+
+        return self.mqtt_wrapper.last_published_packet_s > self.max_delay_without_publish
+
+    def _is_buffer_threshold_reached(self):
+        if self.max_buffered_packets <= 0:
+            # Useless check as mechanism is disabled if max is 0
+            return False
+
+        return self.mqtt_wrapper.publish_gueue_size > self.max_buffered_packets
+
+    def run(self):
+        """
+        Main loop that check periodically the status of the published queue and compare
+        it to threshold set when starting Transport
+        """
+
+        # Initialize already detected sinks
+        self._set_sinks_cost_low()
+
+        self.running = True
+
+        while self.running:
+            if not self.disconnected:
+                # Check if a condition to declare "back hole" is met
+                if self._is_publish_delay_over() or self._is_buffer_threshold_reached():
+                    self.logger.info("Increasing sink cost of all sinks")
+                    self.logger.debug("Last publish: %s Queue Size %s",
+                                      self.mqtt_wrapper.last_published_packet_s,
+                                      self.mqtt_wrapper.publish_gueue_size)
+
+                    self._set_sinks_cost_high()
+                    self.disconnected = True
+            else:
+                if self.mqtt_wrapper.publish_gueue_size == 0:
+                    # Network is back, put the connection back
+                    self.logger.info("Connection is back, decreasing sink cost of all sinks")
+                    self._set_sinks_cost_low()
+                    self.disconnected = False
+
+            # Wait for period
+            sleep(self.period)
+
+    def stop(self):
+        """
+        Stop the black hole monitoring thread
+        """
+        self.running = False
+
+    def initialize_sink(self, name):
+        """
+        Initialize sink cost according to current BH detection
+        state
+        Args:
+            name: name of sink to initialize
+        """
+        sink = self.sink_manager.get_sink(name)
+
+        self.logger.info("Initialize sinkCost of sink %s", name)
+        if sink is not None:
+            if self.disconnected:
+                sink.cost = self.SINK_COST_HIGH
+            else:
+                sink.cost = self.minimum_sink_cost
+
+
 class TransportService(BusClient):
     """
     Implementation of gateway to backend protocol
@@ -37,6 +158,9 @@ class TransportService(BusClient):
 
     # Maximum hop limit to send a packet is limited to 15 by API (4 bits)
     MAX_HOP_LIMIT = 15
+
+    # Period in s to check for black hole issus
+    BH_PERIOD_S = 1
 
     def __init__(self, settings, logger=None, **kwargs):
         self.logger = logger or logging.getLogger(__name__)
@@ -72,6 +196,24 @@ class TransportService(BusClient):
         self.mqtt_wrapper.start()
 
         self.logger.info("Gateway started with id: %s", self.gw_id)
+
+        self.monitoringThread = None
+        self.minimun_sink_cost = settings.bh_minimal_sink_cost
+
+        if settings.bh_max_buffered_packets > 0:
+            self.logger.info(" Black hole detection enabled: max_packets=%d packets, max_delay=%d",
+                             settings.bh_max_buffered_packets,
+                             settings.bh_max_delay_without_publish
+                             )
+            # Create and start a monitoring thread for black hole issue
+            self.monitoringThread = ConnectionToBackendMonitorThread(self.logger,
+                                                                     self.BH_PERIOD_S,
+                                                                     self.mqtt_wrapper,
+                                                                     self.sink_manager,
+                                                                     settings.bh_minimal_sink_cost,
+                                                                     settings.bh_max_buffered_packets,
+                                                                     settings.bh_max_delay_without_publish)
+            self.monitoringThread.start()
 
     def _on_mqtt_wrapper_termination_cb(self):
         """
@@ -234,6 +376,15 @@ class TransportService(BusClient):
 
     def on_sink_connected(self, name):
         self.logger.info("Sink connected, sending new configs")
+        if self.monitoringThread is not None:
+            # Black hole algorithm in place do not initialize here the cost
+            self.monitoringThread.initialize_sink(name)
+        else:
+            sink = self.sink_manager.get_sink(name)
+            if sink is not None:
+                self.logger.info("Initialize sinkCost of sink {} to minimum".format(name))
+                sink.cost = self.minimum_sink_cost
+
         self._send_asynchronous_get_configs_response()
 
     def on_sink_disconnected(self, name):
@@ -621,6 +772,7 @@ def main():
     parse.add_mqtt()
     parse.add_gateway_config()
     parse.add_filtering_config()
+    parse.add_black_hole_parameters()
     parse.add_deprecated_args()
 
     settings = parse.settings()

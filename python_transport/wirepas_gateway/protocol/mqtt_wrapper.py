@@ -5,8 +5,9 @@
 import queue
 import socket
 from select import select
-from threading import Thread, current_thread
+from threading import Thread
 from time import sleep
+from datetime import datetime
 
 from paho.mqtt import client as mqtt
 from paho.mqtt.client import connack_string
@@ -37,8 +38,13 @@ class MQTTWrapper(Thread):
         self.logger = logger
         self.on_termination_cb = on_termination_cb
         self.on_connect_cb = on_connect_cb
+        # Set to track the unpublished packets
+        self._unpublished_mid_set = set()
+        # Variable to keep track of latest published packet
+        self._timestamp_last_publish = datetime.now()
 
         self._client = mqtt.Client(client_id=settings.gateway_id)
+
         if not settings.mqtt_force_unsecure:
             try:
                 self._client.tls_set(
@@ -55,6 +61,7 @@ class MQTTWrapper(Thread):
 
         self._client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
         self._client.on_connect = self._on_connect
+        self._client.on_publish = self._on_publish
 
         if last_will_topic is not None and last_will_data is not None:
             self._set_last_will(last_will_topic, last_will_data)
@@ -89,6 +96,11 @@ class MQTTWrapper(Thread):
         if self.on_connect_cb is not None:
             self.on_connect_cb()
 
+    def _on_publish(self, client, userdata, mid):
+        self._unpublished_mid_set.remove(mid)
+        self._timestamp_last_publish = datetime.now()
+        return
+
     def _do_select(self, sock):
         # Select with a timeout of 1 sec to call loop misc from time to time
         r, w, _ = select(
@@ -105,7 +117,11 @@ class MQTTWrapper(Thread):
                 # next select will exit immediately if queue not empty
                 while True:
                     topic, payload, qos, retain = self._publish_queue.get()
-                    self._client.publish(topic, payload, qos=qos, retain=retain)
+
+                    self._publish_from_main_thread(topic,
+                                                   payload,
+                                                   qos=qos,
+                                                   retain=retain)
 
                     # FIX: read internal sockpairR as it is written but
                     # never read as we don't use the internal paho loop
@@ -201,6 +217,14 @@ class MQTTWrapper(Thread):
             # thread has exited
             self.on_termination_cb()
 
+    def _publish_from_main_thread(self, topic, payload, qos, retain):
+        mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
+        # self.logger.info("Publish {} qos={}".format(mid, qos))
+        if self.publish_gueue_size == 0:
+            # Reset last published packet
+            self._timestamp_last_publish = datetime.now()
+        self._unpublished_mid_set.add(mid)
+
     def publish(self, topic, payload, qos=1, retain=False) -> None:
         """
         Method to publish to Mqtt from a different thread.
@@ -209,18 +233,22 @@ class MQTTWrapper(Thread):
         :param qos: Qos to use
         :param retain: Is it a retain message
         """
-        if current_thread().ident == self.ident:
-            # Already on right thread
-            self._client.publish(topic, payload, qos, retain)
-        else:
-            # Send it to the queue to be published from Mqtt thread
-            self._publish_queue.put((topic, payload, qos, retain))
+        # Send it to the queue to be published from Mqtt thread
+        self._publish_queue.put((topic, payload, qos, retain))
 
     def subscribe(self, topic, cb, qos=2) -> None:
         self.logger.debug("Subscribing to: {}".format(topic))
         self._client.subscribe(topic, qos)
         self._client.message_callback_add(topic, cb)
 
+    @property
+    def publish_gueue_size(self):
+        return len(self._unpublished_mid_set)
+
+    @property
+    def last_published_packet_s(self):
+        delta = datetime.now() - self._timestamp_last_publish
+        return delta.total_seconds()
 
 class SelectableQueue(queue.Queue):
     """
