@@ -8,7 +8,10 @@ services:
 
     wm-sink:
         container_name: wm-sink
-        image: wm-gateway:latest
+        image: wirepas/gateway-rpi
+        build:
+            context: ../..
+            dockerfile: container/x86/Dockerfile
 
         user: root
         privileged: true
@@ -17,7 +20,7 @@ services:
 
         restart: always
         env_file:
-            - wm_gateway.env
+            - ../wm_gateway.env
 
         volumes:
             - /dev:/dev
@@ -30,7 +33,10 @@ services:
 
     wm-transport:
         container_name: wm-transport
-        image: wm-gateway:latest
+        image: wirepas/gateway-rpi
+        build:
+            context: ../..
+            dockerfile: container/x86/Dockerfile
 
         user: root
         privileged: true
@@ -39,7 +45,7 @@ services:
 
         restart: always
         env_file:
-            - wm_gateway.env
+            - ../wm_gateway.env
         environment:
             - PYTHONUNBUFFERED=true
 
@@ -50,4 +56,3 @@ services:
             driver: journald
 
         command: transport
-
