@@ -20,8 +20,9 @@
         See file LICENSE for full license details.
 """
 
-__author__ = "Wirepas Oy"
-
 from . import dbus
 from . import protocol
 from . import utils
+
+__title__ = "wirepas_messaging"
+__version__ = "1.2.0rc1"
