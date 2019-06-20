@@ -34,5 +34,5 @@ try:
 except ImportError:
     pass
 
-__title__ = "wirepas_messaging"
+__title__ = "wirepas_gateway"
 __version__ = "1.2.0rc1"
