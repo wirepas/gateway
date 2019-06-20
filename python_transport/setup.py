@@ -13,8 +13,8 @@
 import os
 import re
 
-from wirepas_messaging import __title__
-from wirepas_messaging import __version__
+from wirepas_gateway import __title__
+from wirepas_gateway import __version__
 
 from setuptools import setup, find_packages, Extension
 
