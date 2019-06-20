@@ -19,10 +19,20 @@
         Wirepas Oy licensed under Apache License, Version 2.0
         See file LICENSE for full license details.
 """
+try:
+    from . import dbus
+except ImportError:
+    pass
 
-from . import dbus
-from . import protocol
-from . import utils
+try:
+    from . import protocol
+except ImportError:
+    pass
+
+try:
+    from . import utils
+except ImportError:
+    pass
 
 __title__ = "wirepas_messaging"
 __version__ = "1.2.0rc1"
