@@ -1,5 +1,5 @@
 # wirepas
-wirepas_messaging==1.1.0
+wirepas_messaging==1.2.0rc1
 
 # Wirepas Oy
 pydbus==0.6.0
@@ -9,6 +9,3 @@ PyYAML==5.1
 
 # mqtt
 paho-mqtt==1.4.0
-
-
-
