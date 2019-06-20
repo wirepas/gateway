@@ -9,10 +9,12 @@
         See file LICENSE for full license details.
 
 """
-import codecs
+
 import os
 import re
-import glob
+
+from wirepas_gateway import __title__
+from wirepas_gateway import __version__
 
 from setuptools import setup, find_packages, Extension
 
@@ -24,14 +26,6 @@ with open(readme_file) as f:
 
 with open(license_file) as f:
     license = f.read()
-
-
-def filter(flist, rules=["private", ".out"]):
-    for f in flist:
-        for rule in rules:
-            if rule in f:
-                flist.pop(flist.index(f))
-    return flist
 
 
 def get_list_files(root, flist=None):
@@ -64,15 +58,14 @@ def get_requirements(*args):
 
 
 setup(
-    name="wirepas_gateway",
-    version="1.1.0",
+    name=__title__,
+    version=__version__,
     description="Wirepas gateway transport service",
     long_description=long_description,
     author="Wirepas Oy",
     author_email="opensource@wirepas.com",
     url="https://github.com/wirepas/gateway",
     license="Apache-2",
-    license_file=license,
     classifiers=[
         "Development Status :: 5 - Stable",
         "Intended Audience :: Developers",

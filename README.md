@@ -13,8 +13,13 @@ When cloning this repository and its dependencies you can opt for:
 -   Using [repo tool](https://source.android.com/setup/develop/repo)
     and the [manifest repository](https://github.com/wirepas/manifest)
 
-    > repo init -u  git@github.com:wirepas/manifest.git
-    > repo init -u  git@github.com:wirepas/manifest.git -m gateway_master.xml
+    > repo init -u https://github.com/wirepas/manifest.git
+    or 
+    > repo init -u git@github.com:wirepas/manifest.git
+    
+    afterwards download the repositories with
+    
+    > repo sync
 
 -   Clone each repo separately (see [pull_repos.sh](./utils/pull_repos.sh))
 
