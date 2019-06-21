@@ -26,8 +26,11 @@ class MQTTWrapper(Thread):
     # Reconnect timeout in Seconds
     TIMEOUT_RECONNECT_S = 120
 
-    def __init__(self, logger, username, password, host, port, secure_auth=True, ca_certs=None,
-                 on_termination_cb=None, on_connect_cb=None):
+    def __init__(self,
+                 settings,
+                 logger,
+                 on_termination_cb=None,
+                 on_connect_cb=None):
         Thread.__init__(self)
         self.daemon = True
         self.running = False
@@ -35,27 +38,30 @@ class MQTTWrapper(Thread):
         self.on_termination_cb = on_termination_cb
         self.on_connect_cb = on_connect_cb
 
-        self._client = mqtt.Client()
-        if secure_auth:
+        self._client = mqtt.Client(client_id=settings.gateway_id)
+        if not settings.mqtt_force_unsecure:
             try:
                 self._client.tls_set(
-                    ca_certs=ca_certs,
-                    certfile=None,
-                    keyfile=None,
-                    cert_reqs=ssl.CERT_REQUIRED,
-                    tls_version=ssl.PROTOCOL_TLSv1_2,
-                    ciphers=None,
+                    ca_certs=settings.mqtt_ca_certs,
+                    certfile=settings.mqtt_certfile,
+                    keyfile=settings.mqtt_keyfile,
+                    cert_reqs=settings.mqtt_cert_reqs,
+                    tls_version=settings.mqtt_tls_version,
+                    ciphers=settings.mqtt_ciphers
                 )
-            except:
+            except Exception as e:
                 self.logger.error(
-                    "Cannot use secure authentication. attempting unsecure connection"
+                    "Cannot use secure authentication {}"
+                    .format(e)
                 )
+                exit(-1)
 
-        self._client.username_pw_set(username, password)
+        self._client.username_pw_set(settings.mqtt_username,
+                                     settings.mqtt_password)
         self._client.on_connect = self._on_connect
 
         try:
-            self._client.connect(host, port, keepalive=MQTTWrapper.KEEP_ALIVE_S)
+            self._client.connect(settings.mqtt_hostname, settings.mqtt_port, keepalive=MQTTWrapper.KEEP_ALIVE_S)
         except (socket.gaierror, ValueError) as e:
             self.logger.error("Cannot connect to mqtt {}".format(e))
             exit(-1)
