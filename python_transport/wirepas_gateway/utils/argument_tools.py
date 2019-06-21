@@ -122,75 +122,252 @@ class ParserHelper(object):
             type=str,
             required=False,
             default="settings.yml",
-            help="settings file.",
+            help="settings file",
         )
 
-    def add_transport(self):
-        """ Transport module arguments """
-        self.transport.add_argument(
-            "-s", "--host", default=None, type=str, help="MQTT broker address"
+    def add_mqtt(self):
+        """ Commonly used MQTT arguments """
+        self.mqtt.add_argument(
+            "--mqtt_hostname",
+            default=None,
+            action="store",
+            type=str,
+            help="MQTT broker hostname ",
         )
 
-        self.transport.add_argument(
-            "-p", "--port", default=8883, type=int, help="MQTT broker port"
+        self.mqtt.add_argument(
+            "--mqtt_username",
+            default=None,
+            action="store",
+            type=str,
+            help="MQTT broker username ",
         )
 
-        self.transport.add_argument(
-            "-u", "--username", default=None, type=str, help="MQTT broker username"
+        self.mqtt.add_argument(
+            "--mqtt_password",
+            default=None,
+            action="store",
+            type=str,
+            help="MQTT broker password",
         )
 
-        self.transport.add_argument(
-            "-pw", "--password", default=None, type=str, help="MQTT broker password"
+        self.mqtt.add_argument(
+            "--mqtt_port",
+            default=8883,
+            action="store",
+            type=int,
+            help="MQTT broker port",
         )
 
-        self.transport.add_argument(
+        self.mqtt.add_argument(
+            "--mqtt_ca_certs",
+            default=None,
+            action="store",
+            type=str,
+            help=(
+                "A string path to the Certificate "
+                "Authority certificate files that "
+                "are to be treated as trusted by "
+                "this client"
+            ),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_certfile",
+            default=None,
+            action="store",
+            type=str,
+            help=("Strings pointing to the PEM encoded client certificate"),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_keyfile",
+            default=None,
+            action="store",
+            type=str,
+            help=(
+                "Strings pointing to the PEM "
+                "encoded client private keys "
+                "respectively"
+            ),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_cert_reqs",
+            default=ssl.CERT_REQUIRED,
+            action="store",
+            type=str,
+            help=(
+                "Defines the certificate "
+                "requirements that the client "
+                "imposes on the broker"
+            ),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_tls_version",
+            default=ssl.PROTOCOL_TLSv1_2,
+            action="store",
+            type=str,
+            help=(
+                "Specifies the version of the "
+                " SSL / TLS protocol to be used"
+            ),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_ciphers",
+            default=None,
+            action="store",
+            type=str,
+            help=(
+                "A string specifying which "
+                "encryption ciphers are allowable "
+                "for this connection"
+            ),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_persist_session",
+            default=True,
+            action="store_true",
+            help=(
+                "When False the broker will buffer "
+                "session packets between "
+                "reconnection"
+            ),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_force_unsecure",
+            default=False,
+            action="store_true",
+            help=(
+                "When True the broker will skip "
+                "the TLS handshake"),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_allow_untrusted",
+            default=False,
+            action="store_true",
+            help=(
+                "When true the client will skip "
+                "the TLS check"),
+        )
+
+    @staticmethod
+    def _deprecated_message(new_arg_name):
+        return "Deprecated argument (It will be dropped from version 2.x onwards) please use --{} instead".format(new_arg_name)
+
+    def add_deprecated_args(self):
+        """ Deprecated mqtt arguments in order to keep backward compatibility """
+        self.deprecated.add_argument(
+            "-s",
+            "--host",
+            default=None,
+            type=str,
+            help=ParserHelper._deprecated_message("mqtt_hostname")
+        )
+
+        self.deprecated.add_argument(
+            "-p",
+            "--port",
+            default=8883,
+            type=int,
+            help=ParserHelper._deprecated_message("mqtt_port")
+        )
+
+        self.deprecated.add_argument(
+            "-u",
+            "--username",
+            default=None,
+            type=str,
+            help=ParserHelper._deprecated_message("mqtt_username")
+        )
+
+        self.deprecated.add_argument(
+            "-pw",
+            "--password",
+            default=None,
+            type=str,
+            help=ParserHelper._deprecated_message("mqtt_password")
+        )
+
+        self.deprecated.add_argument(
             "-t",
             "--tlsfile",
             default=None,
-            help="MQTT broker tls cert file. Optional in case system certificates"
-            " are not up to date",
+            help=ParserHelper._deprecated_message("mqtt_certfile")
         )
 
-        self.transport.add_argument(
+        self.deprecated.add_argument(
             "-ua",
             "--unsecure_authentication",
             default=False,
             action="store_true",
-            help="Disable TLS secure authentication to the server",
+            help=ParserHelper._deprecated_message("mqtt_force_unsecure")
         )
 
-        self.transport.add_argument(
-            "-i", "--gwid", default=None, type=str, help="Id of the gateway"
+        self.deprecated.add_argument(
+            "-i",
+            "--gwid",
+            default=None,
+            type=str,
+            help=ParserHelper._deprecated_message("gateway_id")
         )
 
-        self.transport.add_argument(
+    def add_gateway_config(self):
+        self.gateway.add_argument(
+            "--gateway_id",
+            default=None,
+            type=str,
+            help=(
+                "Id of the gateway. It must be unique on same broker")
+        )
+
+        self.gateway.add_argument(
             "-fp",
             "--full_python",
             default=False,
             action="store_true",
-            help="Do not use C extension for optimization",
+            help=(
+                "Do not use C extension for optimization")
         )
 
-        self.transport.add_argument(
-            "-gm", "--gateway_model", default=None, help="Model name of the gateway"
+        self.gateway.add_argument(
+            "-gm",
+            "--gateway_model",
+            default=None,
+            help=(
+                "Model name of the gateway")
         )
 
-        self.transport.add_argument(
-            "-gv", "--gateway_version", default=None, help="Version of the gateway"
+        self.gateway.add_argument(
+            "-gv",
+            "--gateway_version",
+            default=None,
+            help=(
+                "Version of the gateway")
         )
 
-        self.transport.add_argument(
+    def add_filtering_config(self):
+        self.filtering.add_argument(
             "-iepf",
             "--ignored_endpoints_filter",
             default=None,
-            help="Destination endpoints list to ignore (not published)",
+            help=(
+                "Destination endpoints list to ignore "
+                "(not published)")
         )
 
-        self.transport.add_argument(
+        self.filtering.add_argument(
             "-wepf",
             "--whitened_endpoints_filter",
             default=None,
-            help="Destination endpoints list to whiten (no payload content, only size)",
+            help=(
+                "Destination endpoints list to whiten "
+                "(no payload content, only size)")
         )
 
     def dump(self, path):
