@@ -65,6 +65,7 @@ int main(int argc, char * argv[])
     int r;
     int c;
     unsigned int sink_id = 0;
+    uint16_t mesh_version;
 
     /* Parse arguments */
     while ((c = getopt(argc, argv, "b:p:i:")) != -1)
@@ -109,6 +110,14 @@ int main(int argc, char * argv[])
         LOGE("Cannot open serial sink connection (%s)\n", port_name);
         return EXIT_FAILURE;
     }
+
+    /* Do sanity check to test connectivity with sink */
+    if (WPC_get_mesh_API_version(&mesh_version) != APP_RES_OK)
+    {
+        LOGE("Cannot establish communication with sink over UART\n");
+        return EXIT_FAILURE;
+    }
+    LOGI("Node is running mesh API version %d\n", mesh_version);
 
     /* Connect to the user bus */
     r = sd_bus_open_system(&m_bus);
