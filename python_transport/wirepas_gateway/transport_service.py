@@ -537,7 +537,7 @@ def main():
     try:
         debug_level = os.environ["DEBUG_LEVEL"]
     except KeyError:
-        debug_level = "debug"
+        debug_level = "info"
 
     logger = setup_log("transport_service", level=debug_level)
 
