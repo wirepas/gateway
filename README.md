@@ -198,37 +198,7 @@ It can be launched from command line:
 
 ## Docker build instructions
 
-To build locally for x86_64 go to the root of the repository and type:
-
-```shell
-    ./container/docker-build.sh --build-defaults container/build_defaults.env
-```
-
-This command will build you the gateway with the default settings found
-in build_defaults.env.
-
-If you wish to build ARM images, please use the ARM switches and update
-the image name with the name you desire:
-
-```shell
-    ./container/docker-build.sh --build-defaults container/build_defaults.env \
-                            --arm \
-                            --image wm-lxgw-rpi
-```
-
-In case you wish to push the image to a docker registry, you can do so with:
-
-```shell
-    ./container/docker-build.sh --build-defaults container/build_defaults.env \
-                              --arm \
-                              --image wm-lxgw-rpi \
-                              --push \
-                              --repo <path_to_your_repo>
-```
-
-The image will be tagged with
-
-> *path_to_your_repo*/*image name*:*image tag*.
+We are changing our method to build images. We will update this section when the work is complete.
 
 ## Starting docker services
 
