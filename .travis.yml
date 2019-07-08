@@ -10,13 +10,14 @@ before_install:
 
 install:
   - "./.ci/install-devtools.sh"
-  - pip3 install -r python_transport/dev-requirements.txt
-  - pip3 install -r python_transport/requirements.txt
+  - pip3 install -r dev-requirements.txt
+
 
 script:
   - "./.ci/style-check.sh"
   - "./.ci/build.sh"
-  - pip3 install python_transport/dist/*.whl
+  - "./.ci/build-images.sh"
+  - pip3 install python_transport/dist/wirepas_gateway*.whl
 
 deploy:
   provider: pypi
