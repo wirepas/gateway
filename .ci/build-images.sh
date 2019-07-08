@@ -49,8 +49,8 @@ function _pull_dev_dependencies
 ##
 function _main
 {
-    # _build "rpi"
-    # _build "x86"
+    #_build "arm"
+    #_build "x86"
     _build "dev"
 }
 
