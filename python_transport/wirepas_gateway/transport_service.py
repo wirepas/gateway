@@ -2,196 +2,26 @@
 #
 # See file LICENSE for full license details.
 #
-import paho.mqtt.client as mqtt
-import ssl
-import os
-import socket
-import queue
 import logging
-
-from select import select
-from threading import Thread, current_thread
-from time import sleep, time
+import os
+from time import time
 from uuid import getnode
-
-from wirepas_gateway.dbus.dbus_client import BusClient
-from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
+from threading import Thread
 
 import wirepas_messaging
+from wirepas_gateway.dbus.dbus_client import BusClient
+from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
+from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
+from wirepas_gateway.utils import ParserHelper
+from wirepas_gateway.utils import setup_log
 from wirepas_messaging.gateway.api import (
     GatewayResultCode,
     GatewayState,
     GatewayAPIParsingException,
 )
 
-from wirepas_gateway.utils import setup_log
-from wirepas_gateway.utils import ParserHelper
-
 # This constant is the actual API level implemented by this transport module (cf WP-RM-128)
 IMPLEMENTED_API_VERSION = 1
-
-
-class SelectableQueue(queue.Queue):
-    """
-    Wrapper arround a Queue to make it selectable with an associated
-    socket
-    """
-
-    def __init__(self):
-        super().__init__()
-        self._putsocket, self._getsocket = socket.socketpair()
-
-    def fileno(self):
-        """
-        Implement fileno to be selectable
-        :return: the reception socket fileno
-        """
-        return self._getsocket.fileno()
-
-    def put(self, item):
-        # Insert item in queue
-        super().put(item)
-        # Send 1 byte on socket to signal select
-        self._putsocket.send(b"x")
-
-    def get(self):
-        # Get item first so get can be called and
-        # raise empty exception without blocking in recv
-        item = super().get(block=False)
-        # Consume 1 byte from socket for each item
-        self._getsocket.recv(1)
-        return item
-
-
-class MQTTWrapper(Thread):
-    """
-    Class to manage the MQTT main thread and be able to share it with other services
-    In this case, it allows to have all the related mqtt activity happening on same thread
-    to avoid any dead lock from mqtt client.
-    """
-
-    def __init__(self, client, logger, on_termination_cb=None):
-        Thread.__init__(self)
-        self.daemon = True
-        self.running = False
-        self.client = client
-        self.logger = logger
-        self.on_termination_cb = on_termination_cb
-
-        # Set options to initial socket
-        self.client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
-
-        self._publish_queue = SelectableQueue()
-
-    def _do_select(self, sock):
-        # Select with a timeout of 1 sec to call loop misc from time to time
-        r, w, e = select(
-            [sock, self._publish_queue],
-            [sock] if self.client.want_write() else [],
-            [],
-            1,
-        )
-
-        # Check if we have something to publish
-        if self._publish_queue in r:
-            try:
-                # Publish everything. Loop is not necessary as
-                # next select will exit immediately if queue not empty
-                while True:
-                    topic, payload, qos, retain = self._publish_queue.get()
-                    self.client.publish(topic, payload, qos=qos, retain=retain)
-
-                    # FIX: read internal sockpairR as it is written but
-                    # never read as we don't use the internal paho loop
-                    # but we have spurious timeout / broken pipe from
-                    # this socket pair
-                    try:
-                        self.client._sockpairR.recv(1)
-                    except Exception:
-                        # This socket is not used at all, so if something is wrong,
-                        # not a big issue. Just keep going
-                        pass
-
-            except TimeoutError:
-                self.logger.debug("Timeout to send payload: {}".format(payload))
-                # In theory, mqtt client shouldn't loose the last packet
-                # If it is not the case, following line could be uncommented
-                # self._publish_queue.put((topic, payload, qos, retain))
-                raise
-            except queue.Empty:
-                # No more packet to publish
-                pass
-
-        if sock in r:
-            self.client.loop_read()
-
-        if sock in w:
-            self.client.loop_write()
-
-        self.client.loop_misc()
-
-    def _get_socket(self):
-        sock = self.client.socket()
-        if sock is not None:
-            return sock
-
-        self.logger.error("MQTT, unexpected disconnection")
-
-        # Socket is not opened anymore, try to reconnect
-        while True:
-            try:
-                self.client.reconnect()
-                break
-            except Exception:
-                # Retry to connect in 1 sec
-                sleep(1)
-
-        # Wait for socket to reopen
-        # Do it in polling as we are managing the thread ourself
-        # so no callback possible
-        while self.client.socket() is None:
-            sleep(1)
-
-        # Set options to new reopened socket
-        self.client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
-        return self.client.socket()
-
-    def run(self):
-        while True:
-            try:
-                # Get client socket to select on it
-                # This function manage the reconnect
-                sock = self._get_socket()
-
-                self._do_select(sock)
-            except TimeoutError:
-                self.logger.error("Timeout in connection, force a reconnect")
-                self.client.reconnect()
-            except Exception:
-                # If an exception is not catched before this point
-                # All the transport module must be stopped in order to be fully
-                # restarted by the managing agent
-                self.logger.exception("Unexpected exception in MQTT wrapper Thread")
-                if self.on_termination_cb is not None:
-                    # As this thread is daemonized, inform the parent that this
-                    # thread has exited
-                    self.on_termination_cb()
-
-    def publish(self, topic, payload, qos=1, retain=False) -> None:
-        """
-        Method to publish to Mqtt form a different thread.
-        :param topic: Topic to publish on
-        :param payload: Payload
-        :param qos: Qos to use
-        :param retain: Is it a retain message
-        """
-        if current_thread().ident == self.ident:
-            # Already on right thread
-            self.client.publish(topic, payload, qos, retain)
-        else:
-            # Send it to the queue to be published from Mqtt thread
-            self._publish_queue.put((topic, payload, qos, retain))
-
 
 class TransportService(BusClient):
     """
@@ -206,67 +36,31 @@ class TransportService(BusClient):
 
     def __init__(
         self,
-        host,
-        port,
-        username="",
-        password=None,
-        tlsfile=None,
-        gw_id=None,
+        settings,
         logger=None,
-        c_extension=False,
-        secure_auth=False,
-        gw_model=None,
-        gw_version=None,
-        ignored_endpoints_filter=None,
-        whitened_endpoints_filter=None,
         **kwargs
     ):
 
         super(TransportService, self).__init__(
             logger=logger,
-            c_extension=c_extension,
-            ignored_ep_filter=ignored_endpoints_filter,
+            c_extension=(settings.full_python is False),
+            ignored_ep_filter=settings.ignored_endpoints_filter,
             **kwargs
         )
 
-        if gw_id is None:
-            self.gw_id = getnode()
-        else:
-            self.gw_id = gw_id
+        self.gw_id = settings.gateway_id
+        self.gw_model = settings.gateway_model
+        self.gw_version = settings.gateway_version
 
-        self.gw_model = gw_model
-        self.gw_version = gw_version
-
-        self.whitened_ep_filter = whitened_endpoints_filter
-
-        self.mqtt_client = mqtt.Client()
-        if secure_auth:
-            try:
-                self.mqtt_client.tls_set(
-                    tlsfile,
-                    certfile=None,
-                    keyfile=None,
-                    cert_reqs=ssl.CERT_REQUIRED,
-                    tls_version=ssl.PROTOCOL_TLSv1_2,
-                    ciphers=None,
-                )
-            except:
-                self.logger.error(
-                    "Cannot use secure authentication. attempting unsecure connection"
-                )
-
-        self.mqtt_client.username_pw_set(username, password)
-        self.mqtt_client.on_connect = self._on_connect
-        self._set_last_will()
-        try:
-            self.mqtt_client.connect(host, port, keepalive=60)
-        except (socket.gaierror, ValueError) as e:
-            self.logger.error("Cannot connect to mqtt {}".format(e))
-            exit(-1)
+        self.whitened_ep_filter = settings.whitened_endpoints_filter
 
         self.mqtt_wrapper = MQTTWrapper(
-            self.mqtt_client, self.logger, self._on_mqtt_wrapper_termination_cb
+            settings,
+            self.logger,
+            self._on_mqtt_wrapper_termination_cb,
+            self._on_connect
         )
+
         self.mqtt_wrapper.start()
 
         self.logger = logger or logging.getLogger(__name__)
@@ -282,43 +76,32 @@ class TransportService(BusClient):
         self.logger.error("MQTT wrapper ends. Terminate the program")
         self.stop_dbus_client()
 
-    def _set_last_will(self):
-        event = wirepas_messaging.gateway.api.StatusEvent(
+    def _set_status(self):
+        event_offline = wirepas_messaging.gateway.api.StatusEvent(
             self.gw_id, GatewayState.OFFLINE
+        )
+
+        event_online = wirepas_messaging.gateway.api.StatusEvent(
+            self.gw_id, GatewayState.ONLINE
         )
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
 
-        # Set Last wil message
-        self.mqtt_client.will_set(topic, event.payload, qos=2, retain=True)
+        self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
+        self.mqtt_wrapper.set_last_will(topic, event_offline.payload)
 
-    def _on_connect(self, client, userdata, flags, rc):
-        if rc != 0:
-            self.logger.error("MQTT cannot connect {}".format(rc))
-            return
-
+    def _on_connect(self):
         # Register for get gateway info
         topic = TopicGenerator.make_get_gateway_info_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_get_gateway_info_cmd_received
-        )
+        self.mqtt_wrapper.subscribe(topic, self._on_get_gateway_info_cmd_received)
 
         # Register for get configs request
         topic = TopicGenerator.make_get_configs_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        # If duplicated request, it doesn't harm so QOS could be 1
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(topic, self._on_get_configs_cmd_received)
+        self.mqtt_wrapper.subscribe(topic, self._on_get_configs_cmd_received)
 
         # Register for set config request for any sink
         topic = TopicGenerator.make_set_config_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        # Receiving multiple time the same config is not an issue but better to
-        # have qos 2
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(topic, self._on_set_config_cmd_received)
+        self.mqtt_wrapper.subscribe(topic, self._on_set_config_cmd_received)
 
         # Register for send data request for any sink on the gateway
         topic = TopicGenerator.make_send_data_request_topic(self.gw_id)
@@ -326,38 +109,19 @@ class TransportService(BusClient):
         # It is important to have a qos of 2 and also from the publisher as 1 could generate
         # duplicated packets and we don't know the consequences on end
         # application
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(topic, self._on_send_data_cmd_received)
+        self.mqtt_wrapper.subscribe(topic, self._on_send_data_cmd_received, qos=2)
 
         # Register for otap commands for any sink on the gateway
         topic = TopicGenerator.make_otap_status_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_otap_status_request_received
-        )
+        self.mqtt_wrapper.subscribe(topic, self._on_otap_status_request_received)
 
         topic = TopicGenerator.make_otap_load_scratchpad_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_otap_upload_scratchpad_request_received
-        )
+        self.mqtt_wrapper.subscribe(topic, self._on_otap_upload_scratchpad_request_received)
 
         topic = TopicGenerator.make_otap_process_scratchpad_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.subscribe(topic, qos=2)
-        self.mqtt_client.message_callback_add(
-            topic, self._on_otap_process_scratchpad_request_received
-        )
+        self.mqtt_wrapper.subscribe(topic, self._on_otap_process_scratchpad_request_received)
 
-        event = wirepas_messaging.gateway.api.StatusEvent(
-            self.gw_id, GatewayState.ONLINE
-        )
-
-        topic = TopicGenerator.make_status_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
-        self.mqtt_client.publish(topic, event.payload, qos=1, retain=True)
+        self._set_status()
 
         self.logger.info("MQTT connected!")
 
@@ -448,6 +212,20 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    def deferred_thread(fn):
+        """
+        Decorator to handle a request on its own Thread
+        to avoid blocking the calling Thread on I/O.
+        It creates a new Thread but it shouldn't impact the performances
+        as requests are not supposed to be really frequent (few per seconds)
+        """
+        def wrapper(*args, **kwargs):
+            thread = Thread(target=fn, args=args, kwargs=kwargs)
+            thread.start()
+            return thread
+
+        return wrapper
+
     def on_sink_connected(self, name):
         self.logger.info("Sink connected, sending new configs")
         self._send_asynchronous_get_configs_response()
@@ -456,6 +234,7 @@ class TransportService(BusClient):
         self.logger.info("Sink disconnected, sending new configs")
         self._send_asynchronous_get_configs_response()
 
+    @deferred_thread
     def _on_send_data_cmd_received(self, client, userdata, message):
         self.logger.info("Request to send data")
         try:
@@ -499,6 +278,7 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_get_configs_cmd_received(self, client, userdata, message):
         self.logger.info("Config request received")
         try:
@@ -524,6 +304,10 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     def _on_get_gateway_info_cmd_received(self, client, userdata, message):
+        """
+        This function doesn't need the decorator @deferred_thread as request is handled
+        without I/O
+        """
         self.logger.info("Gateway info request received")
         try:
             request = wirepas_messaging.gateway.api.GetGatewayInfoRequest.from_payload(
@@ -546,6 +330,7 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_get_gateway_info_response_topic(self.gw_id)
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_set_config_cmd_received(self, client, userdata, message):
         self.logger.info("Set config request received")
         try:
@@ -574,6 +359,7 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_otap_status_request_received(self, client, userdata, message):
         self.logger.info("OTAP status request received")
         try:
@@ -613,6 +399,7 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_otap_upload_scratchpad_request_received(self, client, userdata, message):
         self.logger.info("OTAP upload request received")
         try:
@@ -641,6 +428,7 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
     def _on_otap_process_scratchpad_request_received(self, client, userdata, message):
         self.logger.info("OTAP process request received")
         try:
@@ -720,6 +508,85 @@ def parse_setting_list(list_setting):
     return single_list
 
 
+def _check_duplicate(args, old_param, new_param, default, logger):
+    old_param_val = getattr(args, old_param, default)
+    new_param_val = getattr(args, new_param, default)
+    if new_param_val == old_param_val:
+        # Nothing to update
+        return
+
+    if old_param_val != default:
+        # Old param is set, check if new_param is also set
+        if new_param_val == default:
+            setattr(args, new_param, old_param_val)
+            logger.warning("Param {} is deprecated, please use {} instead"
+                           .format(old_param, new_param))
+        else:
+            logger.error("Param {} and {} cannot be set at the same time"
+                         .format(old_param, new_param))
+            exit()
+
+def _update_parameters(settings, logger):
+    '''
+    Function to handle the backward compatibility with old parameters name
+    Args:
+        settings: Full parameters
+
+    Returns: None
+    '''
+
+    _check_duplicate(settings, "host", "mqtt_hostname", None, logger)
+    _check_duplicate(settings, "port", "mqtt_port", 8883, logger)
+    _check_duplicate(settings, "username", "mqtt_username", None, logger)
+    _check_duplicate(settings, "password", "mqtt_password", None, logger)
+    _check_duplicate(settings, "tlsfile", "mqtt_certfile", None, logger)
+    _check_duplicate(settings, "unsecure_authentication", "mqtt_force_unsecure", False, logger)
+    _check_duplicate(settings, "gwid", "gateway_id", None, logger)
+
+    if settings.gateway_id is None:
+        settings.gateway_id = getnode()
+
+    # Parse EP list that should not be published
+    if settings.ignored_endpoints_filter is not None:
+        try:
+            settings.ignored_endpoints_filter = parse_setting_list(settings.ignored_endpoints_filter)
+            logger.debug("Ignored endpoints are: {}".format(settings.ignored_endpoints_filter))
+        except SyntaxError as e:
+            logger.error(
+                "Wrong format for ignored_endpoints_filter EP list ({})".format(e)
+            )
+            exit()
+
+    if settings.whitened_endpoints_filter is not None:
+        try:
+            settings.whitened_endpoints_filter = parse_setting_list(
+                settings.whitened_endpoints_filter
+            )
+            logger.debug("Whitened endpoints are: {}".format(settings.whitened_endpoints_filter))
+        except SyntaxError as e:
+            logger.error(
+                "Wrong format for whitened_endpoints_filter EP list ({})".format(e)
+            )
+            exit()
+
+
+def _check_parameters(settings, logger):
+    if settings.mqtt_force_unsecure and settings.mqtt_certfile:
+        # If tls cert file is provided, unsecure authentication cannot
+        # be set
+        logger.error("Cannot give certfile and disable secure authentication")
+        exit()
+
+    try:
+        if set(settings.ignored_endpoints_filter) &\
+                set(settings.whitened_endpoints_filter):
+            logger.error("Some endpoints are both ignored and whitened")
+            exit()
+    except TypeError:
+        # One of the filter list is None
+        pass
+
+
 def main():
     """
         Main service for transport module
@@ -728,79 +595,29 @@ def main():
     ParserHelper()
     parse = ParserHelper(description="Default arguments")
 
-    parse.add_transport()
     parse.add_file_settings()
+    parse.add_mqtt()
+    parse.add_gateway_config()
+    parse.add_filtering_config()
+    parse.add_deprecated_args()
 
-    args = parse.settings(skip_undefined=False)
+    settings = parse.settings(skip_undefined=False)
 
     try:
         debug_level = os.environ["DEBUG_LEVEL"]
     except KeyError:
-        debug_level = "debug"
+        debug_level = "info"
 
     logger = setup_log("transport_service", level=debug_level)
 
-    if args.unsecure_authentication and args.tlsfile:
-        # If tls cert file is provided, unsecure authentication cannot
-        # be set
-        logger.error("Cannot set tls file and disable secure authentication")
-        exit()
+    _update_parameters(settings, logger)
+    # after this stage, mqtt deprecated argument cannot be used
 
-    secure_authentication = not args.unsecure_authentication
-
-    if args.full_python:
-        logger.info("Starting transport without C optimisation")
-        c_extension = False
-    else:
-        c_extension = True
-
-    # Parse EP list that should not be published
-    ignored_endpoints_filter = None
-    if args.ignored_endpoints_filter is not None:
-        try:
-            ignored_endpoints_filter = parse_setting_list(args.ignored_endpoints_filter)
-            logger.debug("Ignored endpoints are: {}".format(ignored_endpoints_filter))
-        except SyntaxError as e:
-            logger.error(
-                "Wrong format for ignored_endpoints_filter EP list ({})".format(e)
-            )
-            exit()
-
-    # Parse EP list that should be published without payload
-    whitened_endpoints_filter = None
-    if args.whitened_endpoints_filter is not None:
-        try:
-            whitened_endpoints_filter = parse_setting_list(
-                args.whitened_endpoints_filter
-            )
-            logger.debug("Whitened endpoints are: {}".format(whitened_endpoints_filter))
-        except SyntaxError as e:
-            logger.error(
-                "Wrong format for whitened_endpoints_filter EP list ({})".format(e)
-            )
-            exit()
-
-    try:
-        if set(ignored_endpoints_filter) & set(whitened_endpoints_filter):
-            logger.warning("Some endpoints are both ignored and whitened")
-    except TypeError:
-        # One of the filter list is None
-        pass
+    _check_parameters(settings, logger)
 
     TransportService(
-        args.host,
-        args.port,
-        args.username,
-        args.password,
-        args.tlsfile,
-        args.gwid,
-        logger,
-        c_extension,
-        secure_authentication,
-        args.gateway_model,
-        args.gateway_version,
-        ignored_endpoints_filter,
-        whitened_endpoints_filter,
+        settings,
+        logger
     ).run()
 
 

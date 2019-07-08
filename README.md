@@ -13,8 +13,13 @@ When cloning this repository and its dependencies you can opt for:
 -   Using [repo tool](https://source.android.com/setup/develop/repo)
     and the [manifest repository](https://github.com/wirepas/manifest)
 
-    > repo init -u  git@github.com:wirepas/manifest.git
-    > repo init -u  git@github.com:wirepas/manifest.git -m gateway_master.xml
+    > repo init -u https://github.com/wirepas/manifest.git
+    or 
+    > repo init -u git@github.com:wirepas/manifest.git
+    
+    afterwards download the repositories with
+    
+    > repo sync
 
 -   Clone each repo separately (see [pull_repos.sh](./utils/pull_repos.sh))
 
@@ -86,9 +91,11 @@ be built at installation time.
     pip3 install wirepas_gateway-*.tar.gz
 ```
 
-#### Configuration and starting services
+## Configuration and starting services
 
-- A sink service must be started for each connected sink on Gateway:
+### Sink service configuration
+
+A sink service must be started for each connected sink on Gateway:
 
 sink_service/build/sinkService -p <uart_port> -b <bitrate> -i <sink_id>
 
@@ -98,17 +105,26 @@ Parameters are:
 - **bitrate:** bitrate of sink uart (default 125000)
 - **sink_id:** value between 0 and 9 (default 0).
 
-If multiple sinks are present, they must have a different sink_id and a
-transport service must be launched.
+If multiple sinks are present, they must have a different sink_id
 
-Parameters can be set from cmd line of from a setting file in YAML format:
+### Transport service configuration
+
+Parameters can be set from cmd line or from a setting file in YAML format.
+To get an exhausted list of parameters, please run:
+
+```shell
+    wm-gw --help
+```
+
 
 #### From cmd line
 
+Here is an example to start the transport module from cmd line:
+
 ```shell
-    wm-gw -s "<server>" -p <port> -u <user> -pw <password> \
-     -i <gwid> [-t <tls_cert_file>][-fp] [-ua][-iepf <endpoints list>] \
-     [-wepf <endpoints list>]
+    wm-gw --mqtt_hostname "<server>" --mqtt_port <port> --mqtt_username <user> --mqtt_password <password> \
+     --gateway_id <gwid> [--ignored_endpoints_filter <ignored endpoints list>] \
+     [--whitened_endpoints_filter <whitened endpoints list>]
 ```
 
 where:
@@ -125,25 +141,18 @@ where:
 
     > It must be unique for each gateway reporting to same broker.
 
--   **tls_cert_file:** filepath to the root certificate to override
-system one (**Cannot be used with -ua**)
-
--   **ua:** Disable TLS secure authentication
-
--   **fp:** Do not use the C extension (full python version)
-
--   **iepf:** Destination endpoints list to ignore (not published)
+-   **ignored endpoints list:** Destination endpoints list to ignore (not published)
 
     *Example:*
 
-    > -iepf "\[1,2, 10-12\]" to filter out destination ep 1, 2, 10, 11, 12
+    > --ignored_endpoints_filter "\[1,2, 10-12\]" to filter out destination ep 1, 2, 10, 11, 12
 
--   **wepf:** Destination endpoints list to whiten
+-   **whitened endpoints list:** Destination endpoints list to whiten
               (no payload content, only size)
 
     *Example:*
 
-    > -wepf "\[1,2, 10-12\]" to whiten destination ep 1, 2, 10, 11, 12
+    > --whitened_endpoints_filter "\[1,2, 10-12\]" to whiten destination ep 1, 2, 10, 11, 12
 
 #### From configuration file
 
@@ -159,23 +168,17 @@ file is given below:
       #
       # MQTT brocker Settings
       #
-      host: <IP or hostname where the MQTT broker is located>
-      port: <MQTT port (default: 8883 (secure) or 1883 (local))>
-      username: <MQTT user>
-      password: <MQTT password>
-      unsecure_authentication: <True to disable TLS secure authentication>
+      mqtt_hostname: <IP or hostname where the MQTT broker is located>
+      mqtt_port: <MQTT port (default: 8883 (secure) or 1883 (local))>
+      mqtt_username: <MQTT user>
+      mqtt_password: <MQTT password>
 
       #
       # Gateway settings
       #
-      gwid: <the desired gateway id, must be unique for each gateway>
+      gateway_id: <the desired gateway id, must be unique for each gateway>
       gateway_model: <Custom gateway model, can be omitted>
       gateway_version: <Custom gateway version, can be omitted>
-
-      #
-      # Implementation options
-      #
-      full_python: <Set to true to not use the C extension>
 
       #
       # Filtering Destination Endpoints
@@ -184,7 +187,7 @@ file is given below:
       whitened_endpoints_filter: <Endpoints to whiten. Ex: [1, 2, 10-12]>
 ```
 
-#### Optional
+### Optional
 
 Launch local gateway process to see messages received from sinks at Dbus level
 It can be launched from command line:

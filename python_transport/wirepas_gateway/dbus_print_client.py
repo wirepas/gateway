@@ -29,7 +29,7 @@ class PrintClient(BusClient):
         data,
     ):
         """ logs incoming data from the WM network """
-        self.logger.debug(
+        self.logger.info(
             "[{}] Sink {} FROM {} TO {} on EP {} Data Size is {}".format(
                 datetime.utcfromtimestamp(int(timestamp / 1000)).strftime(
                     "%Y-%m-%d %H:%M:%S"
@@ -57,7 +57,7 @@ def main(log_name="print_client"):
     try:
         debug_level = os.environ["DEBUG_LEVEL"]
     except KeyError:
-        debug_level = "debug"
+        debug_level = "info"
 
     logger = setup_log(log_name, level=debug_level)
     obj = PrintClient()

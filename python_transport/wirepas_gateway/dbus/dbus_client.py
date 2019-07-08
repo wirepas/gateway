@@ -5,91 +5,9 @@
 from pydbus import SystemBus
 from gi.repository import GLib, GObject
 from .sink_manager import SinkManager
-from threading import Thread, enumerate, currentThread
-from time import sleep
+from threading import Thread
 import logging
-import sys
 import dbusCExtension
-
-
-class DBusWatchdog(Thread):
-    """
-    Watchdog to monitor DBus infinite loop managed by GLib
-    """
-
-    def __init__(self, logger, watchdog_period_s=1):
-        """
-        Init function
-        :param watchdog_period_s: period to reset the watchdog
-                from the GLIB loop
-        """
-        Thread.__init__(self)
-
-        # logger
-        self.logger = logger
-
-        # Period to check for watchdog on this thread.
-        # It means that if the watchdog was not reseted
-        # during 3 watchdog period from GLIB loop
-        # the deadlock is detected
-        self.check_watchdog_period = 3 * watchdog_period_s
-
-        # Daemonize this thread to be exited with the process
-        self.daemon = True
-        self.running = False
-        self.watchdog = False
-
-        # Schedule the reset function to be scheduled every watchdog_period_s
-        # from GLIB loop. If loop is locked (that should never happen in normal
-        # situation), the watchdog will not be reseted anymore.
-        GObject.timeout_add_seconds(watchdog_period_s, self._reset_watchdog)
-
-    def run(self) -> None:
-        """
-        Thread infinite loop to periodicaly check the watchdog status
-        :return:
-        """
-        self.running = True
-        while self.running:
-            sleep(self.check_watchdog_period)
-            if self.watchdog:
-                # Watchdog was not reseted by GLIB loop
-                self.logger.error("Deadlock detected")
-
-                # Add more traces to understand what other threads are doing
-                for thread in enumerate():
-                    if thread.name is self.name:
-                        # Skip current Thread
-                        continue
-
-                    self._print_thread_info(thread)
-
-            # Re-arm the watchdog
-            self.watchdog = True
-
-    def _print_thread_info(self, thread) -> None:
-        self.logger.error(
-            " Thread name: {} -  Alive={} ".format(thread.name, thread.is_alive())
-        )
-        frame = sys._current_frames().get(thread.ident, None)
-        if frame:
-            self.logger.error(
-                "\t{} {} {}".format(
-                    frame.f_code.co_filename,
-                    frame.f_code.co_name,
-                    frame.f_code.co_firstlineno,
-                )
-            )
-        else:
-            self.logger.error("\tNo frame available")
-
-    def _reset_watchdog(self):
-        self.watchdog = False
-        # Return true to reschedule the callback from GLib loop
-        return True
-
-    def stop(self):
-        self.running = False
 
 
 class DbusEventHandler(Thread):
@@ -134,10 +52,6 @@ class BusClient(object):
         # logger
         self.logger = logger or logging.getLogger(__name__)
 
-        # watchdog
-        self.watchdog = DBusWatchdog(self.logger)
-        self.watchdog.start()
-
         # Main loop for events
         self.loop = GLib.MainLoop()
 
@@ -157,11 +71,12 @@ class BusClient(object):
 
         # Register for packet on Dbus
         if c_extension:
-            self.logger.info("Starting c extension")
+            self.logger.info("Starting dbus client with c extension")
             self.c_extension_thread = DbusEventHandler(
                 self._on_data_received_c, self.logger
             )
         else:
+            self.logger.info("Starting dbus client without c extension")
             # Subscribe to all massages received from any sink (no need for
             # connected sink for that)
             self.bus.subscribe(
@@ -208,7 +123,7 @@ class BusClient(object):
 
     def _on_data_received(self, sender, object, iface, signal, params):
         # filter out endpoint
-        if params[4] in self.ignore_ep_filter:
+        if self.ignore_ep_filter is not None and params[4] in self.ignore_ep_filter:
             self.logger.debug(
                 "Message received on ep {} filtered out".format(params[4])
             )
@@ -244,7 +159,6 @@ class BusClient(object):
             self.loop.run()
         except KeyboardInterrupt:
             self.loop.quit()
-            self.watchdog.stop()
 
         self.on_stop_client()
 

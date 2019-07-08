@@ -16,7 +16,6 @@ install:
   - ./.ci/install-devtools.sh
   - pip3 install -r dev-requirements.txt
 
-
 script:
   - ./.ci/style-check.sh
   - ./.ci/build.sh
