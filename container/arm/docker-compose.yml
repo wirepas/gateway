@@ -12,6 +12,8 @@ services:
         build:
             context: ../..
             dockerfile: container/arm/Dockerfile
+            args:
+                LXGW_VERSION: ${LXGW_VERSION:-"1.2.0-rc.1"}
 
         user: root
         privileged: true
@@ -37,6 +39,8 @@ services:
         build:
             context: ../..
             dockerfile: container/arm/Dockerfile
+            args:
+                LXGW_VERSION: ${LXGW_VERSION:-"1.2.0-rc.1"}
 
         user: root
         privileged: true

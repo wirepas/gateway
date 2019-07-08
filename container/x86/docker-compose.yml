@@ -13,7 +13,7 @@ services:
             context: ../..
             dockerfile: container/x86/Dockerfile
             args:
-                LXGW_VERSION: 1.2.0
+                LXGW_VERSION: 1.2.0-rc.1
 
         user: root
         privileged: true
@@ -40,7 +40,7 @@ services:
             context: ../..
             dockerfile: container/x86/Dockerfile
             args:
-                LXGW_VERSION: 1.2.0
+                LXGW_VERSION: 1.2.0-rc.1
 
         user: root
         network_mode: host
