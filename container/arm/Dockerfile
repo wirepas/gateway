@@ -28,7 +28,7 @@ RUN cd /app_build/python_transport/ \
 
 RUN [ "cross-build-end" ]
 
-# builds x86 gateway services
+# builds final image
 FROM wirepas/base:1.1-raspbian as wm-lxgw
 RUN [ "cross-build-start" ]
 USER root
@@ -57,3 +57,6 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 
 CMD ["sink"]
 RUN [ "cross-build-end" ]
+
+ARG LXGW_VERSION
+LABEL version=${LXGW_VERSION}
