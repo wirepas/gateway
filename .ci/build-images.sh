@@ -3,43 +3,44 @@
 
 set -e
 
+DOCKERFILE_PATH="./container"
+GIT_REPO_FOLDER="_repo"
 
-# _import_modules
-#
-# fetch fucntions from the modules folder
-function _import_modules
+##
+## @brief      Changes to the corresponding target and builds the image
+##
+function _build
 {
-        for CFILE in $(ls ${ENV_BASH_MODULES_PATH}/*.sh)
-        do
-            echo "importing module ${CFILE}"
-            source ${CFILE} || true
-        done
+    TARGET=${1:-"dev"}
+
+    if [[ ${TARGET} == "dev" ]]
+    then
+        _pull_dev_dependencies
+    fi
+
+    cd "${DOCKERFILE_PATH}/${TARGET}"
+    docker-compose build
 }
 
-
-function _defaults
+##
+## @brief      Setup repo and syncs the repositories
+##
+function _pull_dev_dependencies
 {
+    GIT_MANIFEST_FILE=${GIT_MANIFEST_FILE:-"gateway.xml"}
+    GIT_MANIFEST_URL=${GIT_MANIFEST_URL:-"https://github.com/wirepas/manifest.git"}
 
-    ENV_MAKE_BUILD=${ENV_MAKE_BUILD:-"true"}
-    ENV_BASH_MODULES_PATH=${ENV_BASH_MODULES_PATH:-"./modules"}
+    rm -rf "${GIT_REPO_FOLDER}"
+    mkdir "${GIT_REPO_FOLDER}"
+    cd "${GIT_REPO_FOLDER}"
+    pipenv run --two repo init -u "${GIT_MANIFEST_URL}" \
+                 -m "${GIT_MANIFEST_FILE}" \
+                 --no-clone-bundle
+    pipenv --rm
+    pipenv run --two repo sync
 
-    export ENV_DISTRO=${ENV_DISTRO:-"all"}
-    export ENV_GIT_PULL_REPO=${ENV_GIT_PULL_REPO:-"true"}
-    export ENV_DOCKER_IMG=${ENV_DOCKER_IMG:-"wm-gateway"}
-    export ENV_DOCKER_TAG=${ENV_DOCKER_TAG:-"1.1.0"}
-    export ENV_DOCKER_CACHE=${ENV_DOCKER_CACHE:-" "}
-    export ENV_RELEASE_PATH=$(pwd)/release
-
-    export TAR_EXCLUDE_RULES=${TAR_EXCLUDE_RULES:-"$(pwd)/.tarignore"}
-    export TAR_ARCHIVE_NAME=${TAR_ARCHIVE_NAME:-"docker-wm-gateway.tar.gz"}
-}
-
-
-function _prepare_environment
-{
-    # prepares script environment
-    mkdir -p ${ENV_RELEASE_PATH}
-    rm -f ${TAR_ARCHIVE_NAME}
+    cd ..
+    cp -r "${GIT_REPO_FOLDER}/sink_service/" .
 }
 
 
@@ -48,31 +49,10 @@ function _prepare_environment
 ##
 function _main
 {
-    _defaults
-    _import_modules
-
-    lxgw_parser "${@}"
-
-    _prepare_environment
-
-    if [[ ${ENV_MAKE_BUILD} == "true" ]]
-    then
-
-        if [[ ${ENV_GIT_PULL_REPO} == "true" ]]
-        then
-            git_clone_repo "c-mesh-api" "sink_service/c-mesh-api"
-            git_clone_repo "backend-apis" "public-apis"
-        else
-            echo "skipping repo pull"
-        fi
-
-        git_commit_info
-        lxgw_build_services
-    fi
-
-    lxgw_deliverables
+    #_build "arm"
+    #_build "x86"
+    _build "dev"
 }
 
 
 _main "${@}"
-

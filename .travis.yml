@@ -1,22 +1,27 @@
 language: python
 python:
   - "3.6"
+services:
+  - docker
 
 dist: "xenial"
 jobs:
 
 before_install:
   - sudo apt-get install build-essential libsystemd-dev dbus
+  - pip3 install pipenv
 
 install:
-  - "./.ci/install-devtools.sh"
+  - sudo ./.ci/install-repo.sh
+  - ./.ci/install-devtools.sh
   - pip3 install -r dev-requirements.txt
-  - pip3 install -r python_transport/requirements.txt
 
 script:
-  - "./.ci/style-check.sh"
-  - "./.ci/build.sh"
-  - pip3 install python_transport/dist/*.whl
+  - ./.ci/style-check.sh
+  - ./.ci/build.sh
+  - ./.ci/build-images.sh
+  - pip3 install python_transport/dist/wirepas_gateway*.whl
+
 
 deploy:
   provider: pypi
@@ -28,3 +33,8 @@ deploy:
   skip_cleanup: true
   on:
     branch: pypi-test
+
+env:
+  global:
+    - PIPENV_VENV_IN_PROJECT=1
+    - PIPENV_IGNORE_VIRTUALENVS=1

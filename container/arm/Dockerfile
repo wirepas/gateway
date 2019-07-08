@@ -1,4 +1,5 @@
-FROM wirepas/base:1.1-ubuntu as builder
+FROM wirepas/base:1.1-raspbian as rpi-builder
+RUN [ "cross-build-start" ]
 
 ARG GIT_MANIFEST_FILE
 ARG GIT_MANIFEST_URL
@@ -25,34 +26,37 @@ RUN cd /app_build/sink_service/ \
 RUN cd /app_build/python_transport/ \
     && ./utils/generate_wheel.sh
 
-# builds x86 gateway services
-FROM wirepas/base:1.1-ubuntu as wm-lxgw
+RUN [ "cross-build-end" ]
+
+# builds final image
+FROM wirepas/base:1.1-raspbian as wm-lxgw
+RUN [ "cross-build-start" ]
 USER root
 
-ENV SERVICE_HOME="${WM_HOME}"/gateway
-ENV SINK_SERVICE="${SERVICE_HOME}"/sink_service
-ENV TRANSPORT_SERVICE="${SERVICE_HOME}"/transport_service
-
+ENV SERVICE_HOME="${HOME}/gateway"
+ENV SINK_SERVICE="${SERVICE_HOME}/sink_service"
+ENV TRANSPORT_SERVICE="${SERVICE_HOME}/transport_service"
 ARG WM_TRANSPORT_PKG
 ENV WM_TRANSPORT_PKG=${WM_TRANSPORT_PKG:-"${TRANSPORT_SERVICE}/wirepas_gateway-*.tar.gz"}
 
-COPY --from=builder /app_build/python_transport/requirements.txt "${TRANSPORT_SERVICE}"/
-COPY --from=builder /app_build/python_transport/dist/* "${TRANSPORT_SERVICE}"/
-COPY --from=builder /app_build/python_transport/wirepas_gateway/wirepas_certs/extwirepas.pem /etc/extwirepas.pem
-COPY --from=builder /app_build/sink_service/build/sinkService /usr/local/bin/sinkService
-COPY --from=builder /app_build/sink_service/com.wirepas.sink.conf /etc/dbus-1/system.d/
+COPY --from=rpi-builder /app_build/gateway/python_transport/requirements.txt "${TRANSPORT_SERVICE}"/
+COPY --from=rpi-builder /app_build/gateway/python_transport/dist/* "${TRANSPORT_SERVICE}"/
+COPY --from=rpi-builder /app_build/gateway/python_transport/wirepas_gateway/wirepas_certs/extwirepas.pem /etc/extwirepas.pem
+COPY --from=rpi-builder /app_build/gateway/sink_service/build/sinkService /usr/local/bin/sinkService
+COPY --from=rpi-builder /app_build/gateway/sink_service/com.wirepas.sink.conf /etc/dbus-1/system.d/
 
 RUN pip3 install --upgrade pip
 RUN pip3 install --no-cache-dir -r "${TRANSPORT_SERVICE}"/requirements.txt
 RUN pip3 install --no-cache-dir ${WM_TRANSPORT_PKG}
-COPY --from=builder /app_build/container/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY --from=builder /app_build/container/transport.template "${TRANSPORT_SERVICE}/transport.template"
-RUN rm -rf "${WM_HOME}"/.cache && chown "${WM_USER}":"${WM_USER}" -R "${WM_HOME}"
 
+RUN rm -rf "${HOME}"/.cache \
+    && chown "${USER}":"${USER}" -R "${HOME}"
+
+COPY --from=rpi-builder /app_build/gateway/container/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
-WORKDIR ${WM_HOME}
-USER ${WM_USER}
+
 CMD ["sink"]
+RUN [ "cross-build-end" ]
 
 ARG LXGW_VERSION
 LABEL version=${LXGW_VERSION}

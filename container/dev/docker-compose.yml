@@ -1,0 +1,61 @@
+# Wirepas Oy
+#
+# Linux gateway
+#
+
+version: '3'
+services:
+
+    wm-sink:
+        container_name: wm-sink
+        image: wirepas/gateway-x86:edge
+        build:
+            context: ../..
+            dockerfile: container/dev/Dockerfile
+            args:
+                LXGW_VERSION: ${LXGW_VERSION:-"local-build"}
+
+        user: root
+        privileged: true
+        stdin_open: true
+        tty: true
+
+        restart: always
+        env_file:
+            - ../wm_gateway.env
+
+        volumes:
+            - /dev:/dev
+            - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+
+        logging:
+           driver: journald
+
+        command: sink
+
+    wm-transport:
+        container_name: wm-transport
+        image: wirepas/gateway-x86:edge
+        build:
+            context: ../..
+            dockerfile: container/dev/Dockerfile
+            args:
+                LXGW_VERSION: ${LXGW_VERSION:-"local-build"}
+
+        user: root
+        network_mode: host
+        privileged: true
+        stdin_open: true
+        tty: true
+
+        restart: always
+        env_file:
+            - ../wm_gateway.env
+
+        volumes:
+            - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+
+        logging:
+            driver: journald
+
+        command: transport
