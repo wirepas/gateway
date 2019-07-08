@@ -33,9 +33,9 @@ FROM wirepas/base:1.1-raspbian as wm-lxgw
 RUN [ "cross-build-start" ]
 USER root
 
-ENV SERVICE_HOME="${HOME}"/gateway
-ENV SINK_SERVICE="${SERVICE_HOME}"/sink_service
-ENV TRANSPORT_SERVICE="${SERVICE_HOME}"/transport_service
+ENV SERVICE_HOME="${HOME}/gateway"
+ENV SINK_SERVICE="${SERVICE_HOME}/sink_service"
+ENV TRANSPORT_SERVICE="${SERVICE_HOME}/transport_service"
 ARG WM_TRANSPORT_PKG
 ENV WM_TRANSPORT_PKG=${WM_TRANSPORT_PKG:-"${TRANSPORT_SERVICE}/wirepas_gateway-*.tar.gz"}
 
