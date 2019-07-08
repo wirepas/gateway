@@ -11,7 +11,7 @@ services:
         image: wirepas/gateway-rpi
         build:
             context: ../..
-            dockerfile: container/x86/Dockerfile
+            dockerfile: container/arm/Dockerfile
 
         user: root
         privileged: true
@@ -36,7 +36,7 @@ services:
         image: wirepas/gateway-rpi
         build:
             context: ../..
-            dockerfile: container/x86/Dockerfile
+            dockerfile: container/arm/Dockerfile
 
         user: root
         privileged: true
