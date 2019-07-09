@@ -10,8 +10,6 @@ jobs:
 before_install:
   - sudo apt-get install build-essential libsystemd-dev dbus
   - pip3 install pipenv
-
-install:
   - sudo ./.ci/install-repo.sh
   - ./.ci/install-devtools.sh
   - pip3 install -r dev-requirements.txt
