@@ -28,15 +28,10 @@ RUN cd /app_build/sink_service/ \
     && make \
     && echo "LXGW_BUILD=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> /app_build/manifest
 
-# call to ./utils/generate_wheel.sh fails
 RUN cd /app_build/python_transport/ \
     && echo "LXGW_SERVICES_HASH=$(git log -n1 --pretty=%h)" >> /app_build/manifest \
     && echo "LXGW_VERSION=$(< wirepas_gateway/__init__.py awk '/__version__/{print $NF}'| tr -d '\"')" >> /app_build/manifest \
-    && rm -r build || true \
-    && rm -r dist || true \
-    && py3clean . || true \
-    && python3 setup.py clean --all \
-    && python3 setup.py sdist bdist_wheel
+    && bash ./utils/generate_wheel.sh
 
 RUN [ "cross-build-end" ]
 

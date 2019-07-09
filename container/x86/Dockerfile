@@ -31,7 +31,7 @@ RUN cd /app_build/sink_service/ \
 RUN cd /app_build/python_transport/ \
     && echo "LXGW_SERVICES_HASH=$(git log -n1 --pretty=%h)" >> /app_build/manifest \
     && echo "LXGW_VERSION=$(< wirepas_gateway/__init__.py awk '/__version__/{print $NF}'| tr -d '\"')" >> /app_build/manifest \
-    && ./utils/generate_wheel.sh
+    && bash ./utils/generate_wheel.sh
 
 # builds x86 gateway services
 FROM wirepas/base:1.1-ubuntu as wm-lxgw
