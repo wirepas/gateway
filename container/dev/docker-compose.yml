@@ -13,7 +13,8 @@ services:
             context: ../..
             dockerfile: container/dev/Dockerfile
             args:
-                LXGW_VERSION: ${LXGW_VERSION:-"local-build"}
+                IMAGE_NAME: wirepas/gateway-x8
+                LXGW_VERSION: ${LXGW_VERSION:-"local"}
 
         user: root
         privileged: true
@@ -36,11 +37,6 @@ services:
     wm-transport:
         container_name: wm-transport
         image: wirepas/gateway-x86:edge
-        build:
-            context: ../..
-            dockerfile: container/dev/Dockerfile
-            args:
-                LXGW_VERSION: ${LXGW_VERSION:-"local-build"}
 
         user: root
         network_mode: host

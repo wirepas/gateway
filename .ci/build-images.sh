@@ -6,12 +6,22 @@ set -e
 DOCKERFILE_PATH="./container"
 GIT_REPO_FOLDER="_repo"
 
+export LXGW_VERSION
+export BUILD_DATE
+export IMAGE_NAME
+export REGISTRY_NAME
+
+LXGW_VERSION=$(< python_transport/wirepas_gateway/__init__.py awk '/__version__/{print $NF}'| tr -d '\"')
+BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+REGISTRY_NAME="wirepas/"
+
 ##
 ## @brief      Changes to the corresponding target and builds the image
 ##
 function _build
 {
     TARGET=${1:-"dev"}
+    CURRENT_PATH="$(pwd)"
 
     if [[ ${TARGET} == "dev" ]]
     then
@@ -19,7 +29,9 @@ function _build
     fi
 
     cd "${DOCKERFILE_PATH}/${TARGET}"
-    docker-compose build
+    IMAGE_NAME="${REGISTRY_NAME}/gateway-${TARGET}"
+    docker-compose build --no-cache
+    cd "${CURRENT_PATH}"
 }
 
 ##
@@ -49,8 +61,8 @@ function _pull_dev_dependencies
 ##
 function _main
 {
-    #_build "arm"
-    #_build "x86"
+    _build "arm"
+    _build "x86"
     _build "dev"
 }
 

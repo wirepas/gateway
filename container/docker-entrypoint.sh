@@ -2,13 +2,14 @@
 # Wirepas Oy
 
 set -e
+
+echo "Image source manifest"
+cat "${SERVICE_HOME}/manifest"
+
+echo "Available WM variables"
 env | grep WM_
 
 TARGET=${1}
-
-# Environment
-#EXEC_TRANSPORT="wm-gw"
-#EXEC_SINK=/usr/local/bin/sinkService
 
 WM_SINK_UART_PORT=${WM_SINK_UART_PORT:-"/dev/ttyACM0"}
 WM_SINK_UART_BITRATE=${WM_SINK_UART_BITRATE:-"125000"}
