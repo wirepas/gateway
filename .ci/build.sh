@@ -8,6 +8,3 @@ cd "${TARGET_DIR}"
 
 ./utils/generate_wheel.sh
 ./utils/generate_sphinx_docs.sh || true
-
-# build docker images
-./.ci/build-images.sh

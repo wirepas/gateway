@@ -18,7 +18,8 @@ before_install:
 
 script:
   - ./.ci/build.sh
-  - pip3 install ${PYTHON_PKG_DIR}/dist/${PYTHON_PKG_NAME}*.whl
+  - ./.ci/build-images.sh
+  - pip3 install ${PYTHON_PKG_PATH}/dist/${PYTHON_PKG_NAME}*.whl
   - ./.ci/releases.sh
   - source releases.env
 
