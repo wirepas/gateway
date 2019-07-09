@@ -4,11 +4,10 @@
 set -e
 
 ROOT_DIR=$(pwd)
-PYTHON_PKG_DIR="${PYTHON_PKG_PATH}/${PYTHON_PKG_NAME}"
-cd "${PYTHON_PKG_DIR}"
+cd "${PYTHON_PKG_PATH}"
 
 set -a
-GH_RELEASE_PYTHON_VERSION=$(< __init__.py  \
+GH_RELEASE_PYTHON_VERSION=$(< "${PYTHON_PKG_NAME}"/__init__.py  \
                      awk '/__version__/{print $NF}' | \
                      tr -d "\"")
 
