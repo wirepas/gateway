@@ -13,7 +13,12 @@ services:
             context: ../..
             dockerfile: container/arm/Dockerfile
             args:
+                IMAGE_NAME: wirepas/gateway-rpi
                 LXGW_VERSION: ${LXGW_VERSION:-"1.2.0-rc.1"}
+                BUILD_DATE: ${BUILD_DATE:-"undefined"}
+                GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE:-gateway.xml}
+                GIT_MANIFEST_URL: ${GIT_MANIFEST_URL:-https://github.com/wirepas/manifest.git}
+                GIT_MANIFEST_BRANCH: ${GIT_MANIFEST_BRANCH:-master}
 
         user: root
         privileged: true
@@ -36,11 +41,6 @@ services:
     wm-transport:
         container_name: wm-transport
         image: wirepas/gateway-rpi
-        build:
-            context: ../..
-            dockerfile: container/arm/Dockerfile
-            args:
-                LXGW_VERSION: ${LXGW_VERSION:-"1.2.0-rc.1"}
 
         user: root
         privileged: true
