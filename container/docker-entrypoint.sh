@@ -57,8 +57,7 @@ then
     echo "Starting service: ${TARGET}"
     exec "${TARGET}"
 else
-    echo "Starting custom: ${*}"
-    exec "${*}"
+    exec "$@"
 fi
 
 echo "exiting"

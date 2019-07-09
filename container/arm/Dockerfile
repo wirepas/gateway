@@ -40,7 +40,7 @@ FROM wirepas/base:1.1-raspbian as wm-lxgw
 RUN [ "cross-build-start" ]
 USER root
 
-ENV SERVICE_HOME="${HOME}/gateway"
+ENV SERVICE_HOME="${WM_HOME}/gateway"
 ENV SINK_SERVICE="${SERVICE_HOME}/sink_service"
 ENV TRANSPORT_SERVICE="${SERVICE_HOME}/transport_service"
 ARG WM_TRANSPORT_PKG
@@ -57,8 +57,8 @@ RUN pip3 install --upgrade pip
 RUN pip3 install --no-cache-dir -r "${TRANSPORT_SERVICE}/requirements.txt"
 RUN pip3 install --no-cache-dir ${WM_TRANSPORT_PKG}
 
-RUN rm -rf "${HOME}/.cache" \
-    && chown "${USER}":"${USER}" -R "${HOME}"
+RUN rm -rf "${WM_HOME}/.cache" \
+    && chown "${USER}":"${USER}" -R "${WM_HOME}"
 
 COPY --from=rpi-builder /app_build/container/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY --from=rpi-builder /app_build/container/transport.template "${TRANSPORT_SERVICE}/transport.template"

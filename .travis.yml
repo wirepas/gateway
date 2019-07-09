@@ -8,7 +8,7 @@ dist: "xenial"
 jobs:
 
 before_install:
-  - sudo apt-get install build-essential libsystemd-dev dbus
+  - sudo apt-get install build-essential libsystemd-dev dbus qemu-user-static
   - sudo gem install github_changelog_generator
   - pip3 install pipenv
   - sudo ./.ci/install-repo.sh
@@ -19,20 +19,20 @@ before_install:
 script:
   - ./.ci/build.sh
   - ./.ci/build-images.sh
-  - pip3 install ${PYTHON_PKG_PATH}/dist/${PYTHON_PKG_NAME}*.whl
+  - ./.ci/fetch-wheel.sh
+  - pip3 install ./dist/${PYTHON_PKG_NAME}*linux_x86_64.whl
   - ./.ci/releases.sh
   - source releases.env
 
 before_deploy:
   - github_changelog_generator -t "${GH_TOKEN}"
 
-
 deploy:
 - provider: releases
   api_key: ${GH_TOKEN}
   file_glob: true
   file:
-    - "${TRAVIS_BUILD_DIR}/${PYTHON_PKG_PATH}/dist/*"
+    - "${TRAVIS_BUILD_DIR}/dist/*"
     - "${TRAVIS_BUILD_DIR}/${PYTHON_PKG_PATH}/CHANGELOG.md"
   skip_cleanup: true
   draft: ${GH_RELEASE_DRAFT} = true
