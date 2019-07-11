@@ -1,5 +1,6 @@
-# Wirepas Oy
 #!/usr/bin/env bash
+
+set -e
 
 rm -r build || true
 rm -r dist || true

@@ -19,19 +19,20 @@ sys.path.insert(0, os.path.abspath("../.."))
 
 import wirepas_gateway
 
-apidoc_module_dir = os.path.join(os.path.abspath("../.."), "wirepas_gateway")
-apidoc_excluded_paths = ["tests", "setup"]
-apidoc_separate_modules = True
 
 # -- Project information -----------------------------------------------------
-project = "Wirepas Gateway Transport"
-copyright = "2018, Wirepas Ltd."
-author = "Wirepas Ltd."
-
-# The short X.Y version
-version = "1.0"
-# The full version, including alpha/beta/rc tags
-release = "1.0:rc"
+project = wirepas_gateway.__title__
+copyright = "{},{}".format(wirepas_gateway.__copyright__, wirepas_gateway.__license__)
+release = wirepas_gateway.__version__
+name = wirepas_gateway.__name__
+version = wirepas_gateway.__version__
+description = wirepas_gateway.__description__
+author = wirepas_gateway.__author__
+author_email = wirepas_gateway.__author_email__
+url = wirepas_gateway.__url__
+license = wirepas_gateway.__license__
+classifiers = wirepas_gateway.__classifiers__
+keywords = wirepas_gateway.__keywords__
 
 # -- General configuration ---------------------------------------------------
 
@@ -82,6 +83,22 @@ exclude_patterns = ["setup"]
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 
+# -- Options for apidoc output -------------------------------------------------
+apidoc_module_dir = os.path.join(os.path.abspath("../.."), "wirepas_gateway")
+apidoc_excluded_paths = ["tests", "setup"]
+apidoc_separate_modules = True
+
+# -- Options for autodoc output -------------------------------------------------
+autodoc_mock_imports = [
+    "gi",
+    "gobject",
+    "pydbus",
+    "dbusCExtension",
+    "setup",
+    "google",
+    "wirepas_messaging",
+]
+
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -94,11 +111,7 @@ html_theme = "alabaster"
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {
-    "logo": "logo.png",
-    "description": "Wirepas gateway transport service that connects \
-                    the local dbus to a remote MQTT broker.",
-}
+html_theme_options = {"logo": "logo.png", "description": description}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -154,15 +167,7 @@ latex_elements = {
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (
-        master_doc,
-        "wirepasgatewaytransport",
-        "Wirepas Gateway Transport Documentation",
-        [author],
-        1,
-    )
-]
+man_pages = [(master_doc, project, description, [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -174,11 +179,11 @@ texinfo_documents = [
     (
         master_doc,
         "wirepasgatewaytransport",
-        "Wirepas Gateway Transport Documentation",
+        project,
         author,
-        "Wirepas Ltd",
-        "Wirepas Gateway Transport.",
-        "Miscellaneous",
+        author,
+        description,
+        keywords,
     )
 ]
 
@@ -194,14 +199,3 @@ intersphinx_mapping = {"https://docs.python.org/": None}
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 # todo_include_todos = True
-
-
-autodoc_mock_imports = [
-    "gi",
-    "gobject",
-    "pydbus",
-    "dbusCExtension",
-    "setup",
-    "google",
-    "wirepas_messaging",
-]
