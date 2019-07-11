@@ -30,7 +30,9 @@ class MQTTWrapper(Thread):
                  settings,
                  logger,
                  on_termination_cb=None,
-                 on_connect_cb=None):
+                 on_connect_cb=None,
+                 last_will_topic=None,
+                 last_will_data=None):
         Thread.__init__(self)
         self.daemon = True
         self.running = False
@@ -59,6 +61,9 @@ class MQTTWrapper(Thread):
         self._client.username_pw_set(settings.mqtt_username,
                                      settings.mqtt_password)
         self._client.on_connect = self._on_connect
+
+        if last_will_topic is not None and last_will_data is not None:
+            self._set_last_will(last_will_topic, last_will_data)
 
         try:
             self._client.connect(settings.mqtt_hostname, settings.mqtt_port, keepalive=MQTTWrapper.KEEP_ALIVE_S)
@@ -157,7 +162,7 @@ class MQTTWrapper(Thread):
         self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
         return self._client.socket()
 
-    def set_last_will(self, topic, data):
+    def _set_last_will(self, topic, data):
         # Set Last wil message
         self._client.will_set(topic, data, qos=2, retain=True)
 

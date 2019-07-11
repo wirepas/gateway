@@ -54,11 +54,17 @@ class TransportService(BusClient):
 
         self.whitened_ep_filter = settings.whitened_endpoints_filter
 
+        last_will_topic = TopicGenerator.make_status_topic(self.gw_id)
+        last_will_message = wirepas_messaging.gateway.api.StatusEvent(
+            self.gw_id, GatewayState.OFFLINE).payload
+
         self.mqtt_wrapper = MQTTWrapper(
             settings,
             self.logger,
             self._on_mqtt_wrapper_termination_cb,
-            self._on_connect
+            self._on_connect,
+            last_will_topic,
+            last_will_message
         )
 
         self.mqtt_wrapper.start()
@@ -77,10 +83,6 @@ class TransportService(BusClient):
         self.stop_dbus_client()
 
     def _set_status(self):
-        event_offline = wirepas_messaging.gateway.api.StatusEvent(
-            self.gw_id, GatewayState.OFFLINE
-        )
-
         event_online = wirepas_messaging.gateway.api.StatusEvent(
             self.gw_id, GatewayState.ONLINE
         )
@@ -88,7 +90,6 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_status_topic(self.gw_id)
 
         self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
-        self.mqtt_wrapper.set_last_will(topic, event_offline.payload)
 
     def _on_connect(self):
         # Register for get gateway info
