@@ -21,18 +21,18 @@ import wirepas_gateway
 
 
 # -- Project information -----------------------------------------------------
-project = wirepas_gateway.__title__
-copyright = "{},{}".format(wirepas_gateway.__copyright__, wirepas_gateway.__license__)
-release = wirepas_gateway.__version__
-name = wirepas_gateway.__name__
-version = wirepas_gateway.__version__
-description = wirepas_gateway.__description__
-author = wirepas_gateway.__author__
-author_email = wirepas_gateway.__author_email__
-url = wirepas_gateway.__url__
-license = wirepas_gateway.__license__
-classifiers = wirepas_gateway.__classifiers__
-keywords = wirepas_gateway.__keywords__
+_project = wirepas_gateway.__title__
+_copyright = "{},{}".format(wirepas_gateway.__copyright__, wirepas_gateway.__license__)
+_release = wirepas_gateway.__version__
+_name = wirepas_gateway.__name__
+_version = wirepas_gateway.__version__
+_description = wirepas_gateway.__description__
+_author = wirepas_gateway.__author__
+_author_email = wirepas_gateway.__author_email__
+_url = wirepas_gateway.__url__
+_license = wirepas_gateway.__license__
+_classifiers = wirepas_gateway.__classifiers__
+_keywords = wirepas_gateway.__keywords__
 
 # -- General configuration ---------------------------------------------------
 
@@ -111,7 +111,7 @@ html_theme = "alabaster"
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {"logo": "logo.png", "description": description}
+html_theme_options = {"logo": "logo.png", "description": _description}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -167,7 +167,7 @@ latex_elements = {
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, project, description, [author], 1)]
+man_pages = [(master_doc, _project, _description, [_author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -179,11 +179,11 @@ texinfo_documents = [
     (
         master_doc,
         "wirepasgatewaytransport",
-        project,
-        author,
-        author,
-        description,
-        keywords,
+        _project,
+        _author,
+        _author,
+        _description,
+        _keywords,
     )
 ]
 
