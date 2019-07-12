@@ -16,6 +16,7 @@ Figure 1, provides an overview of the gateway implementation and the
 apis involved at each step.
 
 ![Wirepas gateway architecture][here_img_overview]
+
 **Figure 1 -** Gateway services overview.
 
 
