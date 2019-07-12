@@ -290,6 +290,7 @@ full license details.
 
 [here_img_overview]: https://github.com/wirepas/gateway/blob/87e115577731006108fb657b9cb47d7d3ec1e71e/img/wm-gateway-overview.png
 [here_ci_docker_build]: https://github.com/wirepas/gateway/blob/master/.ci/build-images.sh
+[here_container]: https://github.com/wirepas/gateway/tree/master/container/
 [here_container_dockerfile]: https://github.com/wirepas/gateway/tree/master/container/Dockerfile
 [here_container_env]: https://github.com/wirepas/gateway/tree/master/container/wm_gateway.env
 [here_dbus_manifest]: https://github.com/wirepas/gateway/blob/master/sink_service/com.wirepas.sink.conf
