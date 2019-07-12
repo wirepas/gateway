@@ -5,7 +5,8 @@ deliverable/*
 *.pyc
 sink_service/build/
 sink_service/c-mesh-api/
-*/*.idea
+
+**/*.idea/*
 */*.wm-hell*
 public-apis/
 */docs/wm-*
@@ -14,9 +15,6 @@ build-*.txt
 **/*wm-shell*
 */*/*.egg-info/
 **/*.egg-info/
-
-Pipfile
-
 **/build/
 **/dist/
 
@@ -29,3 +27,6 @@ release/
 .clang*
 .ci/manifest/*
 dev-requirements.txt
+
+_repo/*
+python_transport/docs/source/api/
