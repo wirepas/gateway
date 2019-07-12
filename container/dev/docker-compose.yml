@@ -8,13 +8,20 @@ services:
 
     wm-sink:
         container_name: wm-sink
-        image: wirepas/gateway-x86:edge
+        image: ${IMAGE_NAME}
         build:
             context: ../..
             dockerfile: container/dev/Dockerfile
             args:
-                IMAGE_NAME: wirepas/gateway-x8
-                LXGW_VERSION: ${LXGW_VERSION:-"local"}
+                DOCKER_BASE: ${DOCKER_BASE}
+                IMAGE_NAME: ${IMAGE_NAME}
+                VERSION: ${VERSION:-"local"}
+                BUILD_DATE: ${BUILD_DATE}
+                CROSS_BUILD_START_CMD: ${CROSS_BUILD_START_CMD}
+                CROSS_BUILD_END_CMD: ${CROSS_BUILD_END_CMD}
+                GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE}
+                GIT_MANIFEST_URL: ${GIT_MANIFEST_URL}
+                GIT_MANIFEST_BRANCH: ${GIT_MANIFEST_BRANCH}
 
         user: root
         privileged: true

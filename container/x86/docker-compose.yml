@@ -8,14 +8,17 @@ services:
 
     wm-sink:
         container_name: wm-sink
-        image: wirepas/gateway-x86
+        image: ${IMAGE_NAME:-wirepas/gateway-x86:latest}
         build:
             context: ../..
-            dockerfile: container/x86/Dockerfile
+            dockerfile: container/Dockerfile
             args:
-                IMAGE_NAME: wirepas/gateway-x86
-                LXGW_VERSION: ${LXGW_VERSION:-"1.2.0-rc.1"}
+                IMAGE_NAME: ${IMAGE_NAME:-wirepas/gateway-x86:latest}
+                VERSION: ${VERSION:-"1.2.0-rc.1"}
                 BUILD_DATE: ${BUILD_DATE:-"undefined"}
+                DOCKER_BASE: wirepas/base:1.1-ubuntu
+                CROSS_BUILD_START_CMD: ":"
+                CROSS_BUILD_END_CMD: ":"
                 GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE:-gateway.xml}
                 GIT_MANIFEST_URL: ${GIT_MANIFEST_URL:-https://github.com/wirepas/manifest.git}
                 GIT_MANIFEST_BRANCH: ${GIT_MANIFEST_BRANCH:-master}
