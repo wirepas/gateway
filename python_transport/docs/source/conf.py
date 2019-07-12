@@ -134,7 +134,7 @@ html_sidebars = {"**": ["about.html", "relations.html", "searchbox.html"]}
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "WM-LXGATEWAY"
+htmlhelp_basename = _name
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -153,14 +153,6 @@ latex_elements = {
     #
     # 'figure_align': 'htbp',
 }
-
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title,
-#  author, documentclass [howto, manual, or own class]).
-# latex_documents = [
-#    (master_doc, 'wirepasgatewaytransport.tex', 'Wirepas Positioning Engine Python Package Documentation',
-#     'Wirepas Ltd.', 'manual'),
-# ]
 
 
 # -- Options for manual page output ------------------------------------------
