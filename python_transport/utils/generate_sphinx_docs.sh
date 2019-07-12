@@ -3,7 +3,6 @@
 
 set -e
 
-sphinx-apidoc -f -o docs/source wirepas_gateway
 cd docs;
 rm -rf wm-gw/ ||true
 make html

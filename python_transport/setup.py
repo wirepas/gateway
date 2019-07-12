@@ -13,7 +13,9 @@
 import os
 import re
 
-import wirepas_gateway
+from wirepas_gateway import __title__
+from wirepas_gateway import __version__
+
 from setuptools import setup, find_packages, Extension
 
 readme_file = "README.md"
@@ -21,6 +23,9 @@ license_file = "LICENSE"
 
 with open(readme_file) as f:
     long_description = f.read()
+
+with open(license_file) as f:
+    license = f.read()
 
 
 def get_list_files(root, flist=None):
@@ -53,16 +58,22 @@ def get_requirements(*args):
 
 
 setup(
-    name=wirepas_gateway.__name__,
-    version=wirepas_gateway.__version__,
-    description=wirepas_gateway.__description__,
+    name=__title__,
+    version=__version__,
+    description="Wirepas gateway transport service",
     long_description=long_description,
-    author=wirepas_gateway.__author__,
-    author_email=wirepas_gateway.__author_email__,
-    url=wirepas_gateway.__url__,
-    license=wirepas_gateway.__license__,
-    classifiers=wirepas_gateway.__classifiers__,
-    keywords=wirepas_gateway.__keywords__,
+    author="Wirepas Oy",
+    author_email="opensource@wirepas.com",
+    url="https://github.com/wirepas/gateway",
+    license="Apache-2",
+    classifiers=[
+        "Development Status :: 5 - Stable",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache Software License",
+        "Topic :: Software Development :: Libraries",
+        "Programming Language :: Python :: 3",
+    ],
+    keywords="wirepas connectivity iot mesh",
     packages=find_packages(exclude=["contrib", "docs", "tests", "examples"]),
     install_requires=get_requirements("requirements.txt"),
     ext_modules=[
