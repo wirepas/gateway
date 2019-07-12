@@ -16,6 +16,7 @@ from . import utils
 from .__about__ import (
     __author__,
     __author_email__,
+    __classifiers__,
     __copyright__,
     __description__,
     __license__,
@@ -25,4 +26,3 @@ from .__about__ import (
     __version__,
     __keywords__,
 )
-
