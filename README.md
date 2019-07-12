@@ -9,13 +9,14 @@ from/to a MQTT broker or host device.
 The services will be known from now on as sink service and transport service.
 The sink service is responsible to interface locally with a Wirepas device
 running its Dual MCU API. The transport service packs network
-messages on protobuffers and puclishes them on top of MQTT according to
+messages on protobuffers and publishes them on top of MQTT according to
 Wirepas Backend API.
 
 Figure 1, provides an overview of the gateway implementation and the
 apis involved at each step.
 
 ![Wirepas gateway architecture][here_img_overview]
+**Figure 1 -** Gateway services overview.
 
 
 ## Cloning this repository
