@@ -1,27 +1,51 @@
 # Wirepas Linux Gateway
 
-This repository contains the Wirepas reference implementation for a gateway
-device which offloads Wirepas Mesh data to a host.
+[![Build Status](https://travis-ci.org/wirepas/gateway.svg?branch=master)](https://travis-ci.org/wirepas/gateway) [![Documentation Status](https://readthedocs.org/projects/wirepas-gateway/badge/?version=latest)](https://wirepas-gateway.readthedocs.io/en/latest/?badge=latest)
+
+This repository contains Wirepas' reference gateway implementation, which
+relies on a set of services to exchange data from/to a Wirepas Mesh network
+from/to a MQTT broker or host device.
+
+The services will be known from now on as sink service and transport service.
+The sink service is responsible to interface locally with a Wirepas device
+running its Dual MCU API. The transport service packs network
+messages on protobuffers and puclishes them on top of MQTT according to
+Wirepas Backend API.
+
+Figure 1, provides an overview of the gateway implementation and the
+apis involved at each step.
+
+![Wirepas gateway architecture][here_img_overview]
+
 
 ## Cloning this repository
 
-This repository has a hard dependency on [c-mesh-api](https://github.com/wirepas/c-mesh-api)
-and a soft dependency on the [backend-apis](https://github.com/wirepas/backend-client).
+This repository depends on two other projects, [c-mesh-api][wirepas_c_mesh_api]
+and [backend-apis][wirepas_backend_apis].
+The [c-mesh-api][wirepas_c_mesh_api] contains the library used by the sink service, which interfaces
+with the sink devices. The backend-apis contains api and message wrapper
+over the protocol buffers that are transmitted over MQTT.
 
 When cloning this repository and its dependencies you can opt for:
 
--   Using [repo tool](https://source.android.com/setup/develop/repo)
-    and the [manifest repository](https://github.com/wirepas/manifest)
+-   Using [repo tool][repo_tool]
+    and the [manifest repository][wirepas_manifest]
 
-    > repo init -u https://github.com/wirepas/manifest.git
-    or 
-    > repo init -u git@github.com:wirepas/manifest.git
-    
+    > repo init -u https://github.com/wirepas/manifest.git -m gateway.xml
+
+    or
+
+    > repo init -u git@github.com:wirepas/manifest.git -m gateway.xml
+
     afterwards download the repositories with
-    
+
     > repo sync
 
--   Clone each repo separately (see [pull_repos.sh](./utils/pull_repos.sh))
+    To clone a particular tag, vX.Y.Z, please use repo's *-b* switch as follows
+
+    > repo init (...) -b refs/tags/vX.Y.Z
+
+    Usage of repo is also documented in the release Dockerfiles (see [Dockerfile][here_container_dockerfile])
 
 ## Linux Requirements
 
@@ -122,9 +146,14 @@ To get an exhausted list of parameters, please run:
 Here is an example to start the transport module from cmd line:
 
 ```shell
-    wm-gw --mqtt_hostname "<server>" --mqtt_port <port> --mqtt_username <user> --mqtt_password <password> \
-     --gateway_id <gwid> [--ignored_endpoints_filter <ignored endpoints list>] \
-     [--whitened_endpoints_filter <whitened endpoints list>]
+    wm-gw \
+          --mqtt_hostname "<server>" \
+          --mqtt_port <port> \
+          --mqtt_username <user> \
+          --mqtt_password <password> \
+          --gateway_id <gwid> \
+          [--ignored_endpoints_filter <ignored endpoints list>] \
+          [--whitened_endpoints_filter <whitened endpoints list>]
 ```
 
 where:
@@ -196,19 +225,46 @@ It can be launched from command line:
     wm-dbus-print
 ```
 
-## Docker build instructions
+## Building and running with Docker
 
-We are changing our method to build images. We will update this section when the work is complete.
+In the container folder you will find three folders, one for
+[development][here_container]
+purposes and two other for architecture images, x86 and arm.
+
+The development folder builds an image based on the contents of the repository,
+whereas the other two folder will provide you a build for what is specified
+in the repo tool's manifest.
+
+To make a build change into the folder you wish and type:
+
+```bash
+   docker-compose build
+```
+
+Alternatively you can use our [ci tool][here_ci_docker_build].
+
+We also have pre-built images available from docker hub under the
+following registries:
+
+[wirepas/gateway][dockerhub_wirepas]: multi architecture registry
+[wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
+[wirepas/gateway-rpi][dockerhub_wirepas_rpi]: arm/rpi architecture registry
+
 
 ## Starting docker services
 
-In the container folder, you will find the wm_gateway.env file, where you
-need to place the MQTT credentials for your gateway user.
+When running the gateway over docker, the composition will mount your host's
+system dbus inside each container. This is necessary to allow exchanging data
+between both services. For that reason you will have to copy the
+[dbus manifest][here_dbus_manifest] to your host's and change the policy
+user to reflect what is used within the docker-compose.
 
-Beside the MQTT credentials, you need to define the ip or hostname where
-to connect the transport service to.
+After configuring your host's dbus, review the [service settings file.][here_container_env]
+The environment parameters will be evaluated by the [container's entry point][here_container_entrypoint]
+and passed on to the sink and transport service.
 
-Once the settings are correct, you can launch the services with:
+Please ensure that you define the correct password and MQTT credentials and
+launch the services with:
 
 ```shell
     docker-compose up [-d]
@@ -230,3 +286,19 @@ or specify which container you want to view the logs from with
 
 Wirepas Oy licensed under Apache License, Version 2.0 See file LICENSE for
 full license details.
+
+[here_img_overview]: https://github.com/wirepas/gateway/blob/87e115577731006108fb657b9cb47d7d3ec1e71e/img/wm-gateway-overview.png
+[here_ci_docker_build]: https://github.com/wirepas/gateway/blob/master/.ci/build-images.sh
+[here_container_dockerfile]: https://github.com/wirepas/gateway/tree/master/container/Dockerfile
+[here_container_env]: https://github.com/wirepas/gateway/tree/master/container/wm_gateway.env
+[here_dbus_manifest]: https://github.com/wirepas/gateway/blob/master/sink_service/com.wirepas.sink.conf
+[here_container_entrypoint]: https://github.com/wirepas/gateway/blob/master/container/docker-entrypoint.sh
+
+[repo_tool]: https://source.android.com/setup/develop/repo
+[wirepas_manifest]: https://github.com/wirepas/manifest
+[wirepas_c_mesh_api]: https://github.com/wirepas/c-mesh-api
+[wirepas_backend_apis]: https://github.com/wirepas/backend-client
+
+[dockerhub_wirepas]: https://hub.docker.com/r/wirepas/gateway
+[dockerhub_wirepas_x86]: https://hub.docker.com/r/wirepas/gateway-x86
+[dockerhub_wirepas_rpi]: https://hub.docker.com/r/wirepas/gateway-rpi
