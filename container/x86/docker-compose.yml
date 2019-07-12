@@ -8,7 +8,17 @@ services:
 
     wm-sink:
         container_name: wm-sink
-        image: wm-gateway:latest
+        image: wirepas/gateway-x86
+        build:
+            context: ../..
+            dockerfile: container/x86/Dockerfile
+            args:
+                IMAGE_NAME: wirepas/gateway-x86
+                LXGW_VERSION: ${LXGW_VERSION:-"1.2.0-rc.1"}
+                BUILD_DATE: ${BUILD_DATE:-"undefined"}
+                GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE:-gateway.xml}
+                GIT_MANIFEST_URL: ${GIT_MANIFEST_URL:-https://github.com/wirepas/manifest.git}
+                GIT_MANIFEST_BRANCH: ${GIT_MANIFEST_BRANCH:-master}
 
         user: root
         privileged: true
@@ -17,7 +27,7 @@ services:
 
         restart: always
         env_file:
-            - wm_gateway.env
+            - ../wm_gateway.env
 
         volumes:
             - /dev:/dev
@@ -30,18 +40,17 @@ services:
 
     wm-transport:
         container_name: wm-transport
-        image: wm-gateway:latest
+        image: wirepas/gateway-x86
 
         user: root
+        network_mode: host
         privileged: true
         stdin_open: true
         tty: true
 
         restart: always
         env_file:
-            - wm_gateway.env
-        environment:
-            - PYTHONUNBUFFERED=true
+            - ../wm_gateway.env
 
         volumes:
             - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
@@ -50,4 +59,3 @@ services:
             driver: journald
 
         command: transport
-

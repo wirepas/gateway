@@ -1,0 +1,14 @@
+# transport service template
+
+host: ${WM_SERVICES_HOST:-"host"}
+port: ${WM_SERVICES_MQTT_PORT:-"8883"}
+username: ${WM_SERVICES_MQTT_USER:-"mosquittouser"}
+password: ${WM_SERVICES_MQTT_PASSWORD:-"mosquittopassword"}
+tlsfile: ${WM_SERVICES_CERTIFICATE_CHAIN:-"NOTSET"}
+unsecure_authentication: false
+gwid: ${WM_SERVICES_GATEWAY_ID:-"$RANDOM"}
+full_python: false
+gateway_model: ${WM_SERVICES_GATEWAY_MODEL:-"lxgw"}
+gateway_version: ${WM_SERVICES_GATEWAY_VERSION:-"dev"}
+ignored_endpoints_filter: ${WM_SERVICES_GATEWAY_IGNORED_ENDPOINTS_FILTER:-"NOTSET"}
+whitened_endpoints_filter: ${WM_SERVICES_GATEWAY_WHITENED_ENDPOINTS_FILTER:-"NOTSET"}

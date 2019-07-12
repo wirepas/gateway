@@ -36,42 +36,29 @@ class TransportService(BusClient):
 
     def __init__(
         self,
-        host,
-        port,
-        username="",
-        password=None,
-        tlsfile=None,
-        gw_id=None,
+        settings,
         logger=None,
-        c_extension=False,
-        secure_auth=False,
-        gw_model=None,
-        gw_version=None,
-        ignored_endpoints_filter=None,
-        whitened_endpoints_filter=None,
         **kwargs
     ):
 
         super(TransportService, self).__init__(
             logger=logger,
-            c_extension=c_extension,
-            ignored_ep_filter=ignored_endpoints_filter,
+            c_extension=(settings.full_python is False),
+            ignored_ep_filter=settings.ignored_endpoints_filter,
             **kwargs
         )
 
-        if gw_id is None:
-            self.gw_id = getnode()
-        else:
-            self.gw_id = gw_id
+        self.gw_id = settings.gateway_id
+        self.gw_model = settings.gateway_model
+        self.gw_version = settings.gateway_version
 
-        self.gw_model = gw_model
-        self.gw_version = gw_version
-
-        self.whitened_ep_filter = whitened_endpoints_filter
+        self.whitened_ep_filter = settings.whitened_endpoints_filter
 
         self.mqtt_wrapper = MQTTWrapper(
-            self.logger, username, password, host, port, secure_auth, tlsfile,
-            self._on_mqtt_wrapper_termination_cb, self._on_connect
+            settings,
+            self.logger,
+            self._on_mqtt_wrapper_termination_cb,
+            self._on_connect
         )
 
         self.mqtt_wrapper.start()
@@ -521,6 +508,88 @@ def parse_setting_list(list_setting):
     return single_list
 
 
+def _check_duplicate(args, old_param, new_param, default, logger):
+    old_param_val = getattr(args, old_param, default)
+    new_param_val = getattr(args, new_param, default)
+    if new_param_val == old_param_val:
+        # Nothing to update
+        return
+
+    if old_param_val != default:
+        # Old param is set, check if new_param is also set
+        if new_param_val == default:
+            setattr(args, new_param, old_param_val)
+            logger.warning("Param {} is deprecated, please use {} instead"
+                           .format(old_param, new_param))
+        else:
+            logger.error("Param {} and {} cannot be set at the same time"
+                         .format(old_param, new_param))
+            exit()
+
+def _update_parameters(settings, logger):
+    '''
+    Function to handle the backward compatibility with old parameters name
+    Args:
+        settings: Full parameters
+
+    Returns: None
+    '''
+
+    _check_duplicate(settings, "host", "mqtt_hostname", None, logger)
+    _check_duplicate(settings, "port", "mqtt_port", 8883, logger)
+    _check_duplicate(settings, "username", "mqtt_username", None, logger)
+    _check_duplicate(settings, "password", "mqtt_password", None, logger)
+    _check_duplicate(settings, "tlsfile", "mqtt_certfile", None, logger)
+    _check_duplicate(settings, "unsecure_authentication", "mqtt_force_unsecure", False, logger)
+    _check_duplicate(settings, "gwid", "gateway_id", None, logger)
+
+    if settings.gateway_id is None:
+        settings.gateway_id = getnode()
+
+    # Ensure gateway_id is a string as used as mqtt client_id
+    settings.gateway_id = str(settings.gateway_id)
+
+    # Parse EP list that should not be published
+    if settings.ignored_endpoints_filter is not None:
+        try:
+            settings.ignored_endpoints_filter = parse_setting_list(settings.ignored_endpoints_filter)
+            logger.debug("Ignored endpoints are: {}".format(settings.ignored_endpoints_filter))
+        except SyntaxError as e:
+            logger.error(
+                "Wrong format for ignored_endpoints_filter EP list ({})".format(e)
+            )
+            exit()
+
+    if settings.whitened_endpoints_filter is not None:
+        try:
+            settings.whitened_endpoints_filter = parse_setting_list(
+                settings.whitened_endpoints_filter
+            )
+            logger.debug("Whitened endpoints are: {}".format(settings.whitened_endpoints_filter))
+        except SyntaxError as e:
+            logger.error(
+                "Wrong format for whitened_endpoints_filter EP list ({})".format(e)
+            )
+            exit()
+
+
+def _check_parameters(settings, logger):
+    if settings.mqtt_force_unsecure and settings.mqtt_certfile:
+        # If tls cert file is provided, unsecure authentication cannot
+        # be set
+        logger.error("Cannot give certfile and disable secure authentication")
+        exit()
+
+    try:
+        if set(settings.ignored_endpoints_filter) &\
+                set(settings.whitened_endpoints_filter):
+            logger.error("Some endpoints are both ignored and whitened")
+            exit()
+    except TypeError:
+        # One of the filter list is None
+        pass
+
+
 def main():
     """
         Main service for transport module
@@ -529,79 +598,29 @@ def main():
     ParserHelper()
     parse = ParserHelper(description="Default arguments")
 
-    parse.add_transport()
     parse.add_file_settings()
+    parse.add_mqtt()
+    parse.add_gateway_config()
+    parse.add_filtering_config()
+    parse.add_deprecated_args()
 
-    args = parse.settings(skip_undefined=False)
+    settings = parse.settings(skip_undefined=False)
 
     try:
         debug_level = os.environ["DEBUG_LEVEL"]
     except KeyError:
-        debug_level = "debug"
+        debug_level = "info"
 
     logger = setup_log("transport_service", level=debug_level)
 
-    if args.unsecure_authentication and args.tlsfile:
-        # If tls cert file is provided, unsecure authentication cannot
-        # be set
-        logger.error("Cannot set tls file and disable secure authentication")
-        exit()
+    _update_parameters(settings, logger)
+    # after this stage, mqtt deprecated argument cannot be used
 
-    secure_authentication = not args.unsecure_authentication
-
-    if args.full_python:
-        logger.info("Starting transport without C optimisation")
-        c_extension = False
-    else:
-        c_extension = True
-
-    # Parse EP list that should not be published
-    ignored_endpoints_filter = None
-    if args.ignored_endpoints_filter is not None:
-        try:
-            ignored_endpoints_filter = parse_setting_list(args.ignored_endpoints_filter)
-            logger.debug("Ignored endpoints are: {}".format(ignored_endpoints_filter))
-        except SyntaxError as e:
-            logger.error(
-                "Wrong format for ignored_endpoints_filter EP list ({})".format(e)
-            )
-            exit()
-
-    # Parse EP list that should be published without payload
-    whitened_endpoints_filter = None
-    if args.whitened_endpoints_filter is not None:
-        try:
-            whitened_endpoints_filter = parse_setting_list(
-                args.whitened_endpoints_filter
-            )
-            logger.debug("Whitened endpoints are: {}".format(whitened_endpoints_filter))
-        except SyntaxError as e:
-            logger.error(
-                "Wrong format for whitened_endpoints_filter EP list ({})".format(e)
-            )
-            exit()
-
-    try:
-        if set(ignored_endpoints_filter) & set(whitened_endpoints_filter):
-            logger.warning("Some endpoints are both ignored and whitened")
-    except TypeError:
-        # One of the filter list is None
-        pass
+    _check_parameters(settings, logger)
 
     TransportService(
-        args.host,
-        args.port,
-        args.username,
-        args.password,
-        args.tlsfile,
-        args.gwid,
-        logger,
-        c_extension,
-        secure_authentication,
-        args.gateway_model,
-        args.gateway_version,
-        ignored_endpoints_filter,
-        whitened_endpoints_filter,
+        settings,
+        logger
     ).run()
 
 

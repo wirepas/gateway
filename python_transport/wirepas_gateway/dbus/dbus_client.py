@@ -71,11 +71,12 @@ class BusClient(object):
 
         # Register for packet on Dbus
         if c_extension:
-            self.logger.info("Starting c extension")
+            self.logger.info("Starting dbus client with c extension")
             self.c_extension_thread = DbusEventHandler(
                 self._on_data_received_c, self.logger
             )
         else:
+            self.logger.info("Starting dbus client without c extension")
             # Subscribe to all massages received from any sink (no need for
             # connected sink for that)
             self.bus.subscribe(

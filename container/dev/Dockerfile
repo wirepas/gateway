@@ -1,108 +1,62 @@
-# Wirepas Oy
+FROM wirepas/base:1.1-ubuntu as builder
 
-# Builds wirepas messaging
-FROM wirepas/base:1.0-ubuntu as messaging-builder
-ENV PACKAGE_PATH=public-apis/wrappers/python
+COPY sink_service app_build/sink_service
+COPY python_transport app_build/python_transport
+COPY container app_build/container
+
 WORKDIR /app_build
+RUN cd /app_build/sink_service/ \
+    && make clean \
+    && make \
+    && echo "LXGW_BUILD=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"  >> /app_build/manifest
 
-COPY ${PACKAGE_PATH}/requirements.txt requirements.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-COPY ${PACKAGE_PATH}/ .
-RUN ./utils/compile_protos.sh
-RUN py3clean . || true \
-    && python3 setup.py clean --all \
-    && python3 setup.py sdist bdist_wheel
-
-# Builds sink service
-FROM wirepas/base:1.0-ubuntu as wm-sink-service-builder
-ENV PACKAGE_PATH=sink_service
-WORKDIR /app_build
-
-COPY ${PACKAGE_PATH}/ .
-RUN make clean && make
-
-# Builds transport service
-FROM wirepas/base:1.0-ubuntu as wm-transport-service-builder
-ENV PACKAGE_PATH=python_transport
-WORKDIR /app_build
-
-COPY ${PACKAGE_PATH}/requirements.txt requirements.txt
-COPY ${PACKAGE_PATH}/ .
-RUN py3clean . || true \
-    && python3 setup.py clean --all \
-    && python3 setup.py sdist bdist_wheel
-
-RUN pip install Sphinx \
-    && pip install sphinxcontrib-napoleon \
-    && ./utils/generate_sphinx_docs.sh
-RUN ls dist/
+RUN cd /app_build/python_transport/ \
+    && ./utils/generate_wheel.sh
 
 # builds x86 gateway services
-FROM wirepas/base:1.0-ubuntu as wm-lxgw
+FROM wirepas/base:1.1-ubuntu as wm-lxgw
 USER root
 
-ARG WM_MESSAGING_PKG
-ENV WM_MESSAGING_PKG=${WM_MESSAGING_PKG:-"wirepas_messaging-*.tar*"}
+ENV SERVICE_HOME="${WM_HOME}"/gateway
+ENV SINK_SERVICE="${SERVICE_HOME}"/sink_service
+ENV TRANSPORT_SERVICE="${SERVICE_HOME}"/transport_service
 
 ARG WM_TRANSPORT_PKG
-ENV WM_TRANSPORT_PKG=${WM_TRANSPORT_PKG:-"wirepas_gateway-*.tar*"}
+ENV WM_TRANSPORT_PKG=${WM_TRANSPORT_PKG:-"${TRANSPORT_SERVICE}/wirepas_gateway-*.tar.gz"}
 
-ENV SERVICE_HOME=${HOME}/gateway
-ENV SINK_SERVICE=${SERVICE_HOME}/sink_service
-ENV TRANSPORT_SERVICE=${SERVICE_HOME}/transport_service
+COPY --from=builder /app_build/python_transport/requirements.txt "${TRANSPORT_SERVICE}/"
+COPY --from=builder /app_build/python_transport/dist/* "${TRANSPORT_SERVICE}/"
+COPY --from=builder /app_build/python_transport/wirepas_gateway/wirepas_certs/extwirepas.pem /etc/extwirepas.pem
+COPY --from=builder /app_build/sink_service/build/sinkService /usr/local/bin/sinkService
+COPY --from=builder /app_build/sink_service/com.wirepas.sink.conf /etc/dbus-1/system.d/
+COPY --from=builder /app_build/manifest "${SERVICE_HOME}/manifest"
 
-COPY --from=messaging-builder /app_build/dist/${WM_MESSAGING_PKG} ${HOME}/dependencies/
-COPY --from=messaging-builder /app_build/requirements.txt ${HOME}/dependencies/
+RUN pip3 install --upgrade pip
+RUN pip3 install --no-cache-dir -r "${TRANSPORT_SERVICE}/requirements.txt"
+RUN pip3 install --no-cache-dir ${WM_TRANSPORT_PKG}
+COPY --from=builder /app_build/container/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --from=builder /app_build/container/transport.template "${TRANSPORT_SERVICE}/transport.template"
+RUN rm -rf "${WM_HOME}/.cache" \
+    && chown "${WM_USER}":"${WM_USER}" -R "${WM_HOME}"
 
-COPY --from=wm-transport-service-builder /app_build/dist/${WM_TRANSPORT_PKG} ${TRANSPORT_SERVICE}/
-COPY --from=wm-transport-service-builder /app_build/requirements.txt ${TRANSPORT_SERVICE}/
-COPY --from=wm-transport-service-builder /app_build/docs/ ${TRANSPORT_SERVICE}/docs
-
-COPY --from=wm-sink-service-builder /app_build/build/sinkService /usr/local/bin/sinkService
-
-WORKDIR ${HOME}
-RUN pip3 install --no-cache-dir -r ${HOME}/dependencies/requirements.txt
-RUN pip3 install --no-cache-dir -r ${TRANSPORT_SERVICE}/requirements.txt
-
-RUN pip3 install --no-cache-dir ${HOME}/dependencies/${WM_MESSAGING_PKG}
-RUN pip3 install --no-cache-dir ${TRANSPORT_SERVICE}/${WM_TRANSPORT_PKG}
-
-COPY python_transport/wirepas_gateway/wirepas_certs/extwirepas.pem /etc/extwirepas.pem
-COPY sink_service/com.wirepas.sink.conf /etc/dbus-1/system.d/
-
-RUN chown ${USER}:${USER} -R ${HOME} \
-    && rm -rf ${HOME}/.cache
-
-# Environment
-ARG WM_SERVICES_HOST
-ARG WM_SERVICES_MQTT_PORT
-ARG WM_SERVICES_MQTT_USER
-ARG WM_SERVICES_MQTT_PASSWORD
-ARG WM_SERVICES_CERTIFICATE_CHAIN
-
-ARG WM_SINK_UART_PORT
-ARG WM_SINK_UART_BITRATE
-ARG WM_SINK_ID
-
-ENV WM_SERVICES_HOST=${WM_SERVICES_HOST:-"localhost"}
-ENV WM_SERVICES_MQTT_PORT=${WM_SERVICES_MQTT_PORT:-"1883"}
-ENV WM_SERVICES_MQTT_USER=${WM_SERVICES_MQTT_USER:-"mqttuser"}
-ENV WM_SERVICES_MQTT_PASSWORD=${WM_SERVICES_MQTT_PASSWORD:-"12sdftat3089ajoiausd+91as12"}
-ENV WM_SERVICES_CERTIFICATE_CHAIN=${WM_SERVICES_CERTIFICATE_CHAIN:-""}
-ENV WM_SERVICES_GATEWAY_ID=${WM_SERVICES_GATEWAY_ID:-""}
-
-ENV WM_SINK_UART_PORT=${WM_SINK_UART_PORT:-"/dev/ttyACM0"}
-ENV WM_SINK_UART_BITRATE={WM_SINK_UART_BITRATE:-"125000"}
-ENV WM_SINK_ID=${WM_SINK_ID:-"0"}
-
-ENV EXEC_TRANSPORT "wm-gw"
-ENV EXEC_SINK /usr/local/bin/sinkService
-
-COPY container/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN ln -s usr/local/bin/docker-entrypoint.sh / # backwards compat
 ENTRYPOINT ["docker-entrypoint.sh"]
-
-USER ${USER}
+WORKDIR ${WM_HOME}
+USER ${WM_USER}
 CMD ["sink"]
 
+ARG LXGW_VERSION
+ARG BUILD_DATE
+ARG IMAGE_NAME
+ARG GIT_MANIFEST_FILE
+ARG GIT_MANIFEST_URL
+ARG GIT_MANIFEST_BRANCH
+
+LABEL com.wirepas.source.manifest="${GIT_MANIFEST_URL}/${GIT_MANIFEST_FILE}#${GIT_MANIFEST_BRANCH}"
+LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.ref.name=${IMAGE_NAME}
+LABEL org.opencontainers.image.schema-version="1.0"
+LABEL org.opencontainers.image.title="Wirepas gateway"
+LABEL org.opencontainers.image.url="https://github.com/wirepas/gateway"
+LABEL org.opencontainers.image.vendor="Wirepas Ltd"
+LABEL org.opencontainers.image.version=${LXGW_VERSION}
