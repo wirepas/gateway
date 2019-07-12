@@ -15,19 +15,24 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../wirepas_gateway/"))
+sys.path.insert(0, os.path.abspath("../.."))
+
+import wirepas_gateway
 
 
 # -- Project information -----------------------------------------------------
-
-project = "Wirepas Gateway Transport"
-copyright = "2018, Wirepas Ltd."
-author = "Wirepas Ltd."
-
-# The short X.Y version
-version = "1.0"
-# The full version, including alpha/beta/rc tags
-release = "1.0:rc"
+_project = wirepas_gateway.__title__
+_copyright = "{},{}".format(wirepas_gateway.__copyright__, wirepas_gateway.__license__)
+_release = wirepas_gateway.__version__
+_name = wirepas_gateway.__name__
+_version = wirepas_gateway.__version__
+_description = wirepas_gateway.__description__
+_author = wirepas_gateway.__author__
+_author_email = wirepas_gateway.__author_email__
+_url = wirepas_gateway.__url__
+_license = wirepas_gateway.__license__
+_classifiers = wirepas_gateway.__classifiers__
+_keywords = wirepas_gateway.__keywords__
 
 # -- General configuration ---------------------------------------------------
 
@@ -39,15 +44,18 @@ release = "1.0:rc"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "m2r",
     "sphinx.ext.autodoc",
-    "sphinxcontrib.napoleon",
+    "sphinx.ext.napoleon",
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
     "sphinx.ext.imgmath",
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
+    "sphinxcontrib.apidoc",
 ]
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -55,8 +63,7 @@ templates_path = ["_templates"]
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+source_suffix = [".rst", ".md"]
 
 # The master toctree document.
 master_doc = "index"
@@ -71,10 +78,26 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = []
+exclude_patterns = ["setup"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
+
+# -- Options for apidoc output -------------------------------------------------
+apidoc_module_dir = os.path.join(os.path.abspath("../.."), "wirepas_gateway")
+apidoc_excluded_paths = ["tests", "setup"]
+apidoc_separate_modules = True
+
+# -- Options for autodoc output -------------------------------------------------
+autodoc_mock_imports = [
+    "gi",
+    "gobject",
+    "pydbus",
+    "dbusCExtension",
+    "setup",
+    "google",
+    "wirepas_messaging",
+]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -88,11 +111,7 @@ html_theme = "alabaster"
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {
-    "logo": "logo.png",
-    "description": "Wirepas gateway transport service that connects \
-                    the local dbus to a remote MQTT broker.",
-}
+html_theme_options = {"logo": "logo.png", "description": _description}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -109,21 +128,13 @@ html_favicon = "_static/favicon.png"
 # default: ``['localtoc.html', 'relations.html', 'sourcelink.html',
 # 'searchbox.html']``.
 #
-html_sidebars = {
-    "**": [
-        "about.html",
-        "navigation.html",
-        "relations.html",
-        "searchbox.html",
-        "donate.html",
-    ]
-}
+html_sidebars = {"**": ["about.html", "relations.html", "searchbox.html"]}
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "WM-LXGATEWAY"
+htmlhelp_basename = _name
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -143,28 +154,12 @@ latex_elements = {
     # 'figure_align': 'htbp',
 }
 
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title,
-#  author, documentclass [howto, manual, or own class]).
-# latex_documents = [
-#    (master_doc, 'wirepasgatewaytransport.tex', 'Wirepas Positioning Engine Python Package Documentation',
-#     'Wirepas Ltd.', 'manual'),
-# ]
-
 
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (
-        master_doc,
-        "wirepasgatewaytransport",
-        "Wirepas Gateway Transport Documentation",
-        [author],
-        1,
-    )
-]
+man_pages = [(master_doc, _project, _description, [_author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -176,11 +171,11 @@ texinfo_documents = [
     (
         master_doc,
         "wirepasgatewaytransport",
-        "Wirepas Gateway Transport Documentation",
-        author,
-        "Wirepas Ltd",
-        "Wirepas Gateway Transport.",
-        "Miscellaneous",
+        _project,
+        _author,
+        _author,
+        _description,
+        _keywords,
     )
 ]
 
@@ -195,4 +190,4 @@ intersphinx_mapping = {"https://docs.python.org/": None}
 # -- Options for todo extension ----------------------------------------------
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = True
+# todo_include_todos = True

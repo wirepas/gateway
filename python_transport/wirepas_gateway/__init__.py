@@ -9,7 +9,6 @@
         Wirepas Oy licensed under Apache License, Version 2.0
         See file LICENSE for full license details.
 """
-
 from . import dbus
 from . import protocol
 from . import utils
@@ -26,3 +25,4 @@ from .__about__ import (
     __version__,
     __keywords__,
 )
+
