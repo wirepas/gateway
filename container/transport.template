@@ -5,7 +5,7 @@ port: ${WM_SERVICES_MQTT_PORT:-"8883"}
 username: ${WM_SERVICES_MQTT_USER:-"mosquittouser"}
 password: ${WM_SERVICES_MQTT_PASSWORD:-"mosquittopassword"}
 tlsfile: ${WM_SERVICES_CERTIFICATE_CHAIN:-"NOTSET"}
-unsecure_authentication: false
+unsecure_authentication: ${WM_SERVICES_ALLOW_UNSECURE:-false}
 gwid: ${WM_SERVICES_GATEWAY_ID:-"$RANDOM"}
 full_python: false
 gateway_model: ${WM_SERVICES_GATEWAY_MODEL:-"lxgw"}
