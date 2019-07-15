@@ -295,7 +295,7 @@ or specify which container you want to view the logs from with
 Wirepas Oy licensed under Apache License, Version 2.0 See file LICENSE for
 full license details.
 
-[here_img_overview]: https://github.com/wirepas/gateway/blob/update-readme/img/wm-gateway-overview.png
+[here_img_overview]: https://github.com/wirepas/gateway/tree/master/container/img/wm-gateway-overview.png
 [here_ci_docker_build]: https://github.com/wirepas/gateway/blob/master/.ci/build-images.sh
 [here_container]: https://github.com/wirepas/gateway/tree/master/container/
 [here_container_dockerfile]: https://github.com/wirepas/gateway/tree/master/container/Dockerfile
