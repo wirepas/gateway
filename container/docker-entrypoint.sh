@@ -44,6 +44,7 @@ then
     then
         echo "connecting to ${WM_SERVICES_HOST}"
         TARGET="wm-gw --settings ${TRANSPORT_SERVICE}/transport.yaml"
+        cat "${TRANSPORT_SERVICE}/transport.yaml"
     fi
 
     if [[ "${TARGET}" == "sink" ]]
@@ -55,7 +56,8 @@ then
     fi
 
     echo "Starting service: ${TARGET}"
-    exec "${TARGET}"
+    #shellcheck disable=SC2086
+    exec ${TARGET}
 else
     exec "$@"
 fi
