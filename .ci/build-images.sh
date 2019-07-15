@@ -2,7 +2,6 @@
 # Wirepas Oy
 
 set -e
-set -x
 
 export VERSION
 export BUILD_DATE
