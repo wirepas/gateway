@@ -237,10 +237,16 @@ The development folder builds an image based on the contents of the repository,
 whereas the other two folder will provide you a build for what is specified
 in the repo tool's manifest.
 
-To make a build change into the folder you wish and type:
+To make a development build type:
 
 ```bash
-   docker-compose build
+   docker-compose -f container/dev/docker-compose.yml build
+```
+
+If you want to build a stable image for x86 type:
+
+```bash
+   docker-compose -f container/stable/x86/docker-compose.yml build
 ```
 
 Alternatively you can use our [ci tool][here_ci_docker_build].
@@ -269,13 +275,13 @@ Please ensure that you define the correct password and MQTT credentials and
 launch the services with:
 
 ```shell
-    docker-compose up [-d]
+    IMAGE_NAME=wirepas/gateway-x86:edge docker-compose -f container/dev/docker-compose.yml up [-d]
 ```
 
 To view the logs, use
 
 ```shell
-    docker-compose logs
+    docker-compose -f container/dev/docker-compose.yml logs
 ```
 
 or specify which container you want to view the logs from with
