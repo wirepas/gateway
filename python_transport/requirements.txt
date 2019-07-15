@@ -1,5 +1,5 @@
 # wirepas
-wirepas_messaging==1.2.0rc2
+wirepas_messaging==1.2.0rc3
 
 # Wirepas Oy
 pydbus==0.6.0
