@@ -36,14 +36,14 @@ function generate_settings
     sed -i "/NOTSET/d" "${OUTPUT_PATH}"
 }
 
-generate_settings "${TRANSPORT_SERVICE}/transport.template" "${TRANSPORT_SERVICE}/transport.yaml"
+generate_settings "${TRANSPORT_SERVICE}/wm_transport_service.template" "${TRANSPORT_SERVICE}/wm_transport_service.yml"
 
 if [[ "${TARGET}" == "sink" || "${TARGET}" == "transport" ]]
 then
     if [[ "${TARGET}" == "transport" ]]
     then
         echo "connecting to ${WM_SERVICES_HOST}"
-        TARGET="wm-gw --settings ${TRANSPORT_SERVICE}/transport.yaml"
+        TARGET="wm-gw --settings ${TRANSPORT_SERVICE}/wm_transport_service.yml"
     fi
 
     if [[ "${TARGET}" == "sink" ]]

@@ -2,6 +2,7 @@
 # Wirepas Oy
 
 set -e
+set -x
 
 export VERSION
 export BUILD_DATE
@@ -19,7 +20,7 @@ BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 REGISTRY_NAME="wirepas"
 
 DOCKERFILE_PATH="./container"
-GIT_REPO_FOLDER="_repo"
+GIT_REPO_FOLDER="./.ci/_repo"
 BUILD_TAG=${TRAVIS_TAG:-}
 
 ##
@@ -31,10 +32,7 @@ function _build
     _ARCH=${2:-"x86"}
     _CACHE=${3:-}
 
-    CURRENT_PATH="$(pwd)"
-
     # build based on architecture
-    cd "${_PATH}"
     IMAGE_NAME="${REGISTRY_NAME}/gateway-${_ARCH}:${BUILD_TAG}"
 
     if [[ ${_ARCH} == "arm" ]]
@@ -48,10 +46,13 @@ function _build
         CROSS_BUILD_END_CMD=:
     fi
 
-    echo "building ${IMAGE_NAME} (from: ${DOCKER_BASE})"
+    echo "building ${_PATH}: ${IMAGE_NAME} (from: ${DOCKER_BASE})"
     #shellcheck disable=SC2086
-    docker-compose build ${_CACHE}
-    cd "${CURRENT_PATH}"
+    docker-compose -f "${_PATH}" \
+                   build ${_CACHE} \
+                   --compress \
+                   --parallel \
+
 }
 
 
@@ -61,6 +62,7 @@ function _fetch_dependencies
     GIT_MANIFEST_FILE=gateway.xml
     GIT_MANIFEST_URL=https://github.com/wirepas/manifest.git
     GIT_MANIFEST_BRANCH=master
+    _ROOT_PATH=$(pwd)
 
     rm -rf "${GIT_REPO_FOLDER}"
     mkdir "${GIT_REPO_FOLDER}"
@@ -72,7 +74,7 @@ function _fetch_dependencies
                --no-clone-bundle
     pipenv --rm
     pipenv run --two repo sync
-    cd ..
+    cd "${_ROOT_PATH}"
     cp -r "${GIT_REPO_FOLDER}/sink_service/" .
 }
 
@@ -87,16 +89,16 @@ function _main
     if [[ ! -z ${BUILD_TAG} ]]
     then
         GIT_MANIFEST_BRANCH=refs/tags/${BUILD_TAG}
-        _build "${DOCKERFILE_PATH}/arm" "arm" "--no-cache"
-        _build "${DOCKERFILE_PATH}/x86" "x86" "--no-cache"
+        _build "${DOCKERFILE_PATH}/arm/docker-compose.yml" "arm" "--no-cache"
+        _build "${DOCKERFILE_PATH}/x86/docker-compose.yml" "x86" "--no-cache"
     else
         BUILD_TAG="edge"
     fi
 
     # builds x86 and arm images based on top of current revision
     _fetch_dependencies
-    _build "${DOCKERFILE_PATH}/dev" "arm"
-    _build "${DOCKERFILE_PATH}/dev" "x86"
+    _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "arm"
+    _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "x86"
 }
 
 
