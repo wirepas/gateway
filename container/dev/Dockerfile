@@ -42,6 +42,7 @@ RUN pip3 install --upgrade pip
 RUN pip3 install --no-cache-dir -r "${TRANSPORT_SERVICE}/requirements.txt"
 RUN pip3 install --no-cache-dir ${WM_TRANSPORT_PKG}
 COPY --from=builder /app_build/container/common/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --from=builder /app_build/container/common/generate_settings.sh "${TRANSPORT_SERVICE}/generate_settings.sh"
 COPY --from=builder /app_build/container/common/wm_transport_service.template "${TRANSPORT_SERVICE}/wm_transport_service.template"
 RUN rm -rf "${WM_HOME}/.cache" \
     && chown "${WM_USER}":"${WM_USER}" -R "${WM_HOME}"
