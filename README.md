@@ -142,7 +142,6 @@ To get an exhausted list of parameters, please run:
     wm-gw --help
 ```
 
-
 #### From cmd line
 
 Here is an example to start the transport module from cmd line:
@@ -240,7 +239,7 @@ in the repo tool's manifest.
 To make a development build type:
 
 ```bash
-   docker-compose -f container/dev/docker-compose.yml build
+   [IMAGE_NAME=wirepas/gateway-x86:edge] docker-compose -f container/dev/docker-compose.yml build
 ```
 
 If you want to build a stable image for x86 type:
@@ -258,7 +257,6 @@ following registries:
 [wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
 [wirepas/gateway-rpi][dockerhub_wirepas_rpi]: arm/rpi architecture registry
 
-
 ## Starting docker services
 
 When running the gateway over docker, the composition will mount your host's
@@ -275,7 +273,7 @@ Please ensure that you define the correct password and MQTT credentials and
 launch the services with:
 
 ```shell
-    IMAGE_NAME=wirepas/gateway-x86:edge docker-compose -f container/dev/docker-compose.yml up [-d]
+   [IMAGE_NAME=wirepas/gateway-x86:edge] docker-compose -f container/dev/docker-compose.yml up [-d]
 ```
 
 To view the logs, use

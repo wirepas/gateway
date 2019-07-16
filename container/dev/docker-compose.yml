@@ -8,13 +8,13 @@ services:
 
     wm-sink:
         container_name: wm-sink
-        image: ${IMAGE_NAME}
+        image: ${IMAGE_NAME:-wirepas/gateway-x86:edge}
         build:
             context: ../..
             dockerfile: container/dev/Dockerfile
             args:
-                DOCKER_BASE: ${DOCKER_BASE}
-                IMAGE_NAME: ${IMAGE_NAME}
+                DOCKER_BASE: ${DOCKER_BASE:-wirepas/base:1.1-ubuntu}
+                IMAGE_NAME: ${IMAGE_NAME:-wirepas/gateway-x86:edge}
                 VERSION: ${VERSION:-"local"}
                 BUILD_DATE: ${BUILD_DATE}
                 CROSS_BUILD_START_CMD: ${CROSS_BUILD_START_CMD}
