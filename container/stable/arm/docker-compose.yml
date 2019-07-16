@@ -8,14 +8,17 @@ services:
 
     wm-sink:
         container_name: wm-sink
-        image: wirepas/gateway-x86
+        image: ${IMAGE_NAME:-wirepas/gateway-rpi:latest}
         build:
             context: ../..
-            dockerfile: container/x86/Dockerfile
+            dockerfile: container/Dockerfile
             args:
-                IMAGE_NAME: wirepas/gateway-x86
-                LXGW_VERSION: ${LXGW_VERSION:-"1.2.0-rc.1"}
+                IMAGE_NAME: ${IMAGE_NAME:-wirepas/gateway-rpi:latest}
+                VERSION: ${VERSION:-"1.2.0-rc.1"}
                 BUILD_DATE: ${BUILD_DATE:-"undefined"}
+                DOCKER_BASE: wirepas/base:1.1-raspbian
+                CROSS_BUILD_START_CMD: cross-build-start
+                CROSS_BUILD_END_CMD: cross-build-end
                 GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE:-gateway.xml}
                 GIT_MANIFEST_URL: ${GIT_MANIFEST_URL:-https://github.com/wirepas/manifest.git}
                 GIT_MANIFEST_BRANCH: ${GIT_MANIFEST_BRANCH:-master}
@@ -40,10 +43,9 @@ services:
 
     wm-transport:
         container_name: wm-transport
-        image: wirepas/gateway-x86
+        image: wirepas/gateway-rpi
 
         user: root
-        network_mode: host
         privileged: true
         stdin_open: true
         tty: true
@@ -51,6 +53,8 @@ services:
         restart: always
         env_file:
             - ../wm_gateway.env
+        environment:
+            - PYTHONUNBUFFERED=true
 
         volumes:
             - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
