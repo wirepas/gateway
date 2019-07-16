@@ -45,6 +45,23 @@ class ParserHelper(object):
 
     """
 
+    # These options are deprecated but might still be received through the
+    # settings file
+    _short_options = [
+        "s",
+        "p",
+        "u",
+        "pw",
+        "t",
+        "ua",
+        "i",
+        "fp",
+        "gm",
+        "gv",
+        "iepf",
+        "wepf",
+    ]
+
     def __init__(
         self,
         description="argument parser",
@@ -92,7 +109,10 @@ class ParserHelper(object):
                 settings = yaml.load(f, Loader=yaml.FullLoader)
                 arglist = list()
                 for key, value in settings.items():
-                    key = "--{}".format(key)
+                    if key in self._short_options:
+                        key = "-{}".format(key)
+                    else:
+                        key = "--{}".format(key)
                     arglist.append(key)
                     if value is True or value is False:
                         continue
