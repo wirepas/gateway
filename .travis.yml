@@ -37,8 +37,9 @@ deploy:
     - "${TRAVIS_BUILD_DIR}/${PYTHON_PKG_PATH}/CHANGELOG.md"
   skip_cleanup: true
   draft: ${GH_RELEASE_DRAFT} = true
-  name: "${GH_RELEASE_NAME}"
+  name: ${GH_RELEASE_NAME}
   body: ${GH_RELEASE_BODY}
+  prerelease: ${GH_RELEASE_CANDIDATE}
   on:
     tags: true
     branch: master
