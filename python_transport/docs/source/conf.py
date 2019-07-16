@@ -92,11 +92,13 @@ apidoc_separate_modules = True
 autodoc_mock_imports = [
     "gi",
     "gobject",
+    "yaml",
     "pydbus",
     "dbusCExtension",
     "setup",
     "google",
     "wirepas_messaging",
+    "yaml",
 ]
 
 
@@ -135,49 +137,6 @@ html_sidebars = {"**": ["about.html", "relations.html", "searchbox.html"]}
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = _name
-
-
-# -- Options for LaTeX output ------------------------------------------------
-
-latex_elements = {
-    # The paper size ('letterpaper' or 'a4paper').
-    #
-    "papersize": "a4paper",
-    # The font size ('10pt', '11pt' or '12pt').
-    #
-    "pointsize": "11pt",
-    # Additional stuff for the LaTeX preamble.
-    #
-    # 'preamble': '',
-    # Latex figure (float) alignment
-    #
-    # 'figure_align': 'htbp',
-}
-
-
-# -- Options for manual page output ------------------------------------------
-
-# One entry per manual page. List of tuples
-# (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, _project, _description, [_author], 1)]
-
-
-# -- Options for Texinfo output ----------------------------------------------
-
-# Grouping the document tree into Texinfo files. List of tuples
-# (source start file, target name, title, author,
-#  dir menu entry, description, category)
-texinfo_documents = [
-    (
-        master_doc,
-        "wirepasgatewaytransport",
-        _project,
-        _author,
-        _author,
-        _description,
-        _keywords,
-    )
-]
 
 
 # -- Extension configuration -------------------------------------------------
