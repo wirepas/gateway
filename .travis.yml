@@ -14,6 +14,7 @@ before_install:
   - sudo ./.ci/install-repo.sh
   - ./.ci/install-devtools.sh
   - pip3 install -r dev-requirements.txt
+  - pip3 install -r python_transport/docs/requirements.txt
   - ./.ci/style-check.sh
 
 script:
@@ -55,5 +56,5 @@ env:
   global:
     - PIPENV_VENV_IN_PROJECT=1
     - PIPENV_IGNORE_VIRTUALENVS=1
-    - PYTHON_PKG_PATH:-"python_transport"
-    - PYTHON_PKG_NAME:-"wirepas_gateway"
+    - PYTHON_PKG_PATH=python_transport
+    - PYTHON_PKG_NAME=wirepas_gateway
