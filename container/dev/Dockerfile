@@ -1,4 +1,10 @@
-FROM wirepas/base:1.1-ubuntu as builder
+ARG DOCKER_BASE=wirepas/base:1.1-ubuntu
+ARG CROSS_BUILD_START_CMD=:
+ARG CROSS_BUILD_END_CMD=:
+
+FROM ${DOCKER_BASE} as builder
+
+RUN ${CROSS_BUILD_START_CMD}
 
 COPY sink_service app_build/sink_service
 COPY python_transport app_build/python_transport
@@ -12,9 +18,10 @@ RUN cd /app_build/sink_service/ \
 
 RUN cd /app_build/python_transport/ \
     && ./utils/generate_wheel.sh
+RUN ${CROSS_BUILD_END_CMD}
 
-# builds x86 gateway services
-FROM wirepas/base:1.1-ubuntu as wm-lxgw
+FROM ${DOCKER_BASE} as wm-lxgw
+RUN ${CROSS_BUILD_START_CMD}
 USER root
 
 ENV SERVICE_HOME="${WM_HOME}"/gateway
@@ -34,17 +41,19 @@ COPY --from=builder /app_build/manifest "${SERVICE_HOME}/manifest"
 RUN pip3 install --upgrade pip
 RUN pip3 install --no-cache-dir -r "${TRANSPORT_SERVICE}/requirements.txt"
 RUN pip3 install --no-cache-dir ${WM_TRANSPORT_PKG}
-COPY --from=builder /app_build/container/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY --from=builder /app_build/container/transport.template "${TRANSPORT_SERVICE}/transport.template"
+COPY --from=builder /app_build/container/common/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --from=builder /app_build/container/common/generate_settings.sh "${TRANSPORT_SERVICE}/generate_settings.sh"
+COPY --from=builder /app_build/container/common/wm_transport_service.template "${TRANSPORT_SERVICE}/wm_transport_service.template"
 RUN rm -rf "${WM_HOME}/.cache" \
     && chown "${WM_USER}":"${WM_USER}" -R "${WM_HOME}"
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 WORKDIR ${WM_HOME}
+RUN ${CROSS_BUILD_END_CMD}
 USER ${WM_USER}
 CMD ["sink"]
 
-ARG LXGW_VERSION
+ARG VERSION
 ARG BUILD_DATE
 ARG IMAGE_NAME
 ARG GIT_MANIFEST_FILE
@@ -59,4 +68,4 @@ LABEL org.opencontainers.image.schema-version="1.0"
 LABEL org.opencontainers.image.title="Wirepas gateway"
 LABEL org.opencontainers.image.url="https://github.com/wirepas/gateway"
 LABEL org.opencontainers.image.vendor="Wirepas Ltd"
-LABEL org.opencontainers.image.version=${LXGW_VERSION}
+LABEL org.opencontainers.image.version=${VERSION}

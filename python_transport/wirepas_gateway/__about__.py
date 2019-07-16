@@ -7,7 +7,7 @@
 __author__ = "Wirepas Ltd"
 __author_email__ = "opensource@wirepas.com"
 __classifiers__ = [
-    "Development Status :: 5 - Stable",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Topic :: Software Development :: Libraries",
