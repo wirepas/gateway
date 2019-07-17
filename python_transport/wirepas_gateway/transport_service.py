@@ -545,10 +545,7 @@ def _update_parameters(settings, logger):
     _check_duplicate(settings, "gwid", "gateway_id", None, logger)
 
     if settings.gateway_id is None:
-        settings.gateway_id = getnode()
-
-    # Ensure gateway_id is a string as used as mqtt client_id
-    settings.gateway_id = str(settings.gateway_id)
+        settings.gateway_id = str(getnode())
 
     # Parse EP list that should not be published
     if settings.ignored_endpoints_filter is not None:
