@@ -253,7 +253,9 @@ We also have pre-built images available from docker hub under the
 following registries:
 
 [wirepas/gateway][dockerhub_wirepas]: multi architecture registry
+
 [wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
+
 [wirepas/gateway-rpi][dockerhub_wirepas_rpi]: arm/rpi architecture registry
 
 ## Starting docker services
