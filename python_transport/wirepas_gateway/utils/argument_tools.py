@@ -106,21 +106,29 @@ class ParserHelper(object):
             settings_class = Settings
 
         if self._arguments.settings:
-            with open(self._arguments.settings, "r") as f:
-                settings = yaml.load(f, Loader=yaml.FullLoader)
-                arglist = list()
-                for key, value in settings.items():
-                    if key in self._short_options:
-                        key = "-{}".format(key)
-                    else:
-                        key = "--{}".format(key)
+            arglist = list()
+            try:
+                with open(self._arguments.settings, "r") as f:
+                    settings = yaml.load(f, Loader=yaml.FullLoader)
+                    for key, value in settings.items():
+                        if key in self._short_options:
+                            key = "-{}".format(key)
+                        else:
+                            key = "--{}".format(key)
 
-                    # We assume that booleans are always handled with
-                    # store_true. This logic will fail otherwise.
-                    if value is False:
-                        continue
-                    arglist.append(key)
-                    arglist.append(str(value))
+                        # We assume that booleans are always handled with
+                        # store_true. This logic will fail otherwise.
+                        if value is False:
+                            continue
+                        arglist.append(key)
+                        arglist.append(str(value))
+            except FileNotFoundError as e:
+                # Cannot find the setting file
+                if self._arguments.settings == "settings.yml":
+                    # It is fine if it is the default file
+                    pass
+                else:
+                    raise e
 
             self._arguments, self._unknown_arguments = self.parser.parse_known_args(
                 arglist
