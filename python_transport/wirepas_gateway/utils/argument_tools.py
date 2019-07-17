@@ -247,7 +247,7 @@ class ParserHelper(object):
 
         self.mqtt.add_argument(
             "--mqtt_persist_session",
-            default=True,
+            default=False,
             action="store_true",
             help=(
                 "When False the broker will buffer "
