@@ -61,6 +61,7 @@ class ParserHelper(object):
         self,
         description="argument parser",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        version=None
     ):
         super(ParserHelper, self).__init__()
         self._parser = argparse.ArgumentParser(
@@ -70,6 +71,12 @@ class ParserHelper(object):
         self._groups = dict()
         self._unknown_arguments = None
         self._arguments = None
+
+        if version is not None:
+            self.main.add_argument(
+                "--version",
+                action="version",
+                version=version)
 
     @property
     def parser(self):

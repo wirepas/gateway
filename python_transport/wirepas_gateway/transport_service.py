@@ -20,6 +20,8 @@ from wirepas_messaging.gateway.api import (
     GatewayAPIParsingException,
 )
 
+from wirepas_gateway import __version__ as transport_version
+
 # This constant is the actual API level implemented by this transport module (cf WP-RM-128)
 IMPLEMENTED_API_VERSION = 1
 
@@ -36,6 +38,8 @@ class TransportService(BusClient):
     MAX_HOP_LIMIT = 15
 
     def __init__(self, settings, logger=None, **kwargs):
+        self.logger = logger or logging.getLogger(__name__)
+        self.logger.info("Version is: {}".format(transport_version))
 
         super(TransportService, self).__init__(
             logger=logger,
@@ -65,8 +69,6 @@ class TransportService(BusClient):
         )
 
         self.mqtt_wrapper.start()
-
-        self.logger = logger or logging.getLogger(__name__)
 
         self.logger.info("Gateway started with id: {}".format(self.gw_id))
 
@@ -613,7 +615,8 @@ def main():
 
     """
     ParserHelper()
-    parse = ParserHelper(description="Default arguments")
+    parse = ParserHelper(description="Default arguments",
+                         version=transport_version)
 
     parse.add_file_settings()
     parse.add_mqtt()
