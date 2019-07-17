@@ -9,15 +9,10 @@
         See file LICENSE for full license details.
 """
 
-
-import json
-import logging
 import argparse
-import datetime
-import time
 import yaml
 import ssl
-import pkg_resources
+import sys
 
 from .serialization_tools import serialize
 
@@ -100,39 +95,57 @@ class ParserHelper(object):
 
     def settings(self, settings_class=None, skip_undefined=True) -> "Settings":
         """ Reads an yaml settings file and puts it through argparse """
+
+        # Parse args from cmd line to see if a custom setting file is specified
         self._arguments = self.parser.parse_args()
 
-        if settings_class is None:
-            settings_class = Settings
+        try:
+            with open(self._arguments.settings, "r") as f:
+                settings = yaml.load(f, Loader=yaml.FullLoader)
+                arglist = list()
 
-        if self._arguments.settings:
-            arglist = list()
-            try:
-                with open(self._arguments.settings, "r") as f:
-                    settings = yaml.load(f, Loader=yaml.FullLoader)
-                    for key, value in settings.items():
-                        if key in self._short_options:
-                            key = "-{}".format(key)
-                        else:
-                            key = "--{}".format(key)
-
-                        # We assume that booleans are always handled with
-                        # store_true. This logic will fail otherwise.
-                        if value is False:
-                            continue
-                        arglist.append(key)
-                        arglist.append(str(value))
-            except FileNotFoundError as e:
-                # Cannot find the setting file
-                if self._arguments.settings == "settings.yml":
-                    # It is fine if it is the default file
-                    pass
+                arguments = sys.argv
+                if "python" in arguments[0]:
+                    argument_index = 1
                 else:
-                    raise e
+                    argument_index = 2
 
+                # Add the file parameters
+                for key, value in settings.items():
+                    if key in self._short_options:
+                        key = "-{}".format(key)
+                    else:
+                        key = "--{}".format(key)
+
+                    # We assume that booleans are always handled with
+                    # store_true. This logic will fail otherwise.
+                    if value is False:
+                        continue
+
+                    arglist.append(key)
+                    arglist.append(str(value))
+
+                # Add the cmd line parameters. They will override paramters from
+                # file if set in both places.
+                for arg in arguments[argument_index:]:
+                    arglist.append(arg)
+
+            # Override self._arguments as there are parameters from file
             self._arguments, self._unknown_arguments = self.parser.parse_known_args(
                 arglist
             )
+
+        except FileNotFoundError as e:
+            # Cannot find the setting file
+            if self._arguments.settings == "settings.yml":
+                # It is fine if it is the default file
+                # self._arguments already has the correct values
+                pass
+            else:
+                raise e
+
+        if settings_class is None:
+            settings_class = Settings
 
         settings = settings_class(self._arguments.__dict__)
 
