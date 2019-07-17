@@ -496,6 +496,7 @@ def parse_setting_list(list_setting):
 
         # Check if ep is a range
         try:
+            ep = ep.replace("\'","")
             lower, upper = ep.split("-")
             lower = int(lower)
             upper = int(upper)
