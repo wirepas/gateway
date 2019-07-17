@@ -19,7 +19,6 @@ apis involved at each step.
 
 **Figure 1 -** Gateway services overview.
 
-
 ## Cloning this repository
 
 This repository depends on two other projects, [c-mesh-api][wirepas_c_mesh_api]
@@ -288,11 +287,22 @@ or specify which container you want to view the logs from with
     docker logs [container-name]
 ```
 
+## Contributing
+
+We welcome your contributions!
+
+Please read the [instructions on how to do it][here_contribution]
+and please review our [code of conduct][here_code_of_conduct].
+
 ## License
 
-Wirepas Oy licensed under Apache License, Version 2.0 See file LICENSE for
+Wirepas Oy licensed under Apache License, Version 2.0 See file
+[LICENSE][here_license] for
 full license details.
 
+[here_contribution]: https://github.com/wirepas/gateway/blob/master/CONTRIBUTING.md
+[here_code_of_conduct]: https://github.com/wirepas/gateway/blob/master/CODE_OF_CONDUCT.md
+[here_license]: https://github.com/wirepas/gateway/blob/master/LICENSE
 [here_img_overview]: https://github.com/wirepas/gateway/blob/master/img/wm-gateway-overview.png?raw=true
 [here_ci_docker_build]: https://github.com/wirepas/gateway/blob/master/.ci/build-images.sh
 [here_container]: https://github.com/wirepas/gateway/tree/master/container/
