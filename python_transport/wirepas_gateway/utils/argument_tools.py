@@ -99,6 +99,7 @@ class ParserHelper(object):
         return self._unknown_arguments
 
     def settings(self, settings_class=None, skip_undefined=True) -> "Settings":
+        """ Reads an yaml settings file and puts it through argparse """
         self._arguments = self.parser.parse_args()
 
         if settings_class is None:
@@ -113,9 +114,12 @@ class ParserHelper(object):
                         key = "-{}".format(key)
                     else:
                         key = "--{}".format(key)
-                    arglist.append(key)
-                    if value is True or value is False:
+
+                    # We assume that booleans are always handled with
+                    # store_true. This logic will fail otherwise.
+                    if value is False:
                         continue
+                    arglist.append(key)
                     arglist.append(str(value))
 
             self._arguments, self._unknown_arguments = self.parser.parse_known_args(
