@@ -10,8 +10,8 @@ services:
         container_name: wm-sink
         image: ${IMAGE_NAME:-wirepas/gateway-x86:latest}
         build:
-            context: ../..
-            dockerfile: container/Dockerfile
+            context: ../../..
+            dockerfile: container/stable/Dockerfile
             args:
                 IMAGE_NAME: ${IMAGE_NAME:-wirepas/gateway-x86:latest}
                 VERSION: ${VERSION:-"1.2.0-rc.1"}
@@ -30,7 +30,7 @@ services:
 
         restart: always
         env_file:
-            - ../wm_gateway.env
+            - ../../wm_gateway.env
 
         volumes:
             - /dev:/dev
@@ -53,7 +53,7 @@ services:
 
         restart: always
         env_file:
-            - ../wm_gateway.env
+            - ../../wm_gateway.env
 
         volumes:
             - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket

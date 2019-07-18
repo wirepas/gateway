@@ -13,14 +13,18 @@ export CROSS_BUILD_END_CMD
 export GIT_MANIFEST_FILE
 export GIT_MANIFEST_URL
 export GIT_MANIFEST_BRANCH
+export LXGW_C_MESH_API_HASH
+export LXGW_SERVICES_HASH
 
-VERSION=$(< python_transport/wirepas_gateway/__init__.py awk '/__version__/{print $NF}'| tr -d '\"')
+SKIP_PULL=${1:-}
+
+VERSION=$(< python_transport/wirepas_gateway/__about__.py awk '/__version__/{print $NF}'| tr -d '\"')
 BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 REGISTRY_NAME="wirepas"
 
 DOCKERFILE_PATH="./container"
 GIT_REPO_FOLDER="./.ci/_repo"
-BUILD_TAG=${TRAVIS_TAG:-}
+BUILD_TAG=${BUILD_TAG:-$TRAVIS_TAG}
 
 ##
 ## @brief      Changes to the corresponding target and builds the image
@@ -63,6 +67,8 @@ function _fetch_dependencies
     GIT_MANIFEST_BRANCH=master
     _ROOT_PATH=$(pwd)
 
+    LXGW_SERVICES_HASH="$(git log -n1 --pretty=%h)"
+
     rm -rf "${GIT_REPO_FOLDER}"
     mkdir "${GIT_REPO_FOLDER}"
     cd "${GIT_REPO_FOLDER}"
@@ -73,6 +79,8 @@ function _fetch_dependencies
                --no-clone-bundle
     pipenv --rm
     pipenv run --two repo sync
+    cd "sink_service/"
+    LXGW_C_MESH_API_HASH="$(git log -n1 --pretty=%h)"
     cd "${_ROOT_PATH}"
     cp -r "${GIT_REPO_FOLDER}/sink_service/" .
 }
@@ -87,15 +95,18 @@ function _main
     # builds x86 and arm images based on manifest files
     if [[ ! -z ${BUILD_TAG} ]]
     then
-        GIT_MANIFEST_BRANCH=refs/tags/${BUILD_TAG}
-        _build "${DOCKERFILE_PATH}/arm/docker-compose.yml" "arm" "--no-cache"
-        _build "${DOCKERFILE_PATH}/x86/docker-compose.yml" "x86" "--no-cache"
+        GIT_MANIFEST_BRANCH=${BUILD_TAG}
+        _build "${DOCKERFILE_PATH}/stable/arm/docker-compose.yml" "arm" "--no-cache"
+        _build "${DOCKERFILE_PATH}/stable/x86/docker-compose.yml" "x86" "--no-cache"
     else
         BUILD_TAG="edge"
     fi
 
     # builds x86 and arm images based on top of current revision
-    _fetch_dependencies
+    if [[ -z ${SKIP_PULL} ]]
+    then
+        _fetch_dependencies
+    fi
     _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "arm"
     _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "x86"
 }
