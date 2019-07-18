@@ -23,6 +23,7 @@ script:
   - ./.ci/build.sh
   - ./.ci/build-images.sh
   - ./.ci/fetch-artifacts.sh
+  - .ci/test-template-generation.sh
   - pip3 install ./dist/${PYTHON_PKG_NAME}*linux_x86_64.whl
   - ./.ci/releases.sh
   - source releases.env
