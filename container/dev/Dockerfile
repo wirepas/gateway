@@ -6,6 +6,10 @@ ARG LXGW_SERVICES_HASH
 
 FROM ${DOCKER_BASE} as builder
 
+ARG DOCKER_BASE
+ARG LXGW_C_MESH_API_HASH
+ARG LXGW_SERVICES_HASH
+
 RUN ${CROSS_BUILD_START_CMD}
 
 COPY sink_service app_build/sink_service
@@ -14,8 +18,8 @@ COPY container app_build/container
 
 RUN echo "DOCKER_BASE=${DOCKER_BASE}" >> /app_build/manifest
 RUN cd /app_build/python_transport \
-    ./utils/generate_wheel.sh \
-    echo "LXGW_SERVICES_HASH=${LXGW_SERVICES_HASH}" >> /app_build/manifest \
+    && ./utils/generate_wheel.sh \
+    && echo "LXGW_SERVICES_HASH=${LXGW_SERVICES_HASH}" >> /app_build/manifest \
     && echo "LXGW_VERSION=$(< wirepas_gateway/__about__.py awk '/__version__/{print $NF}'| tr -d '\"')" >> /app_build/manifest
 
 RUN cd /app_build/sink_service \
