@@ -79,7 +79,7 @@ function _fetch_dependencies
                --no-clone-bundle
     pipenv --rm
     pipenv run --two repo sync
-    cd "sink_service/"
+    cd "sink_service/c-mesh-api"
     LXGW_C_MESH_API_HASH="$(git log -n1 --pretty=%h)"
     cd "${_ROOT_PATH}"
     cp -r "${GIT_REPO_FOLDER}/sink_service/" .

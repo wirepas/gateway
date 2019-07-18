@@ -30,10 +30,11 @@ RUN curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin
 RUN echo "DOCKER_BASE=${DOCKER_BASE}" >> /app_build/manifest
 
 RUN cd /app_build/sink_service/ \
-    && echo "LXGW_C_MESH_API_HASH=$(git log -n1 --pretty=%h)" >> /app_build/manifest \
     && make clean \
     && make \
-    && echo "LXGW_BUILD=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"  >> /app_build/manifest
+    && cd c-mesh-api \
+    && echo "LXGW_BUILD=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"  >> /app_build/manifest \
+    && echo "LXGW_C_MESH_API_HASH=$(git log -n1 --pretty=%h)" >> /app_build/manifest
 
 RUN cd /app_build/python_transport/ \
     && echo "LXGW_SERVICES_HASH=$(git log -n1 --pretty=%h)" >> /app_build/manifest \
