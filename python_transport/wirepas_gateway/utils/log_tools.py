@@ -16,7 +16,7 @@ import logging
 def setup_log(
     module,
     level="debug",
-    log_format="%(asctime)s | [%(levelname)s] %(name)s: %(message)s",
+    log_format="%(asctime)s | [%(levelname)s] %(name)s@%(filename)s:%(lineno)d:%(message)s",
 ):
     """
     Prepares logging.
