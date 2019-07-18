@@ -27,26 +27,34 @@ The [c-mesh-api][wirepas_c_mesh_api] contains the library used by the sink servi
 with the sink devices. The backend-apis contains api and message wrapper
 over the protocol buffers that are transmitted over MQTT.
 
-When cloning this repository and its dependencies you can opt for:
+To clone this repository please ensure you have the [repo tool][repo_tool]
+installed and type the following:
 
--   Using [repo tool][repo_tool]
-    and the [manifest repository][wirepas_manifest]
+```shell
+   repo init -u https://github.com/wirepas/manifest.git -m gateway.xml
+```
 
-    > repo init -u https://github.com/wirepas/manifest.git -m gateway.xml
+or for organization members and collaborators:
 
-    or
+```shell
+   repo init -u git@github.com:wirepas/manifest.git -m gateway.xml
+```
 
-    > repo init -u git@github.com:wirepas/manifest.git -m gateway.xml
+afterwards download the repositories with
 
-    afterwards download the repositories with
+```shell
+   repo sync
+```
 
-    > repo sync
+To clone a particular version branch, vX.Y.Z, please use repo's *-b*
+switch as follows:
 
-    To clone a particular tag, vX.Y.Z, please use repo's *-b* switch as follows
+```shell
+   repo init (...) -b refs/heads/vX.Y.Z
+```
 
-    > repo init (...) -b refs/tags/vX.Y.Z
-
-    Usage of repo is also documented in the release Dockerfiles (see [Dockerfile][here_container_dockerfile])
+Usage of repo is also documented in the release
+Dockerfiles (see [Dockerfile][here_container_dockerfile])
 
 ## Linux Requirements
 
