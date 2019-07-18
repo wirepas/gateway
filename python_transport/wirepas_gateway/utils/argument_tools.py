@@ -209,10 +209,7 @@ class ParserHelper(object):
             default=ssl.PROTOCOL_TLSv1_2,
             action="store",
             type=str,
-            help=(
-                "Specifies the version of the "
-                " SSL / TLS protocol to be used"
-            ),
+            help=("Specifies the version of the SSL / TLS protocol to be used"),
         )
 
         self.mqtt.add_argument(
@@ -242,23 +239,21 @@ class ParserHelper(object):
             "--mqtt_force_unsecure",
             default=False,
             action="store_true",
-            help=(
-                "When True the broker will skip "
-                "the TLS handshake"),
+            help=("When True the broker will skip the TLS handshake"),
         )
 
         self.mqtt.add_argument(
             "--mqtt_allow_untrusted",
             default=False,
             action="store_true",
-            help=(
-                "When true the client will skip "
-                "the TLS check"),
+            help=("When true the client will skip the TLS check"),
         )
 
     @staticmethod
     def _deprecated_message(new_arg_name):
-        return "Deprecated argument (It will be dropped from version 2.x onwards) please use --{} instead".format(new_arg_name)
+        return "Deprecated argument (It will be dropped from version 2.x onwards) please use --{} instead".format(
+            new_arg_name
+        )
 
     def add_deprecated_args(self):
         """ Deprecated mqtt arguments in order to keep backward compatibility """
@@ -267,7 +262,7 @@ class ParserHelper(object):
             "--host",
             default=None,
             type=str,
-            help=ParserHelper._deprecated_message("mqtt_hostname")
+            help=ParserHelper._deprecated_message("mqtt_hostname"),
         )
 
         self.deprecated.add_argument(
@@ -275,7 +270,7 @@ class ParserHelper(object):
             "--port",
             default=8883,
             type=int,
-            help=ParserHelper._deprecated_message("mqtt_port")
+            help=ParserHelper._deprecated_message("mqtt_port"),
         )
 
         self.deprecated.add_argument(
@@ -283,7 +278,7 @@ class ParserHelper(object):
             "--username",
             default=None,
             type=str,
-            help=ParserHelper._deprecated_message("mqtt_username")
+            help=ParserHelper._deprecated_message("mqtt_username"),
         )
 
         self.deprecated.add_argument(
@@ -291,14 +286,14 @@ class ParserHelper(object):
             "--password",
             default=None,
             type=str,
-            help=ParserHelper._deprecated_message("mqtt_password")
+            help=ParserHelper._deprecated_message("mqtt_password"),
         )
 
         self.deprecated.add_argument(
             "-t",
             "--tlsfile",
             default=None,
-            help=ParserHelper._deprecated_message("mqtt_certfile")
+            help=ParserHelper._deprecated_message("mqtt_certfile"),
         )
 
         self.deprecated.add_argument(
@@ -306,7 +301,7 @@ class ParserHelper(object):
             "--unsecure_authentication",
             default=False,
             action="store_true",
-            help=ParserHelper._deprecated_message("mqtt_force_unsecure")
+            help=ParserHelper._deprecated_message("mqtt_force_unsecure"),
         )
 
         self.deprecated.add_argument(
@@ -314,7 +309,7 @@ class ParserHelper(object):
             "--gwid",
             default=None,
             type=str,
-            help=ParserHelper._deprecated_message("gateway_id")
+            help=ParserHelper._deprecated_message("gateway_id"),
         )
 
     def add_gateway_config(self):
@@ -322,8 +317,7 @@ class ParserHelper(object):
             "--gateway_id",
             default=None,
             type=str,
-            help=(
-                "Id of the gateway. It must be unique on same broker")
+            help=("Id of the gateway. It must be unique on same broker"),
         )
 
         self.gateway.add_argument(
@@ -331,24 +325,15 @@ class ParserHelper(object):
             "--full_python",
             default=False,
             action="store_true",
-            help=(
-                "Do not use C extension for optimization")
+            help=("Do not use C extension for optimization"),
         )
 
         self.gateway.add_argument(
-            "-gm",
-            "--gateway_model",
-            default=None,
-            help=(
-                "Model name of the gateway")
+            "-gm", "--gateway_model", default=None, help=("Model name of the gateway")
         )
 
         self.gateway.add_argument(
-            "-gv",
-            "--gateway_version",
-            default=None,
-            help=(
-                "Version of the gateway")
+            "-gv", "--gateway_version", default=None, help=("Version of the gateway")
         )
 
     def add_filtering_config(self):
@@ -356,9 +341,7 @@ class ParserHelper(object):
             "-iepf",
             "--ignored_endpoints_filter",
             default=None,
-            help=(
-                "Destination endpoints list to ignore "
-                "(not published)")
+            help=("Destination endpoints list to ignore (not published)"),
         )
 
         self.filtering.add_argument(
@@ -367,7 +350,8 @@ class ParserHelper(object):
             default=None,
             help=(
                 "Destination endpoints list to whiten "
-                "(no payload content, only size)")
+                "(no payload content, only size)"
+            ),
         )
 
     def dump(self, path):

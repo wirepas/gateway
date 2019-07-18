@@ -26,13 +26,15 @@ class MQTTWrapper(Thread):
     # Reconnect timeout in Seconds
     TIMEOUT_RECONNECT_S = 120
 
-    def __init__(self,
-                 settings,
-                 logger,
-                 on_termination_cb=None,
-                 on_connect_cb=None,
-                 last_will_topic=None,
-                 last_will_data=None):
+    def __init__(
+        self,
+        settings,
+        logger,
+        on_termination_cb=None,
+        on_connect_cb=None,
+        last_will_topic=None,
+        last_will_data=None,
+    ):
         Thread.__init__(self)
         self.daemon = True
         self.running = False
@@ -49,24 +51,24 @@ class MQTTWrapper(Thread):
                     keyfile=settings.mqtt_keyfile,
                     cert_reqs=settings.mqtt_cert_reqs,
                     tls_version=settings.mqtt_tls_version,
-                    ciphers=settings.mqtt_ciphers
+                    ciphers=settings.mqtt_ciphers,
                 )
             except Exception as e:
-                self.logger.error(
-                    "Cannot use secure authentication {}"
-                    .format(e)
-                )
+                self.logger.error("Cannot use secure authentication {}".format(e))
                 exit(-1)
 
-        self._client.username_pw_set(settings.mqtt_username,
-                                     settings.mqtt_password)
+        self._client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
         self._client.on_connect = self._on_connect
 
         if last_will_topic is not None and last_will_data is not None:
             self._set_last_will(last_will_topic, last_will_data)
 
         try:
-            self._client.connect(settings.mqtt_hostname, settings.mqtt_port, keepalive=MQTTWrapper.KEEP_ALIVE_S)
+            self._client.connect(
+                settings.mqtt_hostname,
+                settings.mqtt_port,
+                keepalive=MQTTWrapper.KEEP_ALIVE_S,
+            )
         except (socket.gaierror, ValueError) as e:
             self.logger.error("Cannot connect to mqtt {}".format(e))
             exit(-1)
@@ -150,7 +152,11 @@ class MQTTWrapper(Thread):
                 self.logger.debug("Retrying to connect in 1 sec")
 
         if timeout <= 0:
-            self.logger.error("Unable to reconnect after {} seconds".format(MQTTWrapper.TIMEOUT_RECONNECT_S))
+            self.logger.error(
+                "Unable to reconnect after {} seconds".format(
+                    MQTTWrapper.TIMEOUT_RECONNECT_S
+                )
+            )
             return None
 
         # Socket must be available once reconnect is successful
