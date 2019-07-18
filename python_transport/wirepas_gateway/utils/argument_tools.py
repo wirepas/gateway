@@ -100,16 +100,9 @@ class ParserHelper(object):
         self._arguments = self.parser.parse_args()
 
         if self._arguments.settings is not None:
-
             with open(self._arguments.settings, "r") as f:
                 settings = yaml.load(f, Loader=yaml.FullLoader)
                 arglist = list()
-
-                arguments = sys.argv
-                if "python" in arguments[0]:
-                    argument_index = 1
-                else:
-                    argument_index = 2
 
                 # Add the file parameters
                 for key, value in settings.items():
@@ -124,8 +117,18 @@ class ParserHelper(object):
                         continue
 
                     arglist.append(key)
+
+                    # do not append True as the key is enough
+                    if value is True:
+                        continue
                     arglist.append(str(value))
 
+                arguments = sys.argv
+                argument_index = 1  # wm-gw
+                if "python" in arguments[0]:  # pythonX transport (...)
+                    if "-m" in arguments[1]:  # pythonX -m transport (...)
+                        argument_index += 1
+                    argument_index = +1
                 # Add the cmd line parameters. They will override
                 # parameters from file if set in both places.
                 for arg in arguments[argument_index:]:
