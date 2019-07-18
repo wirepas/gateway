@@ -289,7 +289,6 @@ class ParserHelper(object):
         ).format(deprecated_from, new_arg_name)
         return msg
 
-
     def add_deprecated_args(self):
         """ Deprecated mqtt arguments in order to keep backward compatibility """
         self.deprecated.add_argument(
