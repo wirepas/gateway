@@ -613,7 +613,7 @@ def main():
 
     """
     ParserHelper()
-    parse = ParserHelper(description="Default arguments")
+    parse = ParserHelper(description="Wirepas Gateway Transport service arguments")
 
     parse.add_file_settings()
     parse.add_mqtt()
@@ -627,7 +627,8 @@ def main():
         debug_level = os.environ["DEBUG_LEVEL"]
         print(
             "Deprecated environment variable DEBUG_LEVEL "
-            "(it will be removed from version 2.x onwards)"
+            "(it will be dropped from version 2.x onwards)"
+            " please use WM_DEBUG_LEVEL instead."
         )
     except KeyError:
         debug_level = "info"
