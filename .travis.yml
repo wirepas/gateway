@@ -13,6 +13,8 @@ before_install:
   - pip3 install pipenv
   - sudo ./.ci/install-repo.sh
   - ./.ci/install-devtools.sh
+
+install:
   - pip3 install -r dev-requirements.txt
   - pip3 install -r python_transport/docs/requirements.txt
   - ./.ci/style-check.sh
