@@ -23,6 +23,7 @@ from wirepas_messaging.gateway.api import (
 # This constant is the actual API level implemented by this transport module (cf WP-RM-128)
 IMPLEMENTED_API_VERSION = 1
 
+
 class TransportService(BusClient):
     """
     Implementation of gateway to backend protocol
@@ -34,12 +35,7 @@ class TransportService(BusClient):
     # Maximum hop limit to send a packet is limited to 15 by API (4 bits)
     MAX_HOP_LIMIT = 15
 
-    def __init__(
-        self,
-        settings,
-        logger=None,
-        **kwargs
-    ):
+    def __init__(self, settings, logger=None, **kwargs):
 
         super(TransportService, self).__init__(
             logger=logger,
@@ -56,7 +52,8 @@ class TransportService(BusClient):
 
         last_will_topic = TopicGenerator.make_status_topic(self.gw_id)
         last_will_message = wirepas_messaging.gateway.api.StatusEvent(
-            self.gw_id, GatewayState.OFFLINE).payload
+            self.gw_id, GatewayState.OFFLINE
+        ).payload
 
         self.mqtt_wrapper = MQTTWrapper(
             settings,
@@ -64,7 +61,7 @@ class TransportService(BusClient):
             self._on_mqtt_wrapper_termination_cb,
             self._on_connect,
             last_will_topic,
-            last_will_message
+            last_will_message,
         )
 
         self.mqtt_wrapper.start()
@@ -117,10 +114,14 @@ class TransportService(BusClient):
         self.mqtt_wrapper.subscribe(topic, self._on_otap_status_request_received)
 
         topic = TopicGenerator.make_otap_load_scratchpad_request_topic(self.gw_id)
-        self.mqtt_wrapper.subscribe(topic, self._on_otap_upload_scratchpad_request_received)
+        self.mqtt_wrapper.subscribe(
+            topic, self._on_otap_upload_scratchpad_request_received
+        )
 
         topic = TopicGenerator.make_otap_process_scratchpad_request_topic(self.gw_id)
-        self.mqtt_wrapper.subscribe(topic, self._on_otap_process_scratchpad_request_received)
+        self.mqtt_wrapper.subscribe(
+            topic, self._on_otap_process_scratchpad_request_received
+        )
 
         self._set_status()
 
@@ -220,6 +221,7 @@ class TransportService(BusClient):
         It creates a new Thread but it shouldn't impact the performances
         as requests are not supposed to be really frequent (few per seconds)
         """
+
         def wrapper(*args, **kwargs):
             thread = Thread(target=fn, args=args, kwargs=kwargs)
             thread.start()
@@ -496,7 +498,7 @@ def parse_setting_list(list_setting):
 
         # Check if ep is a range
         try:
-            ep = ep.replace("\'","")
+            ep = ep.replace("'", "")
             lower, upper = ep.split("-")
             lower = int(lower)
             upper = int(upper)
@@ -521,28 +523,37 @@ def _check_duplicate(args, old_param, new_param, default, logger):
         # Old param is set, check if new_param is also set
         if new_param_val == default:
             setattr(args, new_param, old_param_val)
-            logger.warning("Param {} is deprecated, please use {} instead"
-                           .format(old_param, new_param))
+            logger.warning(
+                "Param {} is deprecated, please use {} instead".format(
+                    old_param, new_param
+                )
+            )
         else:
-            logger.error("Param {} and {} cannot be set at the same time"
-                         .format(old_param, new_param))
+            logger.error(
+                "Param {} and {} cannot be set at the same time".format(
+                    old_param, new_param
+                )
+            )
             exit()
 
+
 def _update_parameters(settings, logger):
-    '''
+    """
     Function to handle the backward compatibility with old parameters name
     Args:
         settings: Full parameters
 
     Returns: None
-    '''
+    """
 
     _check_duplicate(settings, "host", "mqtt_hostname", None, logger)
     _check_duplicate(settings, "port", "mqtt_port", 8883, logger)
     _check_duplicate(settings, "username", "mqtt_username", None, logger)
     _check_duplicate(settings, "password", "mqtt_password", None, logger)
     _check_duplicate(settings, "tlsfile", "mqtt_certfile", None, logger)
-    _check_duplicate(settings, "unsecure_authentication", "mqtt_force_unsecure", False, logger)
+    _check_duplicate(
+        settings, "unsecure_authentication", "mqtt_force_unsecure", False, logger
+    )
     _check_duplicate(settings, "gwid", "gateway_id", None, logger)
 
     if settings.gateway_id is None:
@@ -551,8 +562,12 @@ def _update_parameters(settings, logger):
     # Parse EP list that should not be published
     if settings.ignored_endpoints_filter is not None:
         try:
-            settings.ignored_endpoints_filter = parse_setting_list(settings.ignored_endpoints_filter)
-            logger.debug("Ignored endpoints are: {}".format(settings.ignored_endpoints_filter))
+            settings.ignored_endpoints_filter = parse_setting_list(
+                settings.ignored_endpoints_filter
+            )
+            logger.debug(
+                "Ignored endpoints are: {}".format(settings.ignored_endpoints_filter)
+            )
         except SyntaxError as e:
             logger.error(
                 "Wrong format for ignored_endpoints_filter EP list ({})".format(e)
@@ -564,7 +579,9 @@ def _update_parameters(settings, logger):
             settings.whitened_endpoints_filter = parse_setting_list(
                 settings.whitened_endpoints_filter
             )
-            logger.debug("Whitened endpoints are: {}".format(settings.whitened_endpoints_filter))
+            logger.debug(
+                "Whitened endpoints are: {}".format(settings.whitened_endpoints_filter)
+            )
         except SyntaxError as e:
             logger.error(
                 "Wrong format for whitened_endpoints_filter EP list ({})".format(e)
@@ -580,8 +597,9 @@ def _check_parameters(settings, logger):
         exit()
 
     try:
-        if set(settings.ignored_endpoints_filter) &\
-                set(settings.whitened_endpoints_filter):
+        if set(settings.ignored_endpoints_filter) & set(
+            settings.whitened_endpoints_filter
+        ):
             logger.error("Some endpoints are both ignored and whitened")
             exit()
     except TypeError:
@@ -603,7 +621,7 @@ def main():
     parse.add_filtering_config()
     parse.add_deprecated_args()
 
-    settings = parse.settings(skip_undefined=False)
+    settings = parse.settings()
 
     try:
         debug_level = os.environ["DEBUG_LEVEL"]
@@ -617,10 +635,7 @@ def main():
 
     _check_parameters(settings, logger)
 
-    TransportService(
-        settings,
-        logger
-    ).run()
+    TransportService(settings, logger).run()
 
 
 if __name__ == "__main__":
