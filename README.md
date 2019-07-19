@@ -147,9 +147,9 @@ A sink service must be started for each connected sink on Gateway:
 
 Parameters are:
 
-- **uart_port:** uart port path (*default:* /dev/ttyACM0)
-- **bitrate:** bitrate of sink uart (*default:* 125000)
-- **sink_id:** value between 0 and 9 (*default:* 0).
+-   **uart_port:** uart port path (*default:* /dev/ttyACM0)
+-   **bitrate:** bitrate of sink uart (*default:* 125000)
+-   **sink_id:** value between 0 and 9 (*default:* 0).
 
 If multiple sinks are present, they must have a different *sink_id*.
 
