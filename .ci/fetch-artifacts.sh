@@ -7,7 +7,7 @@ rm -rf dist/ || true
 mkdir dist
 
 USERGROUP="$(id -u):$(id -g)"
-COMMAND="cp -v --no-preserve=ownership \${TRANSPORT_SERVICE}/wirepas_gateway-*.whl . \
+COMMAND="cp -v --no-preserve=ownership \${TRANSPORT_SERVICE}/wirepas_gateway-* . \
          && cp -v --no-preserve=ownership /usr/local/bin/sinkService . \
          && tar -czvf sinkService-\${ARCH}.tar.gz sinkService \
          && rm sinkService \
@@ -35,4 +35,4 @@ docker run \
         wirepas/gateway-arm:"${BUILD_TAG}" \
         bash -c "${COMMAND}"
 
-twine check dist/*
+twine check dist/wirepas_gateway*
