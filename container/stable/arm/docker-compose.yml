@@ -10,8 +10,8 @@ services:
         container_name: wm-sink
         image: ${IMAGE_NAME:-wirepas/gateway-rpi:latest}
         build:
-            context: ../..
-            dockerfile: container/Dockerfile
+            context: ../../..
+            dockerfile: container/stable/Dockerfile
             args:
                 IMAGE_NAME: ${IMAGE_NAME:-wirepas/gateway-rpi:latest}
                 VERSION: ${VERSION:-"1.2.0-rc.1"}
@@ -30,7 +30,7 @@ services:
 
         restart: always
         env_file:
-            - ../wm_gateway.env
+            - ../../wm_gateway.env
 
         volumes:
             - /dev:/dev
@@ -52,7 +52,7 @@ services:
 
         restart: always
         env_file:
-            - ../wm_gateway.env
+            - ../../wm_gateway.env
         environment:
             - PYTHONUNBUFFERED=true
 
