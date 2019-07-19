@@ -198,7 +198,7 @@ where:
         To filter out destination endpoints  1, 2, 10, 11, 12:
 
     ```shell
-        --ignored_endpoints_filter "\[1,2, 10-12\]"
+        --ignored_endpoints_filter "[1,2, 10-12]"
     ```
 
 -   **whitened_endpoints_filter:** destination endpoints list to whiten
@@ -207,7 +207,7 @@ where:
     *Example:*
         To whiten destination ep 1, 2, 10, 11, 12
     ```shell
-        --whitened_endpoints_filter "\[1,2, 10-12\]"
+        --whitened_endpoints_filter "[1,2, 10-12]"
     ```
 
 #### From configuration file
