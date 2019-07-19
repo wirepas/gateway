@@ -95,7 +95,7 @@ function _main
     # builds x86 and arm images based on manifest files
     if [[ ! -z ${BUILD_TAG} ]]
     then
-        GIT_MANIFEST_BRANCH=${BUILD_TAG}
+        GIT_MANIFEST_BRANCH=gateway/${BUILD_TAG}
         _build "${DOCKERFILE_PATH}/stable/arm/docker-compose.yml" "arm" "--no-cache"
         _build "${DOCKERFILE_PATH}/stable/x86/docker-compose.yml" "x86" "--no-cache"
     else
