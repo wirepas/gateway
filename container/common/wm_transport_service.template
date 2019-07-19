@@ -1,14 +1,25 @@
 # transport service template
 
-host: ${WM_SERVICES_HOST:-"host"}
-port: ${WM_SERVICES_MQTT_PORT:-"8883"}
-username: ${WM_SERVICES_MQTT_USER:-"mosquittouser"}
-password: ${WM_SERVICES_MQTT_PASSWORD:-"mosquittopassword"}
-tlsfile: ${WM_SERVICES_CERTIFICATE_CHAIN:-"NOTSET"}
-unsecure_authentication: ${WM_SERVICES_ALLOW_UNSECURE:-false}
-gwid: ${WM_SERVICES_GATEWAY_ID:-"$RANDOM"}
-full_python: false
+gateway_id: ${WM_SERVICES_GATEWAY_ID:-"$RANDOM"}
 gateway_model: ${WM_SERVICES_GATEWAY_MODEL:-"lxgw"}
 gateway_version: ${WM_SERVICES_GATEWAY_VERSION:-"dev"}
+
+mqtt_hostname: ${WM_SERVICES_HOST:-"host"}
+mqtt_port: ${WM_SERVICES_MQTT_PORT:-"8883"}
+mqtt_force_unsecure: ${WM_SERVICES_ALLOW_UNSECURE:-false}
+
+mqtt_username: ${WM_SERVICES_MQTT_USER:-"mosquittouser"}
+mqtt_password: ${WM_SERVICES_MQTT_PASSWORD:-"mosquittopassword"}
+
+mqtt_persist_session: ${WM_SERVICES_MQTT_PERSIST_SESSION:-"NOTSET"}
+
+mqtt_ca_certs: ${WM_SERVICES_CERTIFICATE_CHAIN:-"NOTSET"}
+
+mqtt_certfile: ${WM_SERVICES_TLS_CLIENT_CERTIFICATE:-"NOTSET"}
+mqtt_keyfile: ${WM_SERVICES_TLS_CLIENT_KEY:-"NOTSET"}
+mqtt_cert_reqs: ${WM_SERVICES_TLS_CERT_REQS:-"NOTSET"}
+mqtt_tls_version: ${WM_SERVICES_TLS_VERSION:-"NOTSET"}
+mqtt_ciphers: ${WM_SERVICES_TLS_CIPHERS:-"NOTSET"}
+
 ignored_endpoints_filter: ${WM_SERVICES_GATEWAY_IGNORED_ENDPOINTS_FILTER:-"NOTSET"}
 whitened_endpoints_filter: ${WM_SERVICES_GATEWAY_WHITENED_ENDPOINTS_FILTER:-"NOTSET"}
