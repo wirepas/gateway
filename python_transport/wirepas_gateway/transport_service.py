@@ -615,8 +615,7 @@ def main():
 
     """
     ParserHelper()
-    parse = ParserHelper(description="Default arguments",
-                         version=transport_version)
+    parse = ParserHelper(description="Default arguments", version=transport_version)
 
     parse.add_file_settings()
     parse.add_mqtt()
