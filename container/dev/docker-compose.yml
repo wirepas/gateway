@@ -22,6 +22,8 @@ services:
                 GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE}
                 GIT_MANIFEST_URL: ${GIT_MANIFEST_URL}
                 GIT_MANIFEST_BRANCH: ${GIT_MANIFEST_BRANCH}
+                LXGW_C_MESH_API_HASH: ${LXGW_C_MESH_API_HASH}
+                LXGW_SERVICES_HASH: ${LXGW_SERVICES_HASH}
 
         user: root
         privileged: true

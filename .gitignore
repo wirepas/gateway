@@ -32,3 +32,4 @@ dev-requirements.txt
 _repo/*
 python_transport/docs/source/api/
 container/wm_gateway.env
+container/common/wm_transport_service.yml

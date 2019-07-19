@@ -6,15 +6,15 @@ ARG GIT_MANIFEST_URL=https://github.com/wirepas/manifest.git
 ARG GIT_MANIFEST_BRANCH=master
 
 FROM ${DOCKER_BASE} as builder
-
+ARG DOCKER_BASE
 ARG GIT_MANIFEST_FILE
 ARG GIT_MANIFEST_URL
 ARG GIT_MANIFEST_BRANCH
-
 RUN ${CROSS_BUILD_START_CMD}
 
 # install git and initialize repo tool
 WORKDIR /app_build
+
 RUN apt-get update  \
     && apt-get install -y --no-install-recommends git curl python ssh \
     && rm -rf /var/lib/apt/lists/*
@@ -27,16 +27,21 @@ RUN curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin
                  --no-clone-bundle \
     && repo sync
 
+RUN echo "DOCKER_BASE=${DOCKER_BASE}" >> /app_build/manifest
+
 RUN cd /app_build/sink_service/ \
-    && echo "LXGW_C_MESH_API_HASH=$(git log -n1 --pretty=%h)" >> /app_build/manifest \
     && make clean \
     && make \
-    && echo "LXGW_BUILD=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"  >> /app_build/manifest
+    && cd c-mesh-api \
+    && echo "LXGW_BUILD=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"  >> /app_build/manifest \
+    && echo "LXGW_C_MESH_API_HASH=$(git log -n1 --pretty=%h)" >> /app_build/manifest
 
 RUN cd /app_build/python_transport/ \
     && echo "LXGW_SERVICES_HASH=$(git log -n1 --pretty=%h)" >> /app_build/manifest \
-    && echo "LXGW_VERSION=$(< wirepas_gateway/__init__.py awk '/__version__/{print $NF}'| tr -d '\"')" >> /app_build/manifest \
+    && echo "LXGW_VERSION=$(< wirepas_gateway/__about__.py awk '/__version__/{print $NF}'| tr -d '\"')" >> /app_build/manifest \
     && bash ./utils/generate_wheel.sh
+
+
 
 RUN ${CROSS_BUILD_END_CMD}
 
@@ -73,22 +78,24 @@ RUN ${CROSS_BUILD_END_CMD}
 WORKDIR ${WM_HOME}
 USER ${WM_USER}
 
-ARG VERSION
 ARG BUILD_DATE
+ARG DOCKER_BASE
 ARG IMAGE_NAME
 ARG GIT_MANIFEST_FILE
 ARG GIT_MANIFEST_URL
 ARG GIT_MANIFEST_BRANCH
+ARG VERSION
 
+LABEL com.wirepas.image.base="${DOCKER_BASE}"
 LABEL com.wirepas.source.manifest="${GIT_MANIFEST_URL}/${GIT_MANIFEST_FILE}#${GIT_MANIFEST_BRANCH}"
-LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.ref.name=${IMAGE_NAME}
+LABEL org.opencontainers.image.ref.name="${IMAGE_NAME}"
 LABEL org.opencontainers.image.schema-version="1.0"
 LABEL org.opencontainers.image.title="Wirepas gateway"
 LABEL org.opencontainers.image.url="https://github.com/wirepas/gateway"
 LABEL org.opencontainers.image.vendor="Wirepas Ltd"
-LABEL org.opencontainers.image.version=${VERSION}
+LABEL org.opencontainers.image.version="${VERSION}"
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["sink"]
