@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Wirepas Oy
 
+BUILD_TAG=${BUILD_TAG:-"edge"}
+
 rm -rf dist/ || true
 mkdir dist
 
@@ -19,7 +21,7 @@ docker run \
         -e ARCH="x86" \
         -w /data \
         -v "$(pwd)/dist":/data \
-        wirepas/gateway-x86:edge \
+        wirepas/gateway-x86:"${BUILD_TAG}" \
         bash -c "${COMMAND}"
 
 echo "fetching arm wheel"
@@ -30,5 +32,5 @@ docker run \
         -w /data \
         -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static \
         -v "$(pwd)/dist":/data \
-        wirepas/gateway-rpi:latest \
+        wirepas/gateway-arm:"${BUILD_TAG}" \
         bash -c "${COMMAND}"

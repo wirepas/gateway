@@ -15,6 +15,7 @@ export GIT_MANIFEST_URL
 export GIT_MANIFEST_BRANCH
 export LXGW_C_MESH_API_HASH
 export LXGW_SERVICES_HASH
+export BUILD_TAG
 
 SKIP_PULL=${1:-}
 
@@ -100,15 +101,17 @@ function _main
         _build "${DOCKERFILE_PATH}/stable/x86/docker-compose.yml" "x86" "--no-cache"
     else
         BUILD_TAG="edge"
+
+        # builds x86 and arm images based on top of current revision
+        if [[ -z ${SKIP_PULL} ]]
+        then
+            _fetch_dependencies
+        fi
+        _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "arm"
+        _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "x86"
     fi
 
-    # builds x86 and arm images based on top of current revision
-    if [[ -z ${SKIP_PULL} ]]
-    then
-        _fetch_dependencies
-    fi
-    _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "arm"
-    _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "x86"
+
 }
 
 
