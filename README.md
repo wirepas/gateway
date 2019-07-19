@@ -179,19 +179,19 @@ Here is an example to start the transport module from the command line:
 
 where:
 
--   **server:** Hostname or IP where the MQTT broker is located
+-   **mqtt_hostname:** Hostname or IP where the MQTT broker is located
 
--   **port:** MQTT port
+-   **mqtt_port:** MQTT port
 
--   **user:** MQTT user
+-   **mqtt_username:** MQTT user
 
--   **password:** MQTT password
+-   **mqtt_password:** MQTT password
 
--   **gwid:** the desired gateway id, instead of a random generated one.
+-   **gateway_id:** the desired gateway id, instead of a random generated one.
 
     > It must be unique for each gateway reporting to same broker.
 
--   **ignored endpoints list:** destination endpoints list to ignore
+-   **ignored_endpoints_filter:** destination endpoints list to ignore
                                (not published)
 
     *Example:*
@@ -201,7 +201,7 @@ where:
         --ignored_endpoints_filter "\[1,2, 10-12\]"
     ```
 
--   **whitened endpoints list:** destination endpoints list to whiten
+-   **whitened_endpoints_filter:** destination endpoints list to whiten
                                  (no payload content, only size)
 
     *Example:*
