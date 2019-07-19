@@ -52,6 +52,7 @@ deploy:
   password: ${PYPI_PWD}
   skip_existing: true
   skip_cleanup: true
+  distributions: "sdist bdist_wheel"
   on:
     tags: true
     branch: master
