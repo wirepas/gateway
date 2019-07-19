@@ -34,3 +34,5 @@ docker run \
         -v "$(pwd)/dist":/data \
         wirepas/gateway-arm:"${BUILD_TAG}" \
         bash -c "${COMMAND}"
+
+twine check dist/*
