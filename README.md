@@ -111,7 +111,7 @@ from com.wirepas.sink.conf:
     <policy user="wirepas">
 ```
 
-*It is recommended to restart your gateway once this file is copied*
+*It is recommended to restart your gateway once this file is copied.*
 
 ### Transport service
 
@@ -147,24 +147,24 @@ A sink service must be started for each connected sink on Gateway:
 
 Parameters are:
 
-- **uart_port:** uart port path (default /dev/ttyACM0)
-- **bitrate:** bitrate of sink uart (default 125000)
-- **sink_id:** value between 0 and 9 (default 0).
+- **uart_port:** uart port path (*default:* /dev/ttyACM0)
+- **bitrate:** bitrate of sink uart (*default:* 125000)
+- **sink_id:** value between 0 and 9 (*default:* 0).
 
-If multiple sinks are present, they must have a different sink_id
+If multiple sinks are present, they must have a different *sink_id*.
 
 ### Transport service configuration
 
-Parameters can be set from cmd line or from a setting file in YAML format.
-To get an exhausted list of parameters, please run:
+Parameters can be set from command line or from a setting file in YAML format.
+To get an the full list of parameters, please run:
 
 ```shell
     wm-gw --help
 ```
 
-#### From cmd line
+#### From command line
 
-Here is an example to start the transport module from cmd line:
+Here is an example to start the transport module from the command line:
 
 ```shell
     wm-gw \
@@ -179,9 +179,9 @@ Here is an example to start the transport module from cmd line:
 
 where:
 
--   **server:** IP or hostname where the MQTT broker is located
+-   **server:** Hostname or IP where the MQTT broker is located
 
--   **port:** MQTT port (default: 8883 (secure) or 1883 (local))
+-   **port:** MQTT port
 
 -   **user:** MQTT user
 
@@ -191,18 +191,24 @@ where:
 
     > It must be unique for each gateway reporting to same broker.
 
--   **ignored endpoints list:** Destination endpoints list to ignore (not published)
+-   **ignored endpoints list:** destination endpoints list to ignore
+                               (not published)
 
     *Example:*
+        To filter out destination endpoints  1, 2, 10, 11, 12:
 
-    > --ignored_endpoints_filter "\[1,2, 10-12\]" to filter out destination ep 1, 2, 10, 11, 12
+    ```shell
+        --ignored_endpoints_filter "\[1,2, 10-12\]"
+    ```
 
--   **whitened endpoints list:** Destination endpoints list to whiten
-              (no payload content, only size)
+-   **whitened endpoints list:** destination endpoints list to whiten
+                                 (no payload content, only size)
 
     *Example:*
-
-    > --whitened_endpoints_filter "\[1,2, 10-12\]" to whiten destination ep 1, 2, 10, 11, 12
+        To whiten destination ep 1, 2, 10, 11, 12
+    ```shell
+        --whitened_endpoints_filter "\[1,2, 10-12\]"
+    ```
 
 #### From configuration file
 
@@ -240,7 +246,7 @@ file is given below:
 ### Optional
 
 Launch local gateway process to see messages received from sinks at Dbus
-level. It can be launched from command line with:
+level. It can be launched from the command line with:
 
 ```shell
     wm-dbus-print
