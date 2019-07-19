@@ -10,7 +10,7 @@
 
 3.  get following attributes:
 
-````shell
+```shell
     ATTRS{serial} <serial>
     ATTRS{idProduct} <idProduct>
     ATTRS{idVendor} <idVendor>
@@ -19,7 +19,7 @@
 4.  create a file in /etc/udev/rules.d/99-usb-serial.rules containing:
 
 ```shell
-     SUBSYSTEM=="tty", ATTRS{idVendor}=="<idVendor>", ATTRS{idProduct}=="<idProduct>", ATTRS{serial}=="<serial>", SYMLINK+="your_sink_name"
+   SUBSYSTEM=="tty", ATTRS{idVendor}=="<idVendor>", ATTRS{idProduct}=="<idProduct>", ATTRS{serial}=="<serial>", SYMLINK+="your_sink_name"
 ```
 
 5.  sudo udevadm trigger

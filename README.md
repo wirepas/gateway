@@ -1,6 +1,6 @@
 # Wirepas Linux Gateway
 
-[![Build Status](https://travis-ci.com/wirepas/gateway.svg?branch=master)](https://travis-ci.com/wirepas/gateway) [![Documentation Status](https://readthedocs.org/projects/wirepas-gateway/badge/?version=latest)](https://wirepas-gateway.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.com/wirepas/gateway.svg?branch=master)](https://travis-ci.com/wirepas/gateway)
 
 This repository contains Wirepas' reference gateway implementation, which
 relies on a set of services to exchange data from/to a Wirepas Mesh network
@@ -19,35 +19,44 @@ apis involved at each step.
 
 **Figure 1 -** Gateway services overview.
 
-
 ## Cloning this repository
 
 This repository depends on two other projects, [c-mesh-api][wirepas_c_mesh_api]
 and [backend-apis][wirepas_backend_apis].
-The [c-mesh-api][wirepas_c_mesh_api] contains the library used by the sink service, which interfaces
+
+The [c-mesh-api][wirepas_c_mesh_api] contains the library used by the sink
+service, which interfaces
 with the sink devices. The backend-apis contains api and message wrapper
 over the protocol buffers that are transmitted over MQTT.
 
-When cloning this repository and its dependencies you can opt for:
+To clone this repository please ensure you have the [repo tool][repo_tool]
+installed and type the following:
 
--   Using [repo tool][repo_tool]
-    and the [manifest repository][wirepas_manifest]
+```shell
+    repo init -u https://github.com/wirepas/manifest.git -m gateway.xml
+```
 
-    > repo init -u https://github.com/wirepas/manifest.git -m gateway.xml
+or for organization members and collaborators:
 
-    or
+```shell
+    repo init -u git@github.com:wirepas/manifest.git -m gateway.xml
+```
 
-    > repo init -u git@github.com:wirepas/manifest.git -m gateway.xml
+afterwards download the repositories with
 
-    afterwards download the repositories with
+```shell
+    repo sync
+```
 
-    > repo sync
+To clone a particular version branch, vX.Y.Z, please use repo's *-b*
+switch as follows:
 
-    To clone a particular tag, vX.Y.Z, please use repo's *-b* switch as follows
+```shell
+    repo init (...) -b refs/heads/vX.Y.Z
+```
 
-    > repo init (...) -b refs/tags/vX.Y.Z
-
-    Usage of repo is also documented in the release Dockerfiles (see [Dockerfile][here_container_dockerfile])
+Usage of repo is also documented in the release
+Dockerfiles (see [Dockerfile][here_container_dockerfile])
 
 ## Linux Requirements
 
@@ -102,20 +111,29 @@ from com.wirepas.sink.conf:
     <policy user="wirepas">
 ```
 
-*It is recommended to restart your gateway once this file is copied*
+*It is recommended to restart your gateway once this file is copied.*
 
 ### Transport service
 
-Transport service is implemented in python 3 and
-is delivered as a Python wheel and a python tar.gz archive.
-tar.gz is used for the gateway part as it includes Python c extension that must
-be built at installation time.
+Transport service is implemented in python 3 and is delivered as a
+Python wheel, either through [PyPi][wirepas_gateway_pypi] or the
+[release section of this repository][here_releases].
+
+The library contains a c extension which will be compile upon installation.
+Please ensure that you have met all the build requirements prior to
+attempting the installation with:
 
 ```shell
     pip3 install wirepas_messaging-*.whl
+```
+or
 
+```shell
     pip3 install wirepas_gateway-*.tar.gz
 ```
+
+If you wish to build the wheel yourself, please refer to the
+[transport's service readme file][here_transport_readme].
 
 ## Configuration and starting services
 
@@ -123,28 +141,30 @@ be built at installation time.
 
 A sink service must be started for each connected sink on Gateway:
 
-sink_service/build/sinkService -p <uart_port> -b <bitrate> -i <sink_id>
+```shell
+    sink_service/build/sinkService -p <uart_port> -b <bitrate> -i <sink_id>
+```
 
 Parameters are:
 
-- **uart_port:** uart port path (default /dev/ttyACM0)
-- **bitrate:** bitrate of sink uart (default 125000)
-- **sink_id:** value between 0 and 9 (default 0).
+-   **uart_port:** uart port path (*default:* /dev/ttyACM0)
+-   **bitrate:** bitrate of sink uart (*default:* 125000)
+-   **sink_id:** value between 0 and 9 (*default:* 0).
 
-If multiple sinks are present, they must have a different sink_id
+If multiple sinks are present, they must have a different *sink_id*.
 
 ### Transport service configuration
 
-Parameters can be set from cmd line or from a setting file in YAML format.
-To get an exhausted list of parameters, please run:
+Parameters can be set from command line or from a setting file in YAML format.
+To get an the full list of parameters, please run:
 
 ```shell
     wm-gw --help
 ```
 
-#### From cmd line
+#### From command line
 
-Here is an example to start the transport module from cmd line:
+Here is an example to start the transport module from the command line:
 
 ```shell
     wm-gw \
@@ -159,30 +179,36 @@ Here is an example to start the transport module from cmd line:
 
 where:
 
--   **server:** IP or hostname where the MQTT broker is located
+-   **mqtt_hostname:** Hostname or IP where the MQTT broker is located
 
--   **port:** MQTT port (default: 8883 (secure) or 1883 (local))
+-   **mqtt_port:** MQTT port
 
--   **user:** MQTT user
+-   **mqtt_username:** MQTT user
 
--   **password:** MQTT password
+-   **mqtt_password:** MQTT password
 
--   **gwid:** the desired gateway id, instead of a random generated one.
+-   **gateway_id:** the desired gateway id, instead of a random generated one.
 
     > It must be unique for each gateway reporting to same broker.
 
--   **ignored endpoints list:** Destination endpoints list to ignore (not published)
+-   **ignored_endpoints_filter:** destination endpoints list to ignore
+                               (not published)
 
     *Example:*
+        To filter out destination endpoints  1, 2, 10, 11, 12:
 
-    > --ignored_endpoints_filter "\[1,2, 10-12\]" to filter out destination ep 1, 2, 10, 11, 12
+    ```shell
+        --ignored_endpoints_filter "[1,2, 10-12]"
+    ```
 
--   **whitened endpoints list:** Destination endpoints list to whiten
-              (no payload content, only size)
+-   **whitened_endpoints_filter:** destination endpoints list to whiten
+                                 (no payload content, only size)
 
     *Example:*
-
-    > --whitened_endpoints_filter "\[1,2, 10-12\]" to whiten destination ep 1, 2, 10, 11, 12
+        To whiten destination ep 1, 2, 10, 11, 12
+    ```shell
+        --whitened_endpoints_filter "[1,2, 10-12]"
+    ```
 
 #### From configuration file
 
@@ -195,32 +221,32 @@ through the settings file. An example of a *settings_file.yml*
 file is given below:
 
 ```yaml
-      #
-      # MQTT brocker Settings
-      #
-      mqtt_hostname: <IP or hostname where the MQTT broker is located>
-      mqtt_port: <MQTT port (default: 8883 (secure) or 1883 (local))>
-      mqtt_username: <MQTT user>
-      mqtt_password: <MQTT password>
+    #
+    # MQTT brocker Settings
+    #
+    mqtt_hostname: <IP or hostname where the MQTT broker is located>
+    mqtt_port: <MQTT port (default: 8883 (secure) or 1883 (local))>
+    mqtt_username: <MQTT user>
+    mqtt_password: <MQTT password>
 
-      #
-      # Gateway settings
-      #
-      gateway_id: <the desired gateway id, must be unique for each gateway>
-      gateway_model: <Custom gateway model, can be omitted>
-      gateway_version: <Custom gateway version, can be omitted>
+    #
+    # Gateway settings
+    #
+    gateway_id: <the desired gateway id, must be unique for each gateway>
+    gateway_model: <Custom gateway model, can be omitted>
+    gateway_version: <Custom gateway version, can be omitted>
 
-      #
-      # Filtering Destination Endpoints
-      #
-      ignored_endpoints_filter: <Endpoints to filter out. Ex: [1, 2, 10-12]>
-      whitened_endpoints_filter: <Endpoints to whiten. Ex: [1, 2, 10-12]>
+    #
+    # Filtering Destination Endpoints
+    #
+    ignored_endpoints_filter: <Endpoints to filter out. Ex: [1, 2, 10-12]>
+    whitened_endpoints_filter: <Endpoints to whiten. Ex: [1, 2, 10-12]>
 ```
 
 ### Optional
 
-Launch local gateway process to see messages received from sinks at Dbus level
-It can be launched from command line:
+Launch local gateway process to see messages received from sinks at Dbus
+level. It can be launched from the command line with:
 
 ```shell
     wm-dbus-print
@@ -239,13 +265,13 @@ in the repo tool's manifest.
 To make a development build type:
 
 ```bash
-   [IMAGE_NAME=wirepas/gateway-x86:edge] docker-compose -f container/dev/docker-compose.yml build
+    [IMAGE_NAME=wirepas/gateway-x86:edge] docker-compose -f container/dev/docker-compose.yml build
 ```
 
 If you want to build a stable image for x86 type:
 
 ```bash
-   docker-compose -f container/stable/x86/docker-compose.yml build
+    docker-compose -f container/stable/x86/docker-compose.yml build
 ```
 
 Alternatively you can use our [ci tool][here_ci_docker_build].
@@ -254,7 +280,9 @@ We also have pre-built images available from docker hub under the
 following registries:
 
 [wirepas/gateway][dockerhub_wirepas]: multi architecture registry
+
 [wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
+
 [wirepas/gateway-rpi][dockerhub_wirepas_rpi]: arm/rpi architecture registry
 
 ## Starting docker services
@@ -265,15 +293,19 @@ between both services. For that reason you will have to copy the
 [dbus manifest][here_dbus_manifest] to your host's and change the policy
 user to reflect what is used within the docker-compose.
 
-After configuring your host's dbus, review the [service settings file.][here_container_env]
-The environment parameters will be evaluated by the [container's entry point][here_container_entrypoint]
+After configuring your host's dbus, review the
+[environment file][here_container_env] where you can define settings for the
+sink and transport service.
+
+The environment parameters will be evaluated by
+the [container's entry point][here_container_entrypoint]
 and passed on to the sink and transport service.
 
 Please ensure that you define the correct password and MQTT credentials and
 launch the services with:
 
 ```shell
-   [IMAGE_NAME=wirepas/gateway-x86:edge] docker-compose -f container/dev/docker-compose.yml up [-d]
+    [IMAGE_NAME=wirepas/gateway-x86:edge] docker-compose -f container/dev/docker-compose.yml up [-d]
 ```
 
 To view the logs, use
@@ -288,23 +320,37 @@ or specify which container you want to view the logs from with
     docker logs [container-name]
 ```
 
+## Contributing
+
+We welcome your contributions!
+
+Please read the [instructions on how to do it][here_contribution]
+and please review our [code of conduct][here_code_of_conduct].
+
 ## License
 
-Wirepas Oy licensed under Apache License, Version 2.0 See file LICENSE for
-full license details.
+Wirepas Oy licensed under Apache License, Version 2.0 See file
+[LICENSE][here_license] for full license details.
 
+[here_contribution]: https://github.com/wirepas/gateway/blob/master/CONTRIBUTING.md
+[here_code_of_conduct]: https://github.com/wirepas/gateway/blob/master/CODE_OF_CONDUCT.md
+[here_license]: https://github.com/wirepas/gateway/blob/master/LICENSE
 [here_img_overview]: https://github.com/wirepas/gateway/blob/master/img/wm-gateway-overview.png?raw=true
 [here_ci_docker_build]: https://github.com/wirepas/gateway/blob/master/.ci/build-images.sh
+[here_releases]: https://github.com/wirepas/gateway/releases
 [here_container]: https://github.com/wirepas/gateway/tree/master/container/
 [here_container_dockerfile]: https://github.com/wirepas/gateway/tree/master/container/Dockerfile
 [here_container_env]: https://github.com/wirepas/gateway/tree/master/container/wm_gateway.env
 [here_dbus_manifest]: https://github.com/wirepas/gateway/blob/master/sink_service/com.wirepas.sink.conf
 [here_container_entrypoint]: https://github.com/wirepas/gateway/blob/master/container/docker-entrypoint.sh
+[here_transport_readme]: https://github.com/wirepas/gateway/blob/master/python_transport/README.md
 
 [repo_tool]: https://source.android.com/setup/develop/repo
+
 [wirepas_manifest]: https://github.com/wirepas/manifest
 [wirepas_c_mesh_api]: https://github.com/wirepas/c-mesh-api
 [wirepas_backend_apis]: https://github.com/wirepas/backend-client
+[wirepas_gateway_pypi]: https://pypi.org/project/wirepas-gateway
 
 [dockerhub_wirepas]: https://hub.docker.com/r/wirepas/gateway
 [dockerhub_wirepas_x86]: https://hub.docker.com/r/wirepas/gateway-x86
