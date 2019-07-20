@@ -53,6 +53,12 @@ deploy:
     tags: true
     branch: master
 
+- provider: script
+  script: bash .ci/deploy-docker.sh
+  on:
+    tags: true
+    branch: master
+
 env:
   global:
     - PIPENV_VENV_IN_PROJECT=1
