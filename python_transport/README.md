@@ -33,7 +33,6 @@ To install this package run (use -e for development mode)
    pip install \[-e\] .
 ```
 
-
 ## Running inside a virtual environment
 
 When running inside a virtual environment you will need to provide access
@@ -44,8 +43,14 @@ If you opt to install [vext][vext], please install the
 [PyGObject][pygobject] module with:
 
 ```shell
-   pip install vext
-   pip install vext.gi
+   pip install vext vext.gi
+```
+
+You also need to ensure that the following packages are installed inside
+the virtual environment (as well as their system dependencies):
+
+```shell
+   pip install pygobject gobject
 ```
 
 ## Starting the service
