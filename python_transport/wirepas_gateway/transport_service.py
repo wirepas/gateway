@@ -614,8 +614,10 @@ def main():
         Main service for transport module
 
     """
-    ParserHelper()
-    parse = ParserHelper(description="Wirepas Gateway Transport service arguments")
+    parse = ParserHelper(
+        description="Wirepas Gateway Transport service arguments",
+        version=transport_version,
+    )
 
     parse.add_file_settings()
     parse.add_mqtt()
@@ -625,6 +627,8 @@ def main():
 
     settings = parse.settings()
 
+    # Set default debug level
+    debug_level = "info"
     try:
         debug_level = os.environ["DEBUG_LEVEL"]
         print(
@@ -633,12 +637,12 @@ def main():
             " please use WM_DEBUG_LEVEL instead."
         )
     except KeyError:
-        debug_level = "info"
+        pass
 
     try:
         debug_level = os.environ["WM_DEBUG_LEVEL"]
     except KeyError:
-        debug_level = "info"
+        pass
 
     logger = setup_log("transport_service", level=debug_level)
 
