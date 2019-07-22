@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 
 from wirepas_gateway.dbus.dbus_client import BusClient
-from wirepas_gateway.utils import setup_log
+from wirepas_gateway.utils import LoggerHelper
 
 
 class PrintClient(BusClient):
@@ -59,7 +59,9 @@ def main(log_name="print_client"):
     except KeyError:
         debug_level = "info"
 
-    logger = setup_log(log_name, level=debug_level)
+    log = LoggerHelper(module_name=__name__, level=debug_level)
+    logger = log.setup()
+
     obj = PrintClient()
     obj.logger = logger
     obj.run()
