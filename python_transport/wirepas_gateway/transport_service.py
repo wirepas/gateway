@@ -13,7 +13,7 @@ from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
 from wirepas_gateway.utils import ParserHelper
-from wirepas_gateway.utils import setup_log
+from wirepas_gateway.utils import LoggerHelper
 from wirepas_messaging.gateway.api import (
     GatewayResultCode,
     GatewayState,
@@ -644,14 +644,15 @@ def main():
     except KeyError:
         pass
 
-    logger = setup_log("transport_service", level=debug_level)
+    log = LoggerHelper(module_name=__name__, level=debug_level)
+    logger = log.setup()
 
     _update_parameters(settings, logger)
     # after this stage, mqtt deprecated argument cannot be used
 
     _check_parameters(settings, logger)
 
-    TransportService(settings, logger).run()
+    TransportService(settings=settings, logger=logger).run()
 
 
 if __name__ == "__main__":
