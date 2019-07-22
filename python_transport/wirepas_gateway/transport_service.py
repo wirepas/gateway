@@ -614,7 +614,6 @@ def main():
         Main service for transport module
 
     """
-    ParserHelper()
     parse = ParserHelper(
         description="Wirepas Gateway Transport service arguments",
         version=transport_version,
