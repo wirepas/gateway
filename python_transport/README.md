@@ -30,7 +30,7 @@ environment such as [virtualenv][virtualenv] or [pipenv][pipenv].
 To install this package run (use -e for development mode)
 
 ```shell
-   pip install \[-e\] .
+   pip install [-e] .
 ```
 
 ## Running inside a virtual environment
