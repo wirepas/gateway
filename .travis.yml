@@ -13,23 +13,21 @@ before_install:
   - pip3 install pipenv
   - sudo ./.ci/install-repo.sh
   - ./.ci/install-devtools.sh
-
-install:
   - pip3 install -r dev-requirements.txt
   - pip3 install -r python_transport/docs/requirements.txt
   - ./.ci/style-check.sh
-
-script:
   - ./.ci/build.sh
   - ./.ci/build-images.sh
   - ./.ci/fetch-artifacts.sh
-  - .ci/test-template-generation.sh
+
+install:
   - pip3 install ./dist/${PYTHON_PKG_NAME}*linux_x86_64.whl
+
+script:
+  - ./.ci/test-template-generation.sh
   - ./.ci/releases.sh
   - source releases.env
-
-before_deploy:
-  - github_changelog_generator -t "${GH_TOKEN}"
+  - echo ${BUILD_TAG}
 
 deploy:
 - provider: releases

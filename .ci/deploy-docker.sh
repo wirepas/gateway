@@ -11,6 +11,12 @@ DOCKER_PASSWORD=${DOCKER_PASSWORD}
 DOCKER_ORG=${DOCKER_ORG:-"wirepas"}
 DOCKER_IMAGE=${DOCKER_IMAGE:-"gateway"}
 
+
+function _remove_manifest()
+{
+    rm -rf ~/.docker/manifests/docker.io_wirepas_gateway*/ || true
+}
+
 function _push
 {
     _TAG=${1}
@@ -36,16 +42,25 @@ function _create_manifest()
                              --arch arm
 }
 
+function _tag_latest()
+{
+    docker tag wirepas/gateway-x86:"${_TAG}" wirepas/gateway-x86:latest
+    docker tag wirepas/gateway-arm:"${_TAG}" wirepas/gateway-arm:latest
+}
+
 
 function _main()
 {
     echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
 
+    _remove_manifest
     _create_manifest "${DOCKER_TAG}"
     _push "${DOCKER_TAG}"
 
     if [[ "${IS_RELEASE}" != "false" ]]
     then
+        _remove_manifest
+        _tag_latest
         _create_manifest "latest"
         _push "latest"
     fi
