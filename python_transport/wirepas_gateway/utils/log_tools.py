@@ -91,7 +91,9 @@ class LoggerHelper(object):
         # it will limit the input of this handler.
         try:
             level = "{0}".format(value.upper())
-            self._handlers["stderr"].setLevel(eval("logging.{0}".format(level)))
+            self._handlers["stderr"].setLevel(
+                ast.literal_eval("logging.{0}".format(level))
+            )
         except Exception:
             self._handlers["stderr"].setLevel(logging.ERROR)
         self._logger.addHandler(self._handlers["stderr"])
@@ -133,7 +135,7 @@ class LoggerHelper(object):
 
     def close(self):
         """ Attempts to close log handlers """
-        for name, handler in self._handlers.items():
+        for _, handler in self._handlers.items():
             try:
                 handler.close()
             except Exception as err:
