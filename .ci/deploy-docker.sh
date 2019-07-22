@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Wirepas Oy
 
+set -e
+
 export DOCKER_CLI_EXPERIMENTAL=enabled
 
 DOCKER_TAG=${TRAVIS_TAG:-"edge"}
@@ -24,7 +26,7 @@ function _push
     # push images and manifest
     docker push wirepas/gateway-x86:"${_TAG}"
     docker push wirepas/gateway-arm:"${_TAG}"
-    docker push wirepas/gateway:"${_TAG}"
+    docker manifest push wirepas/gateway:"${_TAG}"
 }
 
 function _create_manifest()
@@ -51,19 +53,26 @@ function _tag_latest()
 
 function _main()
 {
+    echo "Preparing manifest for ${DOCKER_TAG}"
     echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
 
+    echo "Removing manifest"
     _remove_manifest
+
+    echo "Creating manifest for ${DOCKER_TAG}"
     _create_manifest "${DOCKER_TAG}"
     _push "${DOCKER_TAG}"
 
-    if [[ "${IS_RELEASE}" != "false" ]]
+    if [[ "${IS_RELEASE}" != "false" &&  "${DOCKER_TAG}" != *"rc"* && "${DOCKER_TAG}" != *"dev"* ]]
     then
+        echo "Creating and updating latest tag"
         _remove_manifest
         _tag_latest
         _create_manifest "latest"
         _push "latest"
     fi
+
+    docker logout
 }
 
 _main "$@"
