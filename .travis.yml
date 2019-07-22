@@ -27,7 +27,6 @@ script:
   - ./.ci/test-template-generation.sh
   - ./.ci/releases.sh
   - source releases.env
-  - echo ${BUILD_TAG}
 
 deploy:
 - provider: releases
