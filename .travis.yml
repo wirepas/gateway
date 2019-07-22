@@ -15,10 +15,12 @@ before_install:
   - ./.ci/install-devtools.sh
   - pip3 install -r dev-requirements.txt
   - pip3 install -r python_transport/docs/requirements.txt
+  - pip3 install --user --upgrade twine
   - ./.ci/style-check.sh
   - ./.ci/build.sh
   - ./.ci/build-images.sh
   - ./.ci/fetch-artifacts.sh
+
 
 install:
   - pip3 install ./dist/${PYTHON_PKG_NAME}*linux_x86_64.whl
