@@ -10,6 +10,7 @@ jobs:
 before_install:
   - sudo apt-get install build-essential libsystemd-dev dbus qemu-user-static
   - sudo gem install github_changelog_generator
+  - pip3 install --upgrade twine
   - pip3 install pipenv
   - sudo ./.ci/install-repo.sh
   - ./.ci/install-devtools.sh
@@ -19,6 +20,7 @@ before_install:
   - ./.ci/build.sh
   - ./.ci/build-images.sh
   - ./.ci/fetch-artifacts.sh
+
 
 install:
   - pip3 install ./dist/${PYTHON_PKG_NAME}*linux_x86_64.whl
