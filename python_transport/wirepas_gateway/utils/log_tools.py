@@ -11,6 +11,7 @@
 """
 
 import sys
+import ast
 import logging
 
 
@@ -40,7 +41,7 @@ class LoggerHelper(object):
         )
 
         try:
-            self._logger.setLevel(eval("logging.{0}".format(self._level)))
+            self._logger.setLevel(ast.literal_eval("logging.{0}".format(self._level)))
         except Exception:
             self._logger.setLevel(logging.DEBUG)
 
@@ -55,7 +56,7 @@ class LoggerHelper(object):
         self._level = "{0}".format(value.upper())
 
         try:
-            self._logger.setLevel(eval("logging.{0}".format(self._level)))
+            self._logger.setLevel(ast.literal_eval("logging.{0}".format(self._level)))
         except Exception:
             self._logger.setLevel(logging.DEBUG)
 
@@ -129,8 +130,6 @@ class LoggerHelper(object):
                 self._log(debug_level_number, message, pargs, **kws)
 
         setattr(logging.Logger, debug_level_name, cb)
-
-        assert logging.getLevelName(debug_level_number) == debug_level_name.upper()
 
     def close(self):
         """ Attempts to close log handlers """
