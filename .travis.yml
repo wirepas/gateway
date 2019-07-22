@@ -58,6 +58,13 @@ deploy:
   on:
     branch: master
 
+- provider: script
+  script: bash .ci/deploy-docker.sh
+  skip_cleanup: true
+  on:
+    tags: true
+    branch: master
+
 env:
   global:
     - PIPENV_VENV_IN_PROJECT=1
