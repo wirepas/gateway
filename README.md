@@ -329,7 +329,7 @@ and please review our [code of conduct][here_code_of_conduct].
 
 ## License
 
-Wirepas Oy licensed under Apache License, Version 2.0 See file
+Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [LICENSE][here_license] for full license details.
 
 [here_contribution]: https://github.com/wirepas/gateway/blob/master/CONTRIBUTING.md
