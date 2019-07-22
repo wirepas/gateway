@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Copyright 2019 Wirepas Ltd
 
+BUILD_TAG=${BUILD_TAG:-"edge"}
+
 rm -rf dist/ || true
 mkdir dist
 
 USERGROUP="$(id -u):$(id -g)"
-COMMAND="cp -v --no-preserve=ownership \${TRANSPORT_SERVICE}/wirepas_gateway-*.whl . \
+COMMAND="cp -v --no-preserve=ownership \${TRANSPORT_SERVICE}/wirepas_gateway-* . \
          && cp -v --no-preserve=ownership /usr/local/bin/sinkService . \
          && tar -czvf sinkService-\${ARCH}.tar.gz sinkService \
          && rm sinkService \
@@ -19,7 +21,7 @@ docker run \
         -e ARCH="x86" \
         -w /data \
         -v "$(pwd)/dist":/data \
-        wirepas/gateway-x86:edge \
+        wirepas/gateway-x86:"${BUILD_TAG}" \
         bash -c "${COMMAND}"
 
 echo "fetching arm wheel"
@@ -30,5 +32,7 @@ docker run \
         -w /data \
         -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static \
         -v "$(pwd)/dist":/data \
-        wirepas/gateway-rpi:latest \
+        wirepas/gateway-arm:"${BUILD_TAG}" \
         bash -c "${COMMAND}"
+
+twine check dist/wirepas_gateway*

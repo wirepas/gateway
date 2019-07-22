@@ -47,12 +47,8 @@ deploy:
     tags: true
     branch: master
 
-- provider: pypi
-  user: Wirepas
-  password: ${PYPI_PWD}
-  skip_existing: true
-  skip_cleanup: true
-  distributions: "sdist bdist_wheel"
+- provider: script
+  script: bash .ci/deploy-pypi.sh ${TRAVIS_BUILD_DIR}/dist/${PYTHON_PKG_NAME}*
   on:
     tags: true
     branch: master
