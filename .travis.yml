@@ -21,7 +21,6 @@ before_install:
   - ./.ci/build-images.sh
   - ./.ci/fetch-artifacts.sh
 
-
 install:
   - pip3 install ./dist/${PYTHON_PKG_NAME}*linux_x86_64.whl
 
@@ -48,12 +47,14 @@ deploy:
 
 - provider: script
   script: bash .ci/deploy-pypi.sh ${TRAVIS_BUILD_DIR}/dist/${PYTHON_PKG_NAME}*
+  skip_cleanup: true
   on:
     tags: true
     branch: master
 
 - provider: script
   script: bash .ci/deploy-docker.sh
+  skip_cleanup: true
   on:
     branch: master
 
