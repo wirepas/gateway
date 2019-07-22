@@ -21,6 +21,7 @@ from wirepas_messaging.gateway.api import (
 )
 
 from wirepas_gateway import __version__ as transport_version
+from wirepas_gateway import __pkg_name__
 
 # This constant is the actual API level implemented by this transport module (cf WP-RM-128)
 IMPLEMENTED_API_VERSION = 1
@@ -644,7 +645,7 @@ def main():
     except KeyError:
         pass
 
-    log = LoggerHelper(module_name=__name__, level=debug_level)
+    log = LoggerHelper(module_name=__pkg_name__, level=debug_level)
     logger = log.setup()
 
     _update_parameters(settings, logger)

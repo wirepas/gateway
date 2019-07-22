@@ -95,7 +95,7 @@ class LoggerHelper(object):
             self._handlers["stderr"].setLevel(logging.ERROR)
         self._logger.addHandler(self._handlers["stderr"])
 
-    def setup(self, level: str = None):
+    def setup(self, level: str = None, propagate=False):
         """
         Constructs the logger with the system arguments provided upon
         the object creation.
@@ -105,6 +105,7 @@ class LoggerHelper(object):
             self.level = level
 
         self.add_stdout()
+        self._logger.propagate = propagate
 
         return self._logger
 
