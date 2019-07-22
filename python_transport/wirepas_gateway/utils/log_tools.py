@@ -137,4 +137,4 @@ class LoggerHelper(object):
             try:
                 handler.close()
             except Exception as err:
-                self._logger.exception("Could not close logger")
+                self._logger.exception("Could not close logger {}".format(err))
