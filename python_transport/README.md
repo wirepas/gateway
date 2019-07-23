@@ -29,7 +29,29 @@ environment such as [virtualenv][virtualenv] or [pipenv][pipenv].
 
 To install this package run (use -e for development mode)
 
-pip install \[-e\] .
+```shell
+   pip install [-e] .
+```
+
+## Running inside a virtual environment
+
+When running inside a virtual environment you will need to provide access
+to system libraries. You can achieve this by using *--system-site-packages*
+when setting up your environment or through [vext][vext].
+
+If you opt to install [vext][vext], please install the
+[PyGObject][pygobject] module with:
+
+```shell
+   pip install vext vext.gi
+```
+
+You also need to ensure that the following packages are installed inside
+the virtual environment (as well as their system dependencies):
+
+```shell
+   pip install pygobject gobject
+```
 
 ## Starting the service
 
@@ -42,3 +64,6 @@ Please read on
 
 [virtualenv]: https://docs.python.org/3/tutorial/venv.html
 [pipenv]: https://github.com/pypa/pipenv
+[vext]: https://github.com/stuaxo/vext
+
+[pygobject]: https://pygobject.readthedocs.io/en/latest/index.html
