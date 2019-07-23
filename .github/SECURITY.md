@@ -5,6 +5,6 @@
 Please report security vulnerabilities to opensource@wirepas.com with the
 following subject:
 
-[SECURITY] wirepas/gateway - brief
+\[SECURITY\] wirepas/gateway - brief
 
 
