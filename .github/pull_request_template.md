@@ -1,3 +1,3 @@
 Closes # .
 
-[Brief pull request description]
+*Brief pull request description*
