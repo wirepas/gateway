@@ -279,11 +279,9 @@ Alternatively you can use our [ci tool][here_ci_docker_build].
 We also have pre-built images available from docker hub under the
 following registries:
 
-[wirepas/gateway][dockerhub_wirepas]: multi architecture registry
-
-[wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
-
-[wirepas/gateway-rpi][dockerhub_wirepas_rpi]: arm/rpi architecture registry
+-   [wirepas/gateway][dockerhub_wirepas]: multi architecture registry
+-   [wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
+-   [wirepas/gateway-arm][dockerhub_wirepas_arm]: arm architecture registry
 
 ## Starting docker services
 
@@ -354,4 +352,4 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 
 [dockerhub_wirepas]: https://hub.docker.com/r/wirepas/gateway
 [dockerhub_wirepas_x86]: https://hub.docker.com/r/wirepas/gateway-x86
-[dockerhub_wirepas_rpi]: https://hub.docker.com/r/wirepas/gateway-rpi
+[dockerhub_wirepas_arm]: https://hub.docker.com/r/wirepas/gateway-arm
