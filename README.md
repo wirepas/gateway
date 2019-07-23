@@ -29,17 +29,31 @@ service, which interfaces
 with the sink devices. The backend-apis contains api and message wrapper
 over the protocol buffers that are transmitted over MQTT.
 
-To clone this repository please ensure you have the [repo tool][repo_tool]
-installed and type the following:
+We are currently using the [repo tool][repo_tool] to upkeep the project
+dependencies and for that reason we recommend that you use it as well.
+
+The manifest files are located in at the
+[manifest repository][wirepas_manifest] and are organized inside the
+gateway folder as follows:
+
+-   dev.xml: points to the development branches, intended for collaborators
+-   stable.xml: points to the latest release
+
+If you wish to pull the latest release then use the following command:
+
 
 ```shell
-    repo init -u https://github.com/wirepas/manifest.git -m gateway.xml
+    repo init -u https://github.com/wirepas/manifest.git \
+              -m gateway/stable.xml \
+              --no-clone-bundle
 ```
 
-or for organization members and collaborators:
+and if you wish to track the development branches, please use
 
 ```shell
-    repo init -u git@github.com:wirepas/manifest.git -m gateway.xml
+    repo init -u https://github.com/wirepas/manifest.git \
+              -m gateway/dev.xml \
+              --no-clone-bundle
 ```
 
 afterwards download the repositories with
@@ -48,15 +62,18 @@ afterwards download the repositories with
     repo sync
 ```
 
-To clone a particular version branch, vX.Y.Z, please use repo's *-b*
-switch as follows:
+To clone a particular version, vX.Y.Z, please specify the tag with the
+ *-b* switch and use the stable manifest:
 
 ```shell
-    repo init (...) -b refs/heads/vX.Y.Z
+    repo init (...) -m gateway/stable.xml -b refs/tags/vX.Y.Z
 ```
 
 Usage of repo is also documented in the release
-Dockerfiles (see [Dockerfile][here_container_dockerfile])
+Dockerfiles (see [Dockerfile][here_container_dockerfile]).
+
+Please read more on the repo tool usage from
+[its official documentation][repo_tool].
 
 ## Linux Requirements
 
@@ -279,11 +296,9 @@ Alternatively you can use our [ci tool][here_ci_docker_build].
 We also have pre-built images available from docker hub under the
 following registries:
 
-[wirepas/gateway][dockerhub_wirepas]: multi architecture registry
-
-[wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
-
-[wirepas/gateway-rpi][dockerhub_wirepas_rpi]: arm/rpi architecture registry
+-   [wirepas/gateway][dockerhub_wirepas]: multi architecture registry
+-   [wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
+-   [wirepas/gateway-arm][dockerhub_wirepas_arm]: arm architecture registry
 
 ## Starting docker services
 
@@ -354,4 +369,4 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 
 [dockerhub_wirepas]: https://hub.docker.com/r/wirepas/gateway
 [dockerhub_wirepas_x86]: https://hub.docker.com/r/wirepas/gateway-x86
-[dockerhub_wirepas_rpi]: https://hub.docker.com/r/wirepas/gateway-rpi
+[dockerhub_wirepas_arm]: https://hub.docker.com/r/wirepas/gateway-arm
