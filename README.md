@@ -29,17 +29,32 @@ service, which interfaces
 with the sink devices. The backend-apis contains api and message wrapper
 over the protocol buffers that are transmitted over MQTT.
 
-To clone this repository please ensure you have the [repo tool][repo_tool]
-installed and type the following:
+We are currently using the [repo tool][repo_tool] to upkeep the project
+dependencies and for that reason we recommend that you use it as well.
+
+The manifest files are located in at the
+[manifest repository][wirepas_manifest] and are organized inside the
+gateway folder as follows:
+
+-   dev.xml: points to the development branches, intended for collaborators
+
+-   stable.xml: points to the latest release
+
+If you wish to pull the latest release then use the following command:
+
 
 ```shell
-    repo init -u https://github.com/wirepas/manifest.git -m gateway.xml
+    repo init -u https://github.com/wirepas/manifest.git \
+              -m gateway/stable.xml \
+              --no-clone-bundle
 ```
 
-or for organization members and collaborators:
+and if you wish to track the development branches, please use
 
 ```shell
-    repo init -u git@github.com:wirepas/manifest.git -m gateway.xml
+    repo init -u https://github.com/wirepas/manifest.git \
+              -m gateway/dev.xml \
+              --no-clone-bundle
 ```
 
 afterwards download the repositories with
@@ -48,15 +63,18 @@ afterwards download the repositories with
     repo sync
 ```
 
-To clone a particular version branch, vX.Y.Z, please use repo's *-b*
-switch as follows:
+To clone a particular version, vX.Y.Z, please specify the tag with the
+ *-b* switch and use the stable manifest:
 
 ```shell
-    repo init (...) -b refs/heads/vX.Y.Z
+    repo init (...) -m gateway/stable.xml -b refs/tags/vX.Y.Z
 ```
 
 Usage of repo is also documented in the release
-Dockerfiles (see [Dockerfile][here_container_dockerfile])
+Dockerfiles (see [Dockerfile][here_container_dockerfile]).
+
+Please read more on the repo tool usage from
+[its official documentation][[repo_tool]].
 
 ## Linux Requirements
 

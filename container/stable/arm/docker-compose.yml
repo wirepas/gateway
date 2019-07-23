@@ -21,7 +21,7 @@ services:
                 CROSS_BUILD_END_CMD: cross-build-end
                 GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE:-gateway.xml}
                 GIT_MANIFEST_URL: ${GIT_MANIFEST_URL:-https://github.com/wirepas/manifest.git}
-                GIT_MANIFEST_BRANCH: ${GIT_MANIFEST_BRANCH:-master}
+                GIT_MANIFEST_BRANCH: ${GIT_MANIFEST_BRANCH:-gateway/stable.xml}
 
         user: root
         privileged: true
