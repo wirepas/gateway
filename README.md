@@ -37,7 +37,6 @@ The manifest files are located in at the
 gateway folder as follows:
 
 -   dev.xml: points to the development branches, intended for collaborators
-
 -   stable.xml: points to the latest release
 
 If you wish to pull the latest release then use the following command:
