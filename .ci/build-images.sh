@@ -63,7 +63,7 @@ function _build
 function _fetch_dependencies
 {
     # pull repository dependency
-    GIT_MANIFEST_FILE=gateway.xml
+    GIT_MANIFEST_FILE=gateway/dev.xml
     GIT_MANIFEST_URL=https://github.com/wirepas/manifest.git
     GIT_MANIFEST_BRANCH=master
     _ROOT_PATH=$(pwd)
@@ -96,7 +96,7 @@ function _main
     # builds x86 and arm images based on manifest files
     if [[ ! -z ${BUILD_TAG} ]]
     then
-        GIT_MANIFEST_BRANCH=gateway/${BUILD_TAG}
+        GIT_MANIFEST_BRANCH=refs/tags/gateway/${BUILD_TAG}
         _build "${DOCKERFILE_PATH}/stable/arm/docker-compose.yml" "arm" "--no-cache"
         _build "${DOCKERFILE_PATH}/stable/x86/docker-compose.yml" "x86" "--no-cache"
     else

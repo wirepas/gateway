@@ -29,6 +29,7 @@ release/
 .ci/_repo/*
 dev-requirements.txt
 
+.repo/*
 _repo/*
 python_transport/docs/source/api/
 container/wm_gateway.env
