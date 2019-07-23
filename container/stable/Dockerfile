@@ -1,7 +1,7 @@
 ARG DOCKER_BASE=wirepas/base:1.1-ubuntu
 ARG CROSS_BUILD_START_CMD=:
 ARG CROSS_BUILD_END_CMD=:
-ARG GIT_MANIFEST_FILE=gateway.xml
+ARG GIT_MANIFEST_FILE=gateway/stable.xml
 ARG GIT_MANIFEST_URL=https://github.com/wirepas/manifest.git
 ARG GIT_MANIFEST_BRANCH=master
 
