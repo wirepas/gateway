@@ -74,7 +74,7 @@ Usage of repo is also documented in the release
 Dockerfiles (see [Dockerfile][here_container_dockerfile]).
 
 Please read more on the repo tool usage from
-[its official documentation][[repo_tool]].
+[its official documentation][repo_tool].
 
 ## Linux Requirements
 
