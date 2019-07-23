@@ -63,7 +63,7 @@ function _build
 function _fetch_dependencies
 {
     # pull repository dependency
-    GIT_MANIFEST_FILE=gateway.xml
+    GIT_MANIFEST_FILE=gateway/dev.xml
     GIT_MANIFEST_URL=https://github.com/wirepas/manifest.git
     GIT_MANIFEST_BRANCH=master
     _ROOT_PATH=$(pwd)
