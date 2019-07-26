@@ -4,7 +4,6 @@
 
 import queue
 import socket
-import ssl
 from select import select
 from threading import Thread, current_thread
 from time import sleep
@@ -82,6 +81,7 @@ class MQTTWrapper(Thread):
         self.running = False
 
     def _on_connect(self, client, userdata, flags, rc):
+        # pylint: disable=unused-argument
         if rc != 0:
             self.logger.error("MQTT cannot connect: {}".format(connack_string(rc)))
             self.running = False
@@ -92,7 +92,7 @@ class MQTTWrapper(Thread):
 
     def _do_select(self, sock):
         # Select with a timeout of 1 sec to call loop misc from time to time
-        r, w, e = select(
+        r, w, _ = select(
             [sock, self._publish_queue],
             [sock] if self._client.want_write() else [],
             [],
@@ -112,6 +112,7 @@ class MQTTWrapper(Thread):
                     # never read as we don't use the internal paho loop
                     # but we have spurious timeout / broken pipe from
                     # this socket pair
+                    # pylint: disable=protected-access
                     try:
                         self._client._sockpairR.recv(1)
                     except Exception:

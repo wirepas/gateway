@@ -15,7 +15,7 @@ import ast
 import logging
 
 
-class LoggerHelper(object):
+class LoggerHelper:
     """
     LoggerHelper
 
@@ -139,4 +139,4 @@ class LoggerHelper(object):
             try:
                 handler.close()
             except Exception as err:
-                self._logger.exception("Could not close logger {}".format(err))
+                self._logger.exception("Could not close logger %s", err)
