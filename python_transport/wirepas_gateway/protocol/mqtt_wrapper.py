@@ -4,7 +4,6 @@
 
 import queue
 import socket
-import ssl
 from select import select
 from threading import Thread, current_thread
 from time import sleep
@@ -54,7 +53,7 @@ class MQTTWrapper(Thread):
                     ciphers=settings.mqtt_ciphers,
                 )
             except Exception as e:
-                self.logger.error("Cannot use secure authentication {}".format(e))
+                self.logger.error("Cannot use secure authentication %s", e)
                 exit(-1)
 
         self._client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
@@ -70,7 +69,7 @@ class MQTTWrapper(Thread):
                 keepalive=MQTTWrapper.KEEP_ALIVE_S,
             )
         except (socket.gaierror, ValueError) as e:
-            self.logger.error("Cannot connect to mqtt {}".format(e))
+            self.logger.error("Cannot connect to mqtt %s", e)
             exit(-1)
 
         # Set options to initial socket
@@ -82,8 +81,9 @@ class MQTTWrapper(Thread):
         self.running = False
 
     def _on_connect(self, client, userdata, flags, rc):
+        # pylint: disable=unused-argument
         if rc != 0:
-            self.logger.error("MQTT cannot connect: {}".format(connack_string(rc)))
+            self.logger.error("MQTT cannot connect: %s (%s)", connack_string(rc), rc)
             self.running = False
             return
 
@@ -92,7 +92,7 @@ class MQTTWrapper(Thread):
 
     def _do_select(self, sock):
         # Select with a timeout of 1 sec to call loop misc from time to time
-        r, w, e = select(
+        r, w, _ = select(
             [sock, self._publish_queue],
             [sock] if self._client.want_write() else [],
             [],
@@ -112,6 +112,7 @@ class MQTTWrapper(Thread):
                     # never read as we don't use the internal paho loop
                     # but we have spurious timeout / broken pipe from
                     # this socket pair
+                    # pylint: disable=protected-access
                     try:
                         self._client._sockpairR.recv(1)
                     except Exception:
@@ -153,9 +154,7 @@ class MQTTWrapper(Thread):
 
         if timeout <= 0:
             self.logger.error(
-                "Unable to reconnect after {} seconds".format(
-                    MQTTWrapper.TIMEOUT_RECONNECT_S
-                )
+                "Unable to reconnect after %s seconds", MQTTWrapper.TIMEOUT_RECONNECT_S
             )
             return None
 

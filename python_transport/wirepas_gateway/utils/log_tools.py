@@ -11,11 +11,10 @@
 """
 
 import sys
-import ast
 import logging
 
 
-class LoggerHelper(object):
+class LoggerHelper:
     """
     LoggerHelper
 
@@ -41,8 +40,8 @@ class LoggerHelper(object):
         )
 
         try:
-            self._logger.setLevel(ast.literal_eval("logging.{0}".format(self._level)))
-        except Exception:
+            self._logger.setLevel(getattr(logging, self._level))
+        except AttributeError:
             self._logger.setLevel(logging.DEBUG)
 
     @property
@@ -56,8 +55,8 @@ class LoggerHelper(object):
         self._level = "{0}".format(value.upper())
 
         try:
-            self._logger.setLevel(ast.literal_eval("logging.{0}".format(self._level)))
-        except Exception:
+            self._logger.setLevel(getattr(logging, self._level))
+        except AttributeError:
             self._logger.setLevel(logging.DEBUG)
 
     def format(self, name):
@@ -91,10 +90,8 @@ class LoggerHelper(object):
         # it will limit the input of this handler.
         try:
             level = "{0}".format(value.upper())
-            self._handlers["stderr"].setLevel(
-                ast.literal_eval("logging.{0}".format(level))
-            )
-        except Exception:
+            self._handlers["stderr"].setLevel(getattr(logging, level))
+        except AttributeError:
             self._handlers["stderr"].setLevel(logging.ERROR)
         self._logger.addHandler(self._handlers["stderr"])
 
@@ -139,4 +136,4 @@ class LoggerHelper(object):
             try:
                 handler.close()
             except Exception as err:
-                self._logger.exception("Could not close logger {}".format(err))
+                self._logger.exception("Could not close logger %s", err)

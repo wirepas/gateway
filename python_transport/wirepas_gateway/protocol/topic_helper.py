@@ -15,8 +15,8 @@ class TopicGenerator:
     """
 
     @staticmethod
-    def _make_topic(type, cmd, params):
-        req = type + "/" + cmd
+    def _make_topic(base, cmd, params):
+        req = base + "/" + cmd
 
         for param in params:
             req += "/" + param
@@ -143,7 +143,7 @@ class TopicParser:
 
     @staticmethod
     def parse_send_data_topic(topic):
-        req, cmd, gw_id, sink_id = topic.split("/")
+        _, cmd, gw_id, sink_id = topic.split("/")
         if not cmd.startswith("send_data"):
             raise RuntimeError("Wrong topic for send_data_request")
 
