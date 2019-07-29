@@ -9,9 +9,6 @@ source "${TRANSPORT_SERVICE}/generate_settings.sh"
 echo "Image source manifest"
 cat "${SERVICE_HOME}/manifest"
 
-echo "Available WM variables"
-env | grep WM_
-
 TARGET=${1}
 
 WM_SINK_UART_PORT=${WM_SINK_UART_PORT:-"/dev/ttyACM0"}
@@ -29,7 +26,6 @@ then
     then
         echo "connecting to ${WM_SERVICES_HOST}"
         TARGET="wm-gw --settings ${_SETTINGS_PATH}"
-        cat "${_SETTINGS_PATH}"
     fi
 
     if [[ "${TARGET}" == "sink" ]]
