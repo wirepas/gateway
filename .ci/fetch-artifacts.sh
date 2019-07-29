@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2019 Wirepas Ltd
 
-BUILD_TAG=${BUILD_TAG:-"edge"}
+BUILD_TAG=${TRAVIS_TAG:-"edge"}
 
 rm -rf dist/ || true
 mkdir dist

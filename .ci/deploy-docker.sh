@@ -19,14 +19,14 @@ function _remove_manifest()
     rm -rf ~/.docker/manifests/docker.io_wirepas_gateway*/ || true
 }
 
+
 function _push
 {
     _TAG=${1}
 
-    # push images and manifest
+    # push images
     docker push wirepas/gateway-x86:"${_TAG}"
     docker push wirepas/gateway-arm:"${_TAG}"
-    docker manifest push wirepas/gateway:"${_TAG}"
 }
 
 function _create_manifest()
@@ -42,6 +42,9 @@ function _create_manifest()
     docker manifest annotate wirepas/gateway:"${_TAG}" \
                              wirepas/gateway-arm:"${_TAG}" \
                              --arch arm
+
+    # pushes the manifest
+    docker manifest push wirepas/gateway:"${_TAG}"
 }
 
 function _tag_latest()
@@ -60,16 +63,17 @@ function _main()
     _remove_manifest
 
     echo "Creating manifest for ${DOCKER_TAG}"
-    _create_manifest "${DOCKER_TAG}"
     _push "${DOCKER_TAG}"
+    _create_manifest "${DOCKER_TAG}"
+
 
     if [[ "${IS_RELEASE}" != "false" &&  "${DOCKER_TAG}" != *"rc"* && "${DOCKER_TAG}" != *"dev"* ]]
     then
         echo "Creating and updating latest tag"
         _remove_manifest
         _tag_latest
-        _create_manifest "latest"
         _push "latest"
+        _create_manifest "latest"
     fi
 
     docker logout
