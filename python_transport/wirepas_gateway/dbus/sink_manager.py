@@ -15,10 +15,8 @@ from .return_code import ReturnCode
 DBUS_SINK_PREFIX = "com.wirepas.sink."
 
 
-class Sink(object):
-    def __init__(
-        self, bus, proxy, sink_id, unique_name, on_stack_started, logger=None, **kwargs
-    ):
+class Sink:
+    def __init__(self, bus, proxy, sink_id, unique_name, on_stack_started, logger=None):
 
         self.proxy = proxy
         self.sink_id = sink_id
@@ -51,7 +49,6 @@ class Sink(object):
                 self.network_address = self.proxy.NetworkAddress
             except GLib.Error:
                 self.logger.exception("Could not get network address")
-                pass
 
         return self.network_address
 
@@ -78,15 +75,17 @@ class Sink(object):
                 data,
             )
             if res != 0:
-                self.logger.error("Cannot send message err={}\n".format(res))
+                self.logger.error("Cannot send message err=%s", res)
                 return ReturnCode.error_from_dbus_return_code(res)
         except GLib.Error as e:
-            self.logger.exception("Fail to send message: {}".format(e.message))
+            self.logger.exception("Fail to send message: %s", e.message)
             return ReturnCode.error_from_dbus_exception(e.message)
 
         return GatewayResultCode.GW_RES_OK
 
     def _on_stack_started(self, sender, object, iface, signal, params):
+        # pylint: disable=unused-argument
+        # pylint: disable=redefined-builtin
         # Force update of network address in case remote api modify it
         self.get_network_address(True)
 
@@ -100,18 +99,16 @@ class Sink(object):
             # Discard channel_map as parameter present only for old stacks
             if key != "channel_map":
                 # Warning and not an error as normal behavior if not set
-                self.logger.warning("Cannot get {} in config (is it set?)".format(key))
+                self.logger.warning("Cannot get %s in config (is it set?)", key)
 
     def _get_pair_params(self, dic, key1, att1, key2, att2):
-        # Some settings are only relevant if the a both can be retrieved
+        # Some settings are only relevant if the both can be retrieved
         try:
             att1_val = getattr(self.proxy, att1)
             att2_val = getattr(self.proxy, att2)
         except GLib.Error:
-            self.logger.debug(
-                "Cannot get one of the pair value ({}-{})".format(key1, key2)
-            )
-            return None
+            self.logger.debug("Cannot get one of the pair value (%s-%s)", key1, key2)
+            return
 
         dic[key1] = att1_val
         dic[key2] = att2_val
@@ -125,7 +122,7 @@ class Sink(object):
             config["started"] = (self.proxy.StackStatus & 0x01) == 0
         except GLib.Error as e:
             error = ReturnCode.error_from_dbus_exception(e.message)
-            self.logger.exception("Cannot get Stack state: {}".format(error))
+            self.logger.exception("Cannot get Stack state: %s", error)
             return None
 
         self._get_param(config, "node_address", "NodeAddress")
@@ -174,14 +171,15 @@ class Sink(object):
 
         except KeyError:
             # key not defined in config
-            self.logger.debug("key not present: {}".format(key))
-            pass
+            self.logger.debug("key not present: %s", key)
         except GLib.Error as e:
             # Exception raised when setting attribute
             self.logger.error(
-                "Cannot set {} for param {} on sink {}: {}\n".format(
-                    value, key, self.sink_id, e.message
-                )
+                "Cannot set %s for param %s on sink %s: %s",
+                value,
+                key,
+                self.sink_id,
+                e.message,
             )
             raise RuntimeError(ReturnCode.error_from_dbus_exception(e.message))
 
@@ -203,21 +201,15 @@ class Sink(object):
             diag = config["app_config_diag"]
             data = config["app_config_data"]
 
-            self.logger.info(
-                "Set app config with "
-                "{app_config_seq}:"
-                "{app_config_diag}:"
-                "{app_config_data}".format(**config)
-            )
+            self.logger.info("Set app config with %s", config)
 
             self.proxy.SetAppConfig(seq, diag, data)
         except KeyError:
             # App config not defined in new config
-            self.logger.debug("Missing key app_config key in config: {}".format(config))
-            pass
+            self.logger.debug("Missing key app_config key in config: %s", config)
         except GLib.Error as e:
             res = ReturnCode.error_from_dbus_exception(e.message)
-            self.logger.exception("Cannot set App Config {}".format(e.message))
+            self.logger.exception("Cannot set App Config %s", e.message)
 
         config_to_dbus_param = dict(
             [
@@ -277,7 +269,7 @@ class Sink(object):
             self.logger.error("Cannot get stored status in config\n")
         except KeyError:
             # Between 1 and 254 => Error
-            self.logger.error("Scratchpad stored status has error: {}".format(status))
+            self.logger.error("Scratchpad stored status has error: %s", status)
             d["stored_status"] = ScratchpadStatus.SCRATCHPAD_STATUS_ERROR
 
         dbus_to_gateway_type = dict(
@@ -288,8 +280,8 @@ class Sink(object):
             ]
         )
         try:
-            type = self.proxy.StoredType
-            d["stored_type"] = dbus_to_gateway_type[type]
+            stored_type = self.proxy.StoredType
+            d["stored_type"] = dbus_to_gateway_type[stored_type]
         except GLib.Error:
             # Exception raised when getting attribute (probably not set)
             self.logger.error("Cannot get stored type in config\n")
@@ -352,7 +344,7 @@ class Sink(object):
         try:
             self.proxy.UploadScratchpad(seq, file)
             self.logger.info(
-                "Scratchpad loaded with seq {} on sink {}".format(seq, self.sink_id)
+                "Scratchpad loaded with seq %d on sink %s", seq, self.sink_id
             )
         except GLib.Error as e:
             self.logger.exception("Cannot upload local scratchpad")
@@ -369,17 +361,11 @@ class Sink(object):
         return ret
 
 
-class SinkManager(object):
+class SinkManager:
     "Helper class to manage the Sink list"
 
     def __init__(
-        self,
-        bus,
-        on_new_sink_cb,
-        on_sink_removal_cb,
-        on_stack_started,
-        logger=None,
-        **kwargs
+        self, bus, on_new_sink_cb, on_sink_removal_cb, on_stack_started, logger=None
     ):
 
         self.logger = logger or logging.getLogger(__name__)
@@ -413,7 +399,7 @@ class SinkManager(object):
 
     def _add_sink(self, short_name, unique_name):
         if short_name in self.sinks:
-            self.logger.warning("Sink already in list sink name={}".format(short_name))
+            self.logger.warning("Sink already in list sink name=%s", short_name)
             return
 
         # Open proxy for this sink
@@ -440,7 +426,7 @@ class SinkManager(object):
         if self.add_cb is not None:
             self.add_cb(short_name)
 
-        self.logger.info("New sink added with name {}".format(short_name))
+        self.logger.info("New sink added with name %s", short_name)
 
     def _remove_sink(self, short_name):
         try:
@@ -451,20 +437,20 @@ class SinkManager(object):
             for k, v in self.sender_to_name.items():
                 if v == short_name:
                     self.sender_to_name.pop(k)
-                    self.logger.warning(
-                        "Association removed from {} => {}".format(k, v)
-                    )
+                    self.logger.warning("Association removed from %s => %s", k, v)
                     break
 
             # call client cb
             if self.rm_cb is not None:
                 self.rm_cb(short_name)
         except KeyError:
-            self.logger.error("Cannot remove {} from sink list".format(short_name))
+            self.logger.error("Cannot remove %s from sink list", short_name)
 
-        self.logger.info("Sink removed with name {}".format(short_name))
+        self.logger.info("Sink removed with name %s", short_name)
 
     def _on_name_owner_changed(self, sender, object, iface, signal, params):
+        # pylint: disable=unused-argument
+        # pylint: disable=redefined-builtin
         well_known_name = params[0]
         if well_known_name.startswith(DBUS_SINK_PREFIX):
             short_name = well_known_name[len(DBUS_SINK_PREFIX) :]
@@ -479,9 +465,10 @@ class SinkManager(object):
                 self._remove_sink(short_name)
             else:
                 self.logger.critical(
-                    "Not addition nor removal ??? {}: {} => {}".format(
-                        well_known_name, old_owner, new_owner
-                    )
+                    "Not addition nor removal ??? %s: %s => %s",
+                    well_known_name,
+                    old_owner,
+                    new_owner,
                 )
 
     def get_sinks(self):
@@ -493,12 +480,12 @@ class SinkManager(object):
         try:
             return self.sender_to_name[bus_name]
         except KeyError:
-            self.logger.error("Unknown sink {} from sink list".format(bus_name))
+            self.logger.error("Unknown sink %s from sink list", bus_name)
             return None
 
     def get_sink(self, short_name):
         try:
             return self.sinks[short_name]
         except KeyError:
-            self.logger.error("Unknown sink {} from sink list".format(short_name))
+            self.logger.error("Unknown sink %s from sink list", short_name)
             return None

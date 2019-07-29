@@ -3,7 +3,6 @@
 # See file LICENSE for full license details.
 
 import os
-import logging
 from datetime import datetime
 
 from wirepas_gateway.dbus.dbus_client import BusClient
@@ -30,16 +29,15 @@ class PrintClient(BusClient):
     ):
         """ logs incoming data from the WM network """
         self.logger.info(
-            "[{}] Sink {} FROM {} TO {} on EP {} Data Size is {}".format(
-                datetime.utcfromtimestamp(int(timestamp / 1000)).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
-                sink_id,
-                src,
-                dst,
-                dst_ep,
-                len(data),
-            )
+            "[%s] Sink %d FROM %d TO %d on EP %d Data Size is %d",
+            datetime.utcfromtimestamp(int(timestamp / 1000)).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            sink_id,
+            src,
+            dst,
+            dst_ep,
+            len(data),
         )
 
     def on_sink_connected(self, name):
@@ -47,17 +45,27 @@ class PrintClient(BusClient):
 
         if sink is not None:
             # Read Stack status of sink on connection
-            self.logger.info(
-                "Sink connected with config: {}".format(sink.read_config())
-            )
+            self.logger.info("Sink connected with config: %s", sink.read_config())
 
 
-def main(log_name="print_client"):
+def main():
 
+    # Set default debug level
+    debug_level = "info"
     try:
         debug_level = os.environ["DEBUG_LEVEL"]
+        print(
+            "Deprecated environment variable DEBUG_LEVEL "
+            "(it will be dropped from version 2.x onwards)"
+            " please use WM_DEBUG_LEVEL instead."
+        )
     except KeyError:
-        debug_level = "info"
+        pass
+
+    try:
+        debug_level = os.environ["WM_DEBUG_LEVEL"]
+    except KeyError:
+        pass
 
     log = LoggerHelper(module_name=__name__, level=debug_level)
     logger = log.setup()
