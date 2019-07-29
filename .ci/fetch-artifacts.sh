@@ -35,4 +35,5 @@ docker run \
         wirepas/gateway-arm:"${BUILD_TAG}" \
         bash -c "${COMMAND}"
 
+rm dist/wirepas_gateway*linux_x86_64.whl
 twine check dist/wirepas_gateway*
