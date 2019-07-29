@@ -1,20 +1,18 @@
 # transport service template
+gateway_id: ${WM_SERVICES_GATEWAY_ID:-"NOTSET"}
+gateway_model: ${WM_SERVICES_GATEWAY_MODEL:-"NOTSET"}
+gateway_version: ${WM_SERVICES_GATEWAY_VERSION:-"NOTSET"}
 
-gateway_id: ${WM_SERVICES_GATEWAY_ID:-"$RANDOM"}
-gateway_model: ${WM_SERVICES_GATEWAY_MODEL:-"lxgw"}
-gateway_version: ${WM_SERVICES_GATEWAY_VERSION:-"dev"}
+mqtt_hostname: ${WM_SERVICES_HOST:-"NOTSET"}
+mqtt_port: ${WM_SERVICES_MQTT_PORT:-"NOTSET"}
+mqtt_username: ${WM_SERVICES_MQTT_USER:-"NOTSET"}
+mqtt_password: ${WM_SERVICES_MQTT_PASSWORD:-"NOTSET"}
 
-mqtt_hostname: ${WM_SERVICES_HOST:-"host"}
-mqtt_port: ${WM_SERVICES_MQTT_PORT:-"8883"}
-mqtt_force_unsecure: ${WM_SERVICES_ALLOW_UNSECURE:-false}
-
-mqtt_username: ${WM_SERVICES_MQTT_USER:-"mosquittouser"}
-mqtt_password: ${WM_SERVICES_MQTT_PASSWORD:-"mosquittopassword"}
-
+# NOSET variables will be removed and the transport service default will
+# be used instead
+mqtt_force_unsecure: ${WM_SERVICES_ALLOW_UNSECURE:-"NOTSET"}
 mqtt_persist_session: ${WM_SERVICES_MQTT_PERSIST_SESSION:-"NOTSET"}
-
 mqtt_ca_certs: ${WM_SERVICES_CERTIFICATE_CHAIN:-"NOTSET"}
-
 mqtt_certfile: ${WM_SERVICES_TLS_CLIENT_CERTIFICATE:-"NOTSET"}
 mqtt_keyfile: ${WM_SERVICES_TLS_CLIENT_KEY:-"NOTSET"}
 mqtt_cert_reqs: ${WM_SERVICES_TLS_CERT_REQS:-"NOTSET"}
