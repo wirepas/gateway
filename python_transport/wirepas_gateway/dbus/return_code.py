@@ -2,12 +2,11 @@
 #
 # See file LICENSE for full license details.
 
+import re
 from wirepas_messaging.gateway.api import GatewayResultCode
 
-import re
 
-
-class ReturnCode(object):
+class ReturnCode:
     """
     Class that represent all possible error and facility function to create error
     """
