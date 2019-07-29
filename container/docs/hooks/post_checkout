@@ -1,0 +1,3 @@
+#!/bin/bash
+
+README_TEMPLATE=README.md ./container/update-readme.sh
