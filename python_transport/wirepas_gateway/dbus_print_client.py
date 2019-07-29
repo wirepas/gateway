@@ -54,10 +54,22 @@ class PrintClient(BusClient):
 
 def main(log_name="print_client"):
 
+    # Set default debug level
+    debug_level = "info"
     try:
         debug_level = os.environ["DEBUG_LEVEL"]
+        print(
+            "Deprecated environment variable DEBUG_LEVEL "
+            "(it will be dropped from version 2.x onwards)"
+            " please use WM_DEBUG_LEVEL instead."
+        )
     except KeyError:
-        debug_level = "info"
+        pass
+
+    try:
+        debug_level = os.environ["WM_DEBUG_LEVEL"]
+    except KeyError:
+        pass
 
     log = LoggerHelper(module_name=__name__, level=debug_level)
     logger = log.setup()
