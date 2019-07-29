@@ -10,14 +10,14 @@
 """
 
 import argparse
-import yaml
 import ssl
 import sys
+import yaml
 
 from .serialization_tools import serialize
 
 
-class Settings(object):
+class Settings:
     """Simple class to handle library settings"""
 
     def __init__(self, settings: dict):
@@ -32,7 +32,7 @@ class Settings(object):
         return str(self.__dict__)
 
 
-class ParserHelper(object):
+class ParserHelper:
     """
     ParserHelper
 

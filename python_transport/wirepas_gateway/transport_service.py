@@ -40,7 +40,7 @@ class TransportService(BusClient):
 
     def __init__(self, settings, logger=None, **kwargs):
         self.logger = logger or logging.getLogger(__name__)
-        self.logger.info("Version is: {}".format(transport_version))
+        self.logger.info("Version is: %s", transport_version)
 
         super(TransportService, self).__init__(
             logger=logger,
@@ -71,7 +71,7 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.start()
 
-        self.logger.info("Gateway started with id: {}".format(self.gw_id))
+        self.logger.info("Gateway started with id: %s", self.gw_id)
 
     def _on_mqtt_wrapper_termination_cb(self):
         """
@@ -106,7 +106,7 @@ class TransportService(BusClient):
 
         # Register for send data request for any sink on the gateway
         topic = TopicGenerator.make_send_data_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: {}".format(topic))
+        self.logger.debug("Subscribing to: %s", topic)
         # It is important to have a qos of 2 and also from the publisher as 1 could generate
         # duplicated packets and we don't know the consequences on end
         # application
@@ -172,16 +172,16 @@ class TransportService(BusClient):
             # It can happen at sink connection as messages can be received
             # before sinks are identified
             self.logger.info(
-                "Message received from unknown sink at the moment {}".format(sink_id)
+                "Message received from unknown sink at the moment %s", sink_id
             )
-            return None
+            return
 
         network_address = sink.get_network_address()
 
         topic = TopicGenerator.make_received_data_topic(
             self.gw_id, sink_id, network_address, src_ep, dst_ep
         )
-        self.logger.debug("Sending data to: {}".format(topic))
+        self.logger.debug("Sending data to: %s", topic)
         # Set qos to 1 to avoid loading too much the broker
         # unique id in event header can be used for duplicate filtering in
         # backends
@@ -190,8 +190,8 @@ class TransportService(BusClient):
     def on_stack_started(self, name):
         sink = self.sink_manager.get_sink(name)
         if sink is None:
-            self.logger.error("Sink started {} error: unknown sink".format(name))
-            return None
+            self.logger.error("Sink started %s error: unknown sink", name)
+            return
 
         # Generate a setconfig answer with req_id of 0
         response = wirepas_messaging.gateway.api.SetConfigResponse(
@@ -242,6 +242,7 @@ class TransportService(BusClient):
 
     @deferred_thread
     def _on_send_data_cmd_received(self, client, userdata, message):
+        # pylint: disable=unused-argument
         self.logger.info("Request to send data")
         try:
             request = wirepas_messaging.gateway.api.SendDataRequest.from_payload(
@@ -249,12 +250,12 @@ class TransportService(BusClient):
             )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return None
+            return
 
         # Get the sink-id from topic
-        gw_id, sink_id = TopicParser.parse_send_data_topic(message.topic)
+        _, sink_id = TopicParser.parse_send_data_topic(message.topic)
 
-        self.logger.debug("Request for sink {} ".format(sink_id))
+        self.logger.debug("Request for sink %s", sink_id)
 
         sink = self.sink_manager.get_sink(sink_id)
         if sink is not None:
@@ -272,7 +273,7 @@ class TransportService(BusClient):
                     request.hop_limit,
                 )
         else:
-            self.logger.warning("No sink with id: {}".format(sink_id))
+            self.logger.warning("No sink with id: %s", sink_id)
             # No sink with  this id
             res = GatewayResultCode.GW_RES_INVALID_SINK_ID
 
@@ -286,6 +287,7 @@ class TransportService(BusClient):
 
     @deferred_thread
     def _on_get_configs_cmd_received(self, client, userdata, message):
+        # pylint: disable=unused-argument
         self.logger.info("Config request received")
         try:
             request = wirepas_messaging.gateway.api.GetConfigsRequest.from_payload(
@@ -293,7 +295,7 @@ class TransportService(BusClient):
             )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return None
+            return
 
         # Create a list of different sink configs
         configs = []
@@ -310,6 +312,7 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     def _on_get_gateway_info_cmd_received(self, client, userdata, message):
+        # pylint: disable=unused-argument
         """
         This function doesn't need the decorator @deferred_thread as request is handled
         without I/O
@@ -321,7 +324,7 @@ class TransportService(BusClient):
             )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return None
+            return
 
         response = wirepas_messaging.gateway.api.GetGatewayInfoResponse(
             request.req_id,
@@ -338,6 +341,7 @@ class TransportService(BusClient):
 
     @deferred_thread
     def _on_set_config_cmd_received(self, client, userdata, message):
+        # pylint: disable=unused-argument
         self.logger.info("Set config request received")
         try:
             request = wirepas_messaging.gateway.api.SetConfigRequest.from_payload(
@@ -345,9 +349,9 @@ class TransportService(BusClient):
             )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return None
+            return
 
-        self.logger.debug("Set sink config: {}".format(request))
+        self.logger.debug("Set sink config: %s", request)
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
             res = sink.write_config(request.new_config)
@@ -367,6 +371,7 @@ class TransportService(BusClient):
 
     @deferred_thread
     def _on_otap_status_request_received(self, client, userdata, message):
+        # pylint: disable=unused-argument
         self.logger.info("OTAP status request received")
         try:
             request = wirepas_messaging.gateway.api.GetScratchpadStatusRequest.from_payload(
@@ -374,7 +379,7 @@ class TransportService(BusClient):
             )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return None
+            return
 
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
@@ -407,6 +412,7 @@ class TransportService(BusClient):
 
     @deferred_thread
     def _on_otap_upload_scratchpad_request_received(self, client, userdata, message):
+        # pylint: disable=unused-argument
         self.logger.info("OTAP upload request received")
         try:
             request = wirepas_messaging.gateway.api.UploadScratchpadRequest.from_payload(
@@ -414,9 +420,9 @@ class TransportService(BusClient):
             )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return None
+            return
 
-        self.logger.info("OTAP upload request received for {}".format(request.sink_id))
+        self.logger.info("OTAP upload request received for %s", request.sink_id)
 
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
@@ -436,6 +442,7 @@ class TransportService(BusClient):
 
     @deferred_thread
     def _on_otap_process_scratchpad_request_received(self, client, userdata, message):
+        # pylint: disable=unused-argument
         self.logger.info("OTAP process request received")
         try:
             request = wirepas_messaging.gateway.api.ProcessScratchpadRequest.from_payload(
@@ -443,7 +450,7 @@ class TransportService(BusClient):
             )
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return None
+            return
 
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
@@ -527,15 +534,11 @@ def _check_duplicate(args, old_param, new_param, default, logger):
         if new_param_val == default:
             setattr(args, new_param, old_param_val)
             logger.warning(
-                "Param {} is deprecated, please use {} instead".format(
-                    old_param, new_param
-                )
+                "Param %s is deprecated, please use %s instead", old_param, new_param
             )
         else:
             logger.error(
-                "Param {} and {} cannot be set at the same time".format(
-                    old_param, new_param
-                )
+                "Param %s and %s cannot be set at the same time", old_param, new_param
             )
             exit()
 
@@ -568,13 +571,9 @@ def _update_parameters(settings, logger):
             settings.ignored_endpoints_filter = parse_setting_list(
                 settings.ignored_endpoints_filter
             )
-            logger.debug(
-                "Ignored endpoints are: {}".format(settings.ignored_endpoints_filter)
-            )
+            logger.debug("Ignored endpoints are: %s", settings.ignored_endpoints_filter)
         except SyntaxError as e:
-            logger.error(
-                "Wrong format for ignored_endpoints_filter EP list ({})".format(e)
-            )
+            logger.error("Wrong format for ignored_endpoints_filter EP list (%s)", e)
             exit()
 
     if settings.whitened_endpoints_filter is not None:
@@ -586,9 +585,7 @@ def _update_parameters(settings, logger):
                 "Whitened endpoints are: {}".format(settings.whitened_endpoints_filter)
             )
         except SyntaxError as e:
-            logger.error(
-                "Wrong format for whitened_endpoints_filter EP list ({})".format(e)
-            )
+            logger.error("Wrong format for whitened_endpoints_filter EP list (%s)", e)
             exit()
 
 
@@ -657,5 +654,4 @@ def main():
 
 
 if __name__ == "__main__":
-    """ executes main. """
     main()

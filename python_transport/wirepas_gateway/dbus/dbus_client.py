@@ -2,12 +2,12 @@
 #
 # See file LICENSE for full license details.
 
-from pydbus import SystemBus
-from gi.repository import GLib, GObject
-from .sink_manager import SinkManager
-from threading import Thread
 import logging
+from threading import Thread
+from pydbus import SystemBus
 import dbusCExtension
+from gi.repository import GLib
+from .sink_manager import SinkManager
 
 
 class DbusEventHandler(Thread):
@@ -40,14 +40,14 @@ class DbusEventHandler(Thread):
             self.logger.error("C extension loop has exited")
 
 
-class BusClient(object):
+class BusClient:
     """
     Base class to use to implement a DbusClient using the sink services
     It automatically manage sink connection/disconnection and offers some abstraction
     of dbus
     """
 
-    def __init__(self, logger=None, c_extension=True, ignored_ep_filter=None, **kwargs):
+    def __init__(self, logger=None, c_extension=True, ignored_ep_filter=None):
 
         # logger
         self.logger = logger or logging.getLogger(__name__)
@@ -103,7 +103,7 @@ class BusClient(object):
 
         # Could be done in C extension if needed by providing list to extension
         if self.ignore_ep_filter is not None and dst_ep in self.ignore_ep_filter:
-            self.logger.debug("Message received on ep {} filtered out".format(dst_ep))
+            self.logger.debug("Message received on ep % filtered out", dst_ep)
             return
 
         # Get sink name from sender unique name
@@ -122,11 +122,11 @@ class BusClient(object):
         )
 
     def _on_data_received(self, sender, object, iface, signal, params):
+        # pylint: disable=unused-argument
+        # pylint: disable=redefined-builtin
         # filter out endpoint
         if self.ignore_ep_filter is not None and params[4] in self.ignore_ep_filter:
-            self.logger.debug(
-                "Message received on ep {} filtered out".format(params[4])
-            )
+            self.logger.debug("Message received on ep % filtered out", params[4])
             return
 
         # Get sink name from sender unique name
