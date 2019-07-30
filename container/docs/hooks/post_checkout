@@ -1,3 +1,5 @@
 #!/bin/bash
+set -e
+ls -la 
 echo $pwd
-./update-readme.sh || true
+./update-readme.sh
