@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Wirepas Ltd
 
-README_TEMPLATE=${README_TEMPLATE:-"README.template"}
+README_TEMPLATE=${README_TEMPLATE:-"template/README.template"}
 README=${README:-"README.md"}
 
 function get_tags
