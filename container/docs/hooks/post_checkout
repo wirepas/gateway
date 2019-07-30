@@ -1,5 +1,12 @@
 #!/bin/bash
 set -e
+
+git status || true
 ls -la 
-echo $pwd
+ls -la ../
+ls -la ../..
+
 ./update-readme.sh
+
+mv README.md ../../README.md || true
+
