@@ -1,14 +1,15 @@
 #!/bin/bash
 set -e
 
-git status || true
+git fetch origin
+
 ls -la 
 ls -la ../
 ls -la ../..
 
 ./update-readme.sh
 
-mv README.md ../../README.md || true
+cp README.md ../../README.md || true
 
 cat ../../README.md
 
