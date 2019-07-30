@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Wirepas Ltd
 
-README_TEMPLATE="container/docs/README.template"
-README="container/docs/README.md"
+README_TEMPLATE=${README_TEMPLATE:-"README.template"}
+README=${README:-"README.md"}
 
 function get_tags
 {
 
     IMAGE="$1"
-    TAGS=$(curl -q https://registry.hub.docker.com/v1/repositories/"${IMAGE}"/tags -O -  | sed -e 's/[][]//g' -e 's/"//g' -e 's/ //g' | tr '}' '\n'  | awk -F: '{print $3}')
+    TAGS=$(curl -q https://registry.hub.docker.com/v1/repositories/"${IMAGE}"/tags | sed -e 's/[][]//g' -e 's/"//g' -e 's/ //g' | tr '}' '\n'  | awk -F: '{print $3}')
 }
 
 
