@@ -10,3 +10,5 @@ ls -la ../..
 
 mv README.md ../../README.md || true
 
+cat ../../README.md
+
