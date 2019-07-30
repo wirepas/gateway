@@ -8,7 +8,7 @@ function get_tags
 {
 
     IMAGE="$1"
-    TAGS=$(wget -q https://registry.hub.docker.com/v1/repositories/"${IMAGE}"/tags -O -  | sed -e 's/[][]//g' -e 's/"//g' -e 's/ //g' | tr '}' '\n'  | awk -F: '{print $3}')
+    TAGS=$(curl -q https://registry.hub.docker.com/v1/repositories/"${IMAGE}"/tags -O -  | sed -e 's/[][]//g' -e 's/"//g' -e 's/ //g' | tr '}' '\n'  | awk -F: '{print $3}')
 }
 
 
