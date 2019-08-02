@@ -340,22 +340,8 @@ or specify which container you want to view the logs from with
 You must ensure that your custom certificate file exists inside the container
 where the transport service is running.
 
-You can achieve this by copying the certificate within a custom image or
-by mounting the file using the composition file.
-
-To create a custom image, inherit our image as a base and copy your
-file to the container path you wish, */etc/my-tls-file*, eg,
-
-```shell
-    FROM wirepas/gateway
-    COPY my-tls-file /etc/my-tls-file
-```
-
-Build the image and update the composition file to match the build name that
-you pick or use.
-
-In case you opt to mount the file within the transport service container,
-edit the docker-compose.yml file and add the following statement under the
+You can achieve this by mounting the file using the composition file. Edit
+the docker-compose.yml file and add the following statement under the
 transport service's volumes section:
 
 ```shell
@@ -364,7 +350,7 @@ transport service's volumes section:
       - /my-tls-file/:/etc/my-tls-file
 ```
 
-In both cases, please ensure that WM_SERVICES_CERTIFICATE_CHAIN matches
+The environment variable, WM_SERVICES_CERTIFICATE_CHAIN, must match
 the container path that you picked (*/etc/my-tls-file*).
 
 ## Contributing
