@@ -58,6 +58,7 @@ services:
 
         volumes:
             - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+            # - ./my-tls-file:/etc/my-tls-file
 
         logging:
             driver: journald

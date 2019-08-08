@@ -300,7 +300,7 @@ following registries:
 -   [wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
 -   [wirepas/gateway-arm][dockerhub_wirepas_arm]: arm architecture registry
 
-## Starting docker services
+### Starting docker services
 
 When running the gateway over docker, the composition will mount your host's
 system dbus inside each container. This is necessary to allow exchanging data
@@ -334,6 +334,24 @@ or specify which container you want to view the logs from with
 ```shell
     docker logs [container-name]
 ```
+
+### Using custom TLS certificates within the container
+
+You must ensure that your custom certificate file exists inside the container
+where the transport service is running.
+
+You can achieve this by mounting the file using the composition file. Edit
+the docker-compose.yml file and add the following statement under the
+transport service's volumes section:
+
+```shell
+    volumes:
+      - (...)
+      - /my-tls-file/:/etc/my-tls-file
+```
+
+The environment variable, WM_SERVICES_CERTIFICATE_CHAIN, must match
+the container path that you picked (*/etc/my-tls-file*).
 
 ## Contributing
 
