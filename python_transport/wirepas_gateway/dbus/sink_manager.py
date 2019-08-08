@@ -188,8 +188,12 @@ class Sink:
         try:
             stack_started = (self.proxy.StackStatus & 0x01) == 0
         except GLib.Error as e:
-            self.logger.error("Cannot get Stack state. Problem in com probably")
-            return ReturnCode.error_from_dbus_exception(e.message)
+            res = ReturnCode.error_from_dbus_exception(e.message)
+            self.logger.error(
+                "Cannot get Stack state. Problem in communication probably: %s",
+                res.name,
+            )
+            return res
 
         # The write config has only one return code possible
         # so the last error code will be returned
@@ -209,7 +213,7 @@ class Sink:
             self.logger.debug("Missing key app_config key in config: %s", config)
         except GLib.Error as e:
             res = ReturnCode.error_from_dbus_exception(e.message)
-            self.logger.exception("Cannot set App Config %s", e.message)
+            self.logger.error("Cannot set App Config: %s", res.name)
 
         config_to_dbus_param = dict(
             [
@@ -242,8 +246,12 @@ class Sink:
         try:
             self.proxy.SetStackState(new_state)
         except GLib.Error as err:
-            self.logger.exception("Cannot set Stack state. Problem in com probably")
-            return ReturnCode.error_from_dbus_exception(err.message)
+            res = ReturnCode.error_from_dbus_exception(err.message)
+            self.logger.exception(
+                "Cannot set Stack state. Problem in communication probably: %s",
+                res.name,
+            )
+            return res
 
         # In case the network address was updated, read it back for our cached
         # value
@@ -266,7 +274,7 @@ class Sink:
             d["stored_status"] = dbus_to_gateway_satus[status]
         except GLib.Error:
             # Exception raised when getting attribute (probably not set)
-            self.logger.error("Cannot get stored status in config\n")
+            self.logger.error("Cannot get stored status in config")
         except KeyError:
             # Between 1 and 254 => Error
             self.logger.error("Scratchpad stored status has error: %s", status)
@@ -317,15 +325,15 @@ class Sink:
         try:
             self.proxy.ProcessScratchpad()
         except GLib.Error as e:
-            self.logger.error("Could not restart sink's state")
             ret = ReturnCode.error_from_dbus_exception(e.message)
+            self.logger.error("Could not restore sink's state: %s", ret.name)
 
         if restart:
             try:
                 self.proxy.SetStackState(True)
-            except GLib.Error:
-                self.logger.debug("Sink in invalid state")
-                ret = GatewayResultCode.GW_RES_INTERNAL_ERROR
+            except GLib.Error as e:
+                ret = ReturnCode.error_from_dbus_exception(e.message)
+                self.logger.debug("Sink in invalid state: %s", ret.name)
 
         return ret
 
@@ -347,16 +355,16 @@ class Sink:
                 "Scratchpad loaded with seq %d on sink %s", seq, self.sink_id
             )
         except GLib.Error as e:
-            self.logger.exception("Cannot upload local scratchpad")
             ret = ReturnCode.error_from_dbus_exception(e.message)
+            self.logger.error("Cannot upload local scratchpad: %s", ret.name)
 
         if restart:
             try:
                 # Restart sink if we stopped it for this request
                 self.proxy.SetStackState(True)
-            except GLib.Error:
-                self.logger.error("Could not restart sink's state")
-                ret = GatewayResultCode.GW_RES_INTERNAL_ERROR
+            except GLib.Error as e:
+                ret = ReturnCode.error_from_dbus_exception(e.message)
+                self.logger.error("Could not restore sink's state: %s", ret.name)
 
         return ret
 
