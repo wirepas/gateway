@@ -375,7 +375,7 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [here_container_dockerfile]: https://github.com/wirepas/gateway/tree/master/container/Dockerfile
 [here_container_env]: https://github.com/wirepas/gateway/tree/master/container/wm_gateway.env
 [here_dbus_manifest]: https://github.com/wirepas/gateway/blob/master/sink_service/com.wirepas.sink.conf
-[here_container_entrypoint]: https://github.com/wirepas/gateway/blob/master/container/docker-entrypoint.sh
+[here_container_entrypoint]: https://github.com/wirepas/gateway/blob/master/container/common/docker-entrypoint.sh
 [here_transport_readme]: https://github.com/wirepas/gateway/blob/master/python_transport/README.md
 
 [repo_tool]: https://source.android.com/setup/develop/repo

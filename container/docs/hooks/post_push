@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+git fetch origin
+
+ls -la 
+ls -la ../
+ls -la ../..
+
+./update-readme.sh
+
+cp README.md ../../README.md || true
+
+cat ../../README.md
+
