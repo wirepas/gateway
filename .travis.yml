@@ -4,7 +4,7 @@ python:
 services:
   - docker
 
-dist: "xenial"
+dist: "bionic"
 jobs:
 
 before_install:
