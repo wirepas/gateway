@@ -73,6 +73,7 @@ function _fetch_dependencies
     rm -rf "${GIT_REPO_FOLDER}"
     mkdir "${GIT_REPO_FOLDER}"
     cd "${GIT_REPO_FOLDER}"
+    git config --global color.ui true
     pipenv run --two repo init \
                -u "${GIT_MANIFEST_URL}" \
                -m "${GIT_MANIFEST_FILE}" \
