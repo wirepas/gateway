@@ -5,7 +5,6 @@ services:
   - docker
 
 dist: "bionic"
-jobs:
 
 before_install:
   - sudo apt-get install build-essential libsystemd-dev dbus qemu-user-static
@@ -20,12 +19,12 @@ before_install:
   - ./.ci/build.sh
   - ./.ci/build-images.sh
   - ./.ci/fetch-artifacts.sh
+  - ./.ci/test-template-generation.sh
 
 install:
   - pip3 install ./dist/${PYTHON_PKG_NAME}*linux_x86_64.whl
 
 script:
-  - ./.ci/test-template-generation.sh
   - ./.ci/releases.sh
   - source releases.env
 
