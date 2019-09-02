@@ -77,17 +77,10 @@ setup(
         )
     ],
     include_package_data=True,
-    package_data={"wirepas_gateway": ["wirepas_gateway/wirepas_certs/extwirepas.pem"]},
     data_files=[
         (
             "./wirepas_gateway-extras/package",
-            [
-                readme_file,
-                license_file,
-                "requirements.txt",
-                "wirepas_gateway/wirepas_certs/extwirepas.pem",
-                "setup.py",
-            ],
+            [readme_file, license_file, "requirements.txt", "setup.py"],
         )
     ],
     entry_points={
