@@ -60,7 +60,6 @@ ENV WM_TRANSPORT_PKG=${WM_TRANSPORT_PKG:-"${TRANSPORT_SERVICE}/wirepas_gateway-*
 
 COPY --from=builder /app_build/python_transport/requirements.txt "${TRANSPORT_SERVICE}/"
 COPY --from=builder /app_build/python_transport/dist/* "${TRANSPORT_SERVICE}/"
-COPY --from=builder /app_build/python_transport/wirepas_gateway/wirepas_certs/extwirepas.pem /etc/extwirepas.pem
 COPY --from=builder /app_build/sink_service/build/sinkService /usr/local/bin/sinkService
 COPY --from=builder /app_build/sink_service/com.wirepas.sink.conf /etc/dbus-1/system.d/
 COPY --from=builder /app_build/manifest "${SERVICE_HOME}/manifest"
