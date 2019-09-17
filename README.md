@@ -1,6 +1,6 @@
 # Wirepas Linux Gateway
 
-[![Build Status](https://travis-ci.com/wirepas/gateway.svg?branch=master)](https://travis-ci.com/wirepas/gateway)
+[![Build Status](https://travis-ci.com/wirepas/gateway.svg?branch=master)](https://travis-ci.com/wirepas/gateway) [![Codacy Badge](https://api.codacy.com/project/badge/Grade/ebb45a6a13ec4f2c88131ddf51a9579a)](https://www.codacy.com/manual/wirepas/gateway?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=wirepas/gateway&amp;utm_campaign=Badge_Grade)
 
 This repository contains Wirepas' reference gateway implementation, which
 relies on a set of services to exchange data from/to a Wirepas Mesh network
@@ -40,7 +40,6 @@ gateway folder as follows:
 -   stable.xml: points to the latest release
 
 If you wish to pull the latest release then use the following command:
-
 
 ```shell
     repo init -u https://github.com/wirepas/manifest.git \
@@ -189,6 +188,7 @@ Here is an example to start the transport module from the command line:
           --mqtt_port <port> \
           --mqtt_username <user> \
           --mqtt_password <password> \
+          [--mqtt_force_unsecure] \
           --gateway_id <gwid> \
           [--ignored_endpoints_filter <ignored endpoints list>] \
           [--whitened_endpoints_filter <whitened endpoints list>]
@@ -204,9 +204,11 @@ where:
 
 -   **mqtt_password:** MQTT password
 
--   **gateway_id:** the desired gateway id, instead of a random generated one.
+-   **mqtt_force_unsecure:** Add toggle when connecting to local broker without TLS
 
-    > It must be unique for each gateway reporting to same broker.
+-   **gateway_id:** the desired gateway id, instead of a random generated one
+
+    > It must be unique for each gateway reporting to same broker
 
 -   **ignored_endpoints_filter:** destination endpoints list to ignore
                                (not published)
@@ -245,11 +247,12 @@ file is given below:
     mqtt_port: <MQTT port (default: 8883 (secure) or 1883 (local))>
     mqtt_username: <MQTT user>
     mqtt_password: <MQTT password>
+    mqtt_force_unsecure: <true | false>
 
     #
     # Gateway settings
     #
-    gateway_id: <the desired gateway id, must be unique for each gateway>
+    gateway_id: <The desired gateway id, must be unique for each gateway>
     gateway_model: <Custom gateway model, can be omitted>
     gateway_version: <Custom gateway version, can be omitted>
 
