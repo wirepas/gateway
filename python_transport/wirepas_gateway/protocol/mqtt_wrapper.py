@@ -79,6 +79,7 @@ class MQTTWrapper(Thread):
 
         # Thread is not started yes
         self.running = False
+        self.connected = False
 
     def _on_connect(self, client, userdata, flags, rc):
         # pylint: disable=unused-argument
@@ -87,6 +88,7 @@ class MQTTWrapper(Thread):
             self.running = False
             return
 
+        self.connected = True
         if self.on_connect_cb is not None:
             self.on_connect_cb()
 
@@ -138,6 +140,10 @@ class MQTTWrapper(Thread):
             return sock
 
         self.logger.error("MQTT, unexpected disconnection")
+
+        if not self.connected:
+            self.logger.error("Impossible to connect - authentication failure ?")
+            return None
 
         # Socket is not opened anymore, try to reconnect
         timeout = MQTTWrapper.TIMEOUT_RECONNECT_S
