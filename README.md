@@ -1,6 +1,6 @@
 # Wirepas Linux Gateway
 
-[![Build Status](https://travis-ci.com/wirepas/gateway.svg?branch=master)](https://travis-ci.com/wirepas/gateway) [![Codacy Badge](https://api.codacy.com/project/badge/Grade/ebb45a6a13ec4f2c88131ddf51a9579a)](https://www.codacy.com/manual/wirepas/gateway?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=wirepas/gateway&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ebb45a6a13ec4f2c88131ddf51a9579a)](https://www.codacy.com/manual/wirepas/gateway?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=wirepas/gateway&amp;utm_campaign=Badge_Grade) [![Build Status](https://travis-ci.com/wirepas/gateway.svg?branch=master)](https://travis-ci.com/wirepas/gateway)
 
 This repository contains Wirepas' reference gateway implementation, which
 relies on a set of services to exchange data from/to a Wirepas Mesh network
@@ -204,9 +204,10 @@ where:
 
 -   **mqtt_password:** MQTT password
 
--   **mqtt_force_unsecure:** Add toggle when connecting to local broker without TLS
+-   **mqtt_force_unsecure:** Toggle to disable TLS handshake.
+Necessary to establish connections to unsecure port (default: 1883).
 
--   **gateway_id:** the desired gateway id, instead of a random generated one
+-   **gateway_id:** The desired gateway id, instead of a random generated one
 
     > It must be unique for each gateway reporting to same broker
 
