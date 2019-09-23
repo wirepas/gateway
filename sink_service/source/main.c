@@ -117,7 +117,8 @@ int main(int argc, char * argv[])
         return EXIT_FAILURE;
     }
 
-    if (max_poll_fail_duration != UNDEFINED_MAX_POLL_FAIL_DURATION) {
+    if (max_poll_fail_duration != UNDEFINED_MAX_POLL_FAIL_DURATION)
+    {
         if (WPC_set_max_poll_fail_duration(max_poll_fail_duration))
         {
             LOGE("Cannot set max poll fail duration (%d)\n", max_poll_fail_duration);
