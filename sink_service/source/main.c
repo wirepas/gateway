@@ -29,6 +29,8 @@ static char * port_name = "/dev/ttyACM0";
 #define MAX_SIZE_SERVICE_NAME 100
 /* Prefix for sink service name */
 #define BASE_SERVICE_NAME "com.wirepas.sink.sink0"
+/* max poll fail duration undefined */
+#define UNDEFINED_MAX_POLL_FAIL_DURATION 0xffffffff
 
 /* Dbus bus instance*/
 static sd_bus * m_bus = NULL;
@@ -66,9 +68,10 @@ int main(int argc, char * argv[])
     int c;
     unsigned int sink_id = 0;
     uint16_t mesh_version;
+    unsigned int max_poll_fail_duration = UNDEFINED_MAX_POLL_FAIL_DURATION;
 
     /* Parse arguments */
-    while ((c = getopt(argc, argv, "b:p:i:")) != -1)
+    while ((c = getopt(argc, argv, "b:p:i:d:")) != -1)
     {
         switch (c)
         {
@@ -84,6 +87,9 @@ int main(int argc, char * argv[])
             case 'i':
                 /* Get the sink id to generate service name */
                 sink_id = strtoul(optarg, NULL, 0);
+                break;
+            case 'd':
+                max_poll_fail_duration = strtoul(optarg, NULL, 0);
                 break;
             case '?':
             default:
@@ -109,6 +115,14 @@ int main(int argc, char * argv[])
     {
         LOGE("Cannot open serial sink connection (%s)\n", port_name);
         return EXIT_FAILURE;
+    }
+
+    if (max_poll_fail_duration != UNDEFINED_MAX_POLL_FAIL_DURATION) {
+        if (WPC_set_max_poll_fail_duration(max_poll_fail_duration))
+        {
+            LOGE("Cannot set max poll fail duration (%d)\n", max_poll_fail_duration);
+            return EXIT_FAILURE;
+        }
     }
 
     /* Do sanity check to test connectivity with sink */
