@@ -18,6 +18,7 @@ before_install:
   - ./.ci/style-check.sh
   - ./.ci/build.sh
   - ./.ci/build-images.sh
+  - ./.ci/service-tests.sh
   - ./.ci/fetch-artifacts.sh
   - ./.ci/test-template-generation.sh
 
