@@ -2,6 +2,39 @@
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/ebb45a6a13ec4f2c88131ddf51a9579a)](https://www.codacy.com/manual/wirepas/gateway?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=wirepas/gateway&amp;utm_campaign=Badge_Grade) [![Build Status](https://travis-ci.com/wirepas/gateway.svg?branch=master)](https://travis-ci.com/wirepas/gateway)
 
+<!-- MarkdownTOC -->
+
+- [Installing a Gateway](#installing-a-gateway)
+- [Option 1: native installation](#option-1-native-installation)
+  - [Requirements](#requirements)
+  - [Getting the sources \(option 1.1 only\)](#getting-the-sources-option-11-only)
+  - [Installation](#installation)
+    - [Sink service](#sink-service)
+      - [Option 1.1](#option-11)
+      - [Option 1.2](#option-12)
+    - [Transport service](#transport-service)
+      - [Option 1.1](#option-11-1)
+      - [Option 1.2](#option-12-1)
+  - [Configuration and starting services](#configuration-and-starting-services)
+    - [Sink service configuration](#sink-service-configuration)
+    - [Transport service configuration](#transport-service-configuration)
+    - [From command line](#from-command-line)
+    - [From configuration file](#from-configuration-file)
+    - [Optional](#optional)
+      - [Start services with systemd](#start-services-with-systemd)
+      - [See local messages on Dbus interface](#see-local-messages-on-dbus-interface)
+- [Option 2: Docker installation](#option-2-docker-installation)
+  - [Getting the docker image](#getting-the-docker-image)
+    - [Option 2.1](#option-21)
+    - [Option 2.2](#option-22)
+  - [Starting docker services](#starting-docker-services)
+  - [Using custom TLS certificates within the container](#using-custom-tls-certificates-within-the-container)
+- [Contributing](#contributing)
+- [License](#license)
+
+<!-- /MarkdownTOC -->
+
+
 This repository contains Wirepas' reference gateway implementation, which
 relies on a set of services to exchange data from/to a Wirepas Mesh network
 from/to a MQTT broker or host device.
@@ -19,25 +52,31 @@ apis involved at each step.
 
 **Figure 1 -** Gateway services overview.
 
-## Instaling a Gateway
+## Installing a Gateway
 
 Multiple options are available depending on your need.
-They are all described in the following sections.
+They are all described in the following sections:
 
-- Option 1: native installation
-    - Option 1.1: from source code\
+[Option 1.1](#option-11)
+[Option 1.2](#option-12)
+[Option 1.1](#option-11-1)
+[Option 1.2](#option-12-1)
+
+- [Option 1: native installation](#option-1-native-installation)
+    - [Option 1.1](#option-11): from source code\
       This option should be used if you plan to do modification on this reference code
-    - Option 1.2: from pre-built binaries\
+    - [Option 1.2](#option-12) from pre-built binaries\
       This option should be used if you want to use a standard gateway without modification
-- Option 2: docker installation 
-    - Option 2.1: by buiding your own docker image\
+- [Option 2: Docker installation](#option-2-docker-installation)
+    - [Option 2.1](#option-21): by building your own docker image\
       This option should be used if you plan to do modification and create your own docker images
-    - Option 2.2: by using Wirepas docker hub images\
+    - [Option 2.2](#option-22): by using Wirepas docker hub images\
       This option should be used if you plan to use docker with Wirepas images from docker hub without modification
 
 ## Option 1: native installation
 
-This section covers both option 1.1 and 1.2 and some sections are only relevant for one of these options.
+This section covers both option 1.1 and 1.2 and some sections are
+only relevant for one of these options.
 
 ### Requirements
 
@@ -348,11 +387,9 @@ Alternatively you can use our [ci tool][here_ci_docker_build].
 #### Option 2.2
 
 Our pre-built images are available on docker hub under the
-following registries:
+following registry:
 
 -   [wirepas/gateway][dockerhub_wirepas]: multi architecture registry
--   [wirepas/gateway-x86][dockerhub_wirepas_x86]: x86 architecture registry
--   [wirepas/gateway-arm][dockerhub_wirepas_arm]: arm architecture registry
 
 ### Starting docker services
 
