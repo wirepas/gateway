@@ -24,16 +24,16 @@ apis involved at each step.
 Multiple options are available depending on your need.
 They are all described in the following sections.
 
-Option 1: native installation
-    Option 1.1: from source code
-        This option should be used if you plan to do modification on this reference code
-    Option 1.2: from pre-built binaries
-        This option should be used if you want to use a standard gateway without modification
-Option 2: docker installation 
-    Option 2.1: by buiding your own docker image
-        This option should be used if you plan to do modification and create your own docker images
-    Option 2.2: by using Wirepas docker hub images
-        This option should be used if you plan to use docker with Wirepas images from docker hub without modification
+- Option 1: native installation
+    - Option 1.1: from source code\
+      This option should be used if you plan to do modification on this reference code
+    - Option 1.2: from pre-built binaries\
+      This option should be used if you want to use a standard gateway without modification
+- Option 2: docker installation 
+    - Option 2.1: by buiding your own docker image\
+      This option should be used if you plan to do modification and create your own docker images
+    - Option 2.2: by using Wirepas docker hub images\
+      This option should be used if you plan to use docker with Wirepas images from docker hub without modification
 
 ## Option 1: native installation
 
