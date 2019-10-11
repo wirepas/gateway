@@ -19,7 +19,54 @@ apis involved at each step.
 
 **Figure 1 -** Gateway services overview.
 
-## Cloning this repository
+## Instaling a Gateway
+
+Multiple options are available depending on your need.
+They are all described in the following sections.
+
+Option 1: native installation
+    Option 1.1: from source code
+        This option should be used if you plan to do modification on this reference code
+    Option 1.2: from pre-built binaries
+        This option should be used if you want to use a standard gateway without modification
+Option 2: docker installation 
+    Option 2.1: by buiding your own docker image
+        This option should be used if you plan to do modification and create your own docker images
+    Option 2.2: by using Wirepas docker hub images
+        This option should be used if you plan to use docker with Wirepas images from docker hub without modification
+
+## Option 1: native installation
+
+This section covers both option 1.1 and 1.2 and some sections are only relevant for one of these options.
+
+### Requirements
+
+The implementation is based on DBus. The C binding used to access DBus is sdbus
+from systemd library so even if systemd is not required to be running, the
+libsystemd must be available.
+
+Systemd version must be higher or equal to *221*. You can check it with:
+
+```shell
+    systemd --version
+```
+
+In order to build the sink service and the transport python wheel that contains C extensions, systemd headers are needed
+
+```shell
+    sudo apt install libsystemd-dev
+```
+
+Python 3 and a recent pip version (>= 18.1)
+
+```shell
+    sudo apt install python3 python3-dev python3-gi
+    wget https://bootstrap.pypa.io/get-pip.py \
+       && sudo python3 get-pip.py && rm get-pip.py \
+       && sudo pip3 install --upgrade pip
+```
+
+### Getting the sources (option 1.1 only)
 
 This repository depends on two other projects, [c-mesh-api][wirepas_c_mesh_api]
 and [backend-apis][wirepas_backend_apis].
@@ -74,45 +121,11 @@ Dockerfiles (see [Dockerfile][here_container_dockerfile]).
 Please read more on the repo tool usage from
 [its official documentation][repo_tool].
 
-## Linux Requirements
+### Installation
 
-The implementation is based on DBus. The C binding used to access DBus is sdbus
-from systemd library so even if systemd is not required to be running, the
-libsystemd must be available.
+#### Sink service
 
-Systemd version must be higher or equal to *221*. You can check it with:
-
-```shell
-    systemd --version
-```
-
-In order to build the sink service, systemd headers are needed
-
-```shell
-    sudo apt install libsystemd-dev
-```
-
-Python 3 and a recent pip version (>= 18.1)
-
-```shell
-    sudo apt install libsystemd-dev python3 python3-dev python3-gi
-    wget https://bootstrap.pypa.io/get-pip.py \
-       && sudo python3 get-pip.py && rm get-pip.py \
-       && sudo pip3 install --upgrade pip
-```
-
-## Installation
-
-### Sink service
-
-Sink service is written in C and can be built with following command from
-sink_service folder:
-
-```shell
-    make
-```
-
-This implementation uses system bus that has enforced security.
+The implementation uses system bus that has enforced security.
 In order to obtain a service name on system bus, the user launching the sink
 service must be previously declared to system.
 Provided file com.wirepas.sink.conf inside sink_service folder
@@ -129,31 +142,51 @@ from com.wirepas.sink.conf:
 
 *It is recommended to restart your gateway once this file is copied.*
 
-### Transport service
+##### Option 1.1
+
+Sink service is written in C and can be built with following command from
+sink_service folder:
+
+```shell
+    make
+```
+##### Option 1.2
+
+Sink service prebuilt version is available on [this page][here_releases] from assets section.
+Download the one for your architecture (Arm or x86)
+
+#### Transport service
+
+##### Option 1.1
+
+To build the wheel yourself, please refer to the
+[transport's service readme file][here_transport_readme].
+
+##### Option 1.2
 
 Transport service is implemented in python 3 and is delivered as a
 Python wheel, either through [PyPi][wirepas_gateway_pypi] or the
 [release section of this repository][here_releases].
 
-The library contains a c extension which will be compile upon installation.
+The library contains a c extension which will be compiled upon installation.
 Please ensure that you have met all the build requirements prior to
 attempting the installation with:
 
-```shell
-    pip3 install wirepas_messaging-*.whl
-```
-or
+If you get the wheel from [release section of this repository][here_releases]:
 
 ```shell
     pip3 install wirepas_gateway-*.tar.gz
 ```
 
-If you wish to build the wheel yourself, please refer to the
-[transport's service readme file][here_transport_readme].
+or from [PyPi][wirepas_gateway_pypi]
 
-## Configuration and starting services
+```shell
+    pip3 install wirepas_gateway
+```
 
-### Sink service configuration
+### Configuration and starting services
+
+#### Sink service configuration
 
 A sink service must be started for each connected sink on Gateway:
 
@@ -169,7 +202,7 @@ Parameters are:
 
 If multiple sinks are present, they must have a different *sink_id*.
 
-### Transport service configuration
+#### Transport service configuration
 
 Parameters can be set from command line or from a setting file in YAML format.
 To get an the full list of parameters, please run:
@@ -264,7 +297,13 @@ file is given below:
     whitened_endpoints_filter: <Endpoints to whiten. Ex: [1, 2, 10-12]>
 ```
 
-### Optional
+#### Optional
+
+##### Start services with systemd
+
+Please see this [Wiki entry][here wiki systemd]
+
+##### See local messages on Dbus interface
 
 Launch local gateway process to see messages received from sinks at Dbus
 level. It can be launched from the command line with:
@@ -273,7 +312,16 @@ level. It can be launched from the command line with:
     wm-dbus-print
 ```
 
-## Building and running with Docker
+## Option 2: Docker installation
+
+The Docker gateway approach of Wirepas is to have a single container able to run one of the two services (sink service or transport service).
+A docker container will be started for each service.
+For example, if you have a gateway with two sinks and one transport service, three containers will be started (one for each sink and one for the transport service).
+Communication between docker containers will happen on the host Dbus.
+
+### Getting the docker image
+
+#### Option 2.1
 
 In the container folder you will find three folders, one for
 [development][here_container]
@@ -297,7 +345,9 @@ If you want to build a stable image for x86 type:
 
 Alternatively you can use our [ci tool][here_ci_docker_build].
 
-We also have pre-built images available from docker hub under the
+#### Option 2.2
+
+Our pre-built images are available on docker hub under the
 following registries:
 
 -   [wirepas/gateway][dockerhub_wirepas]: multi architecture registry
@@ -381,6 +431,7 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [here_dbus_manifest]: https://github.com/wirepas/gateway/blob/master/sink_service/com.wirepas.sink.conf
 [here_container_entrypoint]: https://github.com/wirepas/gateway/blob/master/container/common/docker-entrypoint.sh
 [here_transport_readme]: https://github.com/wirepas/gateway/blob/master/python_transport/README.md
+[here wiki systemd]: https://github.com/wirepas/gateway/wiki/How-to-start-a-native-gateway-with-systemd
 
 [repo_tool]: https://source.android.com/setup/develop/repo
 
