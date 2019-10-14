@@ -250,7 +250,7 @@ static int set_authen_key(sd_bus * bus,
  * \brief   Set stack state
  * \param   ... (from sd_bus function signature)
  */
-static int set_stack_sate(sd_bus_message * m, void * userdata, sd_bus_error * error)
+static int set_stack_state(sd_bus_message * m, void * userdata, sd_bus_error * error)
 {
     app_res_e res;
     bool state;
@@ -497,7 +497,7 @@ static const sd_bus_vtable config_vtable[] = {
     SD_BUS_WRITABLE_PROPERTY("AuthenticationKey", "ay", read_key, set_authen_key, 0, 0),
 
     /* Methods related to config */
-    SD_BUS_METHOD("SetStackState", "b", "b", set_stack_sate, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("SetStackState", "b", "b", set_stack_state, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("ClearCipherKey", "", "", clear_cipher_key, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("ClearAuthenticationKey", "", "", clear_authen_key, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("SetAppConfig", "yqay", "b", set_app_config, SD_BUS_VTABLE_UNPRIVILEGED),
