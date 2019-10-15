@@ -159,7 +159,7 @@ class ParserHelper:
         self.file_settings.add_argument(
             "--settings",
             type=str,
-            required=False,
+            default=os.environ.get("WM_LXGW_FILE_SETTINGS", None),
             default=None,
             help="A yaml file with argument parameters (see help for options).",
         )
@@ -168,7 +168,7 @@ class ParserHelper:
         """ Commonly used MQTT arguments """
         self.mqtt.add_argument(
             "--mqtt_hostname",
-            default=None,
+            default=os.environ.get("WM_SERVICES_MQTT_HOST", None),
             action="store",
             type=str,
             help="MQTT broker hostname.",
@@ -176,7 +176,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_username",
-            default=None,
+            default=os.environ.get("WM_SERVICES_MQTT_USERNAME", None),
             action="store",
             type=str,
             help="MQTT broker username.",
@@ -184,7 +184,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_password",
-            default=None,
+            default=os.environ.get("WM_SERVICES_MQTT_PASSWORD", None),
             action="store",
             type=str,
             help="MQTT broker password.",
@@ -192,7 +192,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_port",
-            default=8883,
+            default=os.environ.get("WM_SERVICES_MQTT_PORT", 8883),
             action="store",
             type=int,
             help="MQTT broker port.",
@@ -200,18 +200,20 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_ca_certs",
-            default=None,
+            default=os.environ.get("WM_SERVICES_MQTT_CA_CERTS", None),
             action="store",
             type=str,
             help=(
-                "A string path to the Certificate Authority certificate "
-                "files that are to be treated as trusted by this client."
+                "A string path to the Certificate "
+                "Authority certificate files that "
+                "are to be treated as trusted by "
+                "this client."
             ),
         )
 
         self.mqtt.add_argument(
             "--mqtt_certfile",
-            default=None,
+            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_CRT", None),
             action="store",
             type=str,
             help=("Strings pointing to the PEM encoded client certificate."),
@@ -219,67 +221,71 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_keyfile",
-            default=None,
+            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_KEY", None),
             action="store",
             type=str,
             help=(
-                "Strings pointing to the PEM encoded client private keys "
+                "Strings pointing to the PEM "
+                "encoded client private keys "
                 "respectively."
             ),
         )
 
         self.mqtt.add_argument(
             "--mqtt_cert_reqs",
-            default=ssl.CERT_REQUIRED,
+            default=os.environ.get("WM_SERVICES_MQTT_CERT_REQS", ssl.CERT_REQUIRED),
             action="store",
             type=str,
             help=(
-                "Defines the certificate requirements that the client "
+                "Defines the certificate "
+                "requirements that the client "
                 "imposes on the broker."
             ),
         )
 
         self.mqtt.add_argument(
             "--mqtt_tls_version",
-            default=ssl.PROTOCOL_TLSv1_2,
+            default=os.environ.get("WM_SERVICES_MQTT_CERT_REQS", ssl.PROTOCOL_TLSv1_2),
             action="store",
             type=str,
-            help=("Specifies the version of the SSL / TLS protocol to be used."),
+            help=("Specifies the version of the  SSL / TLS protocol to be used."),
         )
 
         self.mqtt.add_argument(
             "--mqtt_ciphers",
-            default=None,
+            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_KEY", None),
             action="store",
             type=str,
             help=(
-                "A string specifying which encryption ciphers are "
-                "allowable for this connection."
+                "A string specifying which "
+                "encryption ciphers are allowable "
+                "for this connection."
             ),
         )
 
         self.mqtt.add_argument(
             "--mqtt_persist_session",
-            default=False,
+            default=os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False),
             action="store_true",
             help=(
-                "When False the broker will buffer session packets "
-                "between reconnection."
+                "When False the broker will buffer"
+                "session packets between "
+                "reconnection."
             ),
         )
 
         self.mqtt.add_argument(
             "--mqtt_force_unsecure",
-            default=False,
+            default=os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False),
             action="store_true",
             help=("When True the broker will skip the TLS handshake."),
         )
 
         self.mqtt.add_argument(
             "--mqtt_allow_untrusted",
-            default=False,
+            default=os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False),
             action="store_true",
-            help=("When true the client will skip the TLS check."),
+            help=("When true the client will skip the certificate name check."),
         )
 
     @staticmethod
@@ -353,7 +359,7 @@ class ParserHelper:
     def add_gateway_config(self):
         self.gateway.add_argument(
             "--gateway_id",
-            default=None,
+            default=os.environ.get("WM_SERVICES_GATEWAY_ID", None),
             type=str,
             help=("Id of the gateway. It must be unique on same broker."),
         )
@@ -367,25 +373,35 @@ class ParserHelper:
         )
 
         self.gateway.add_argument(
-            "-gm", "--gateway_model", default=None, help=("Model name of the gateway.")
+            "-gm",
+            "--gateway_model",
+            default=os.environ.get("WM_SERVICES_GATEWAY_MODEL", None),
+            help=("Model name of the gateway."),
         )
 
         self.gateway.add_argument(
-            "-gv", "--gateway_version", default=None, help=("Version of the gateway.")
+            "-gv",
+            "--gateway_version",
+            default=os.environ.get("WM_SERVICES_GATEWAY_VERSION", None),
+            help=("Version of the gateway."),
         )
 
     def add_filtering_config(self):
         self.filtering.add_argument(
             "-iepf",
             "--ignored_endpoints_filter",
-            default=None,
+            default=os.environ.get(
+                "WM_SERVICES_GATEWAY_IGNORED_ENDPOINTS_FILTER", None
+            ),
             help=("Destination endpoints list to ignore (not published)."),
         )
 
         self.filtering.add_argument(
             "-wepf",
             "--whitened_endpoints_filter",
-            default=None,
+            default=os.environ.get(
+                "WM_SERVICES_GATEWAY_WHITENED_ENDPOINTS_FILTER", None
+            ),
             help=(
                 "Destination endpoints list to whiten "
                 "(no payload content, only size)."
