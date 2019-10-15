@@ -46,6 +46,8 @@ COPY "${SOURCE_PATH}/sink_service" app_build/sink_service
 COPY "${SOURCE_PATH}/python_transport" app_build/python_transport
 COPY "${SOURCE_PATH}/container" app_build/container
 
+RUN cp -v /app_build/container/common/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
 RUN cd /app_build/python_transport \
     && python3 -m pip install --no-cache-dir --upgrade pip \
     && python3 -m pip install wheel setuptools \
@@ -69,14 +71,9 @@ RUN cd /app_build/sink_service \
     && echo "LXGW_BUILD=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"  >> "${SERVICE_HOME}/manifest" \
     && echo "LXGW_C_MESH_API_HASH=${LXGW_C_MESH_API_HASH}" >> "${SERVICE_HOME}/manifest"
 
-RUN cp -v /app_build/container/common/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
-    && cp -v /app_build/container/common/generate_settings.sh "${TRANSPORT_SERVICE}/generate_settings.sh" \
-    && cp -v /app_build/container/common/wm_transport_service.template "${TRANSPORT_SERVICE}/wm_transport_service.template"
-
 RUN rm -rf "${WM_HOME}/.cache" \
     && rm -rf /app_build \
     && chown "${WM_USER}":"${WM_USER}" -R "${WM_HOME}"
-
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 RUN ${CROSS_BUILD_END_CMD}
