@@ -103,7 +103,7 @@ class BusClient:
 
         # Could be done in C extension if needed by providing list to extension
         if self.ignore_ep_filter is not None and dst_ep in self.ignore_ep_filter:
-            self.logger.debug("Message received on ep % filtered out", dst_ep)
+            self.logger.debug("Message received on ep %s filtered out", dst_ep)
             return
 
         # Get sink name from sender unique name
@@ -126,7 +126,7 @@ class BusClient:
         # pylint: disable=redefined-builtin
         # filter out endpoint
         if self.ignore_ep_filter is not None and params[4] in self.ignore_ep_filter:
-            self.logger.debug("Message received on ep % filtered out", params[4])
+            self.logger.debug("Message received on ep %s filtered out", params[4])
             return
 
         # Get sink name from sender unique name

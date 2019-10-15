@@ -2,7 +2,6 @@
 
 # simple test to test transport mqtt decoding with ill formatted changes
 
-CA_PATH="../wirepas_gateway/wirepas_certs/extwirepas.pem"
 MQTT_HOST=""
 MQTT_USER="mqttmasteruser"
 MQTT_PWD=""
@@ -26,18 +25,6 @@ do
          -P ${MQTT_PWD} \
          -p ${MQTT_PORT} \
          -t ${MQTT_TOPIC} \
-         -m llkaksdklasdk \
-         --cafile ${CA_PATH}
+         -m llkaksdklasdk
 
 done
-
-
-
-
-
-
-
-
-
-
-
