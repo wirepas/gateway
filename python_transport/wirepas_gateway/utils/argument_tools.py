@@ -159,8 +159,8 @@ class ParserHelper:
         self.file_settings.add_argument(
             "--settings",
             type=str,
-            default=os.environ.get("WM_LXGW_FILE_SETTINGS", None),
-            default=None,
+            required=False,
+            default=os.environ.get("WM_BCLI_FILE_SETTINGS", None),
             help="A yaml file with argument parameters (see help for options).",
         )
 
