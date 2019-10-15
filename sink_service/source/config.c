@@ -253,7 +253,7 @@ static int set_authen_key(sd_bus * bus,
  *          Name of the signal to generate
  * \return  True if signal is correctly sent, false otherwise
  */
-static bool send_dbus_signal(const char *name)
+static bool send_dbus_signal(const char * name)
 {
     /* Create a new signal to be generated on Dbus */
     sd_bus_message * m = NULL;
