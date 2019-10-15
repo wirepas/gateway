@@ -169,7 +169,7 @@ class ParserHelper:
         """ Commonly used MQTT arguments """
         self.mqtt.add_argument(
             "--mqtt_hostname",
-            default=os.environ.get("WM_SERVICES_MQTT_HOST", None),
+            default=os.environ.get("WM_GW_MQTT_HOST", None),
             action="store",
             type=str,
             help="MQTT broker hostname.",
@@ -177,7 +177,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_username",
-            default=os.environ.get("WM_SERVICES_MQTT_USERNAME", None),
+            default=os.environ.get("WM_GW_MQTT_USERNAME", None),
             action="store",
             type=str,
             help="MQTT broker username.",
@@ -185,7 +185,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_password",
-            default=os.environ.get("WM_SERVICES_MQTT_PASSWORD", None),
+            default=os.environ.get("WM_GW_MQTT_PASSWORD", None),
             action="store",
             type=str,
             help="MQTT broker password.",
@@ -193,7 +193,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_port",
-            default=os.environ.get("WM_SERVICES_MQTT_PORT", 8883),
+            default=os.environ.get("WM_GW_MQTT_PORT", 8883),
             action="store",
             type=int,
             help="MQTT broker port.",
@@ -201,7 +201,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_ca_certs",
-            default=os.environ.get("WM_SERVICES_MQTT_CA_CERTS", None),
+            default=os.environ.get("WM_GW_MQTT_CA_CERTS", None),
             action="store",
             type=str,
             help=(
@@ -214,7 +214,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_certfile",
-            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_CRT", None),
+            default=os.environ.get("WM_GW_MQTT_CLIENT_CRT", None),
             action="store",
             type=str,
             help=("Strings pointing to the PEM encoded client certificate."),
@@ -222,7 +222,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_keyfile",
-            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_KEY", None),
+            default=os.environ.get("WM_GW_MQTT_CLIENT_KEY", None),
             action="store",
             type=str,
             help=(
@@ -234,7 +234,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_cert_reqs",
-            default=os.environ.get("WM_SERVICES_MQTT_CERT_REQS", ssl.CERT_REQUIRED),
+            default=os.environ.get("WM_GW_MQTT_CERT_REQS", ssl.CERT_REQUIRED),
             action="store",
             type=str,
             help=(
@@ -246,7 +246,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_tls_version",
-            default=os.environ.get("WM_SERVICES_MQTT_CERT_REQS", ssl.PROTOCOL_TLSv1_2),
+            default=os.environ.get("WM_GW_MQTT_CERT_REQS", ssl.PROTOCOL_TLSv1_2),
             action="store",
             type=str,
             help=("Specifies the version of the SSL / TLS protocol to be used."),
@@ -254,7 +254,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_ciphers",
-            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_KEY", None),
+            default=os.environ.get("WM_GW_MQTT_CLIENT_KEY", None),
             action="store",
             type=str,
             help=(
@@ -266,7 +266,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_persist_session",
-            default=os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False),
+            default=os.environ.get("WM_GW_MQTT_PERSIST_SESSION", False),
             action="store_true",
             help=(
                 "When False the broker will buffer"
@@ -277,14 +277,14 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_force_unsecure",
-            default=os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False),
+            default=os.environ.get("WM_GW_MQTT_FORCE_UNSECURE", False),
             action="store_true",
             help=("When True the broker will skip the TLS handshake."),
         )
 
         self.mqtt.add_argument(
             "--mqtt_allow_untrusted",
-            default=os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False),
+            default=os.environ.get("WM_GW_MQTT_ALLOW_UNTRUSTED", False),
             action="store_true",
             help=("When true the client will skip the certificate name check."),
         )
