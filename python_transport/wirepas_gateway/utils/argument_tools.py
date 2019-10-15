@@ -10,6 +10,7 @@
 """
 
 import argparse
+import os
 import ssl
 import sys
 import yaml
