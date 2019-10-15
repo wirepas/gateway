@@ -161,7 +161,7 @@ class ParserHelper:
             "--settings",
             type=str,
             required=False,
-            default=os.environ.get("WM_BCLI_FILE_SETTINGS", None),
+            default=os.environ.get("WM_GW_FILE_SETTINGS", None),
             help="A yaml file with argument parameters (see help for options).",
         )
 
@@ -360,7 +360,7 @@ class ParserHelper:
     def add_gateway_config(self):
         self.gateway.add_argument(
             "--gateway_id",
-            default=os.environ.get("WM_SERVICES_GATEWAY_ID", None),
+            default=os.environ.get("WM_GW_ID", None),
             type=str,
             help=("Id of the gateway. It must be unique on same broker."),
         )
@@ -376,14 +376,14 @@ class ParserHelper:
         self.gateway.add_argument(
             "-gm",
             "--gateway_model",
-            default=os.environ.get("WM_SERVICES_GATEWAY_MODEL", None),
+            default=os.environ.get("WM_GW_MODEL", None),
             help=("Model name of the gateway."),
         )
 
         self.gateway.add_argument(
             "-gv",
             "--gateway_version",
-            default=os.environ.get("WM_SERVICES_GATEWAY_VERSION", None),
+            default=os.environ.get("WM_GW_VERSION", None),
             help=("Version of the gateway."),
         )
 
@@ -391,18 +391,14 @@ class ParserHelper:
         self.filtering.add_argument(
             "-iepf",
             "--ignored_endpoints_filter",
-            default=os.environ.get(
-                "WM_SERVICES_GATEWAY_IGNORED_ENDPOINTS_FILTER", None
-            ),
+            default=os.environ.get("WM_GW_IGNORED_ENDPOINTS_FILTER", None),
             help=("Destination endpoints list to ignore (not published)."),
         )
 
         self.filtering.add_argument(
             "-wepf",
             "--whitened_endpoints_filter",
-            default=os.environ.get(
-                "WM_SERVICES_GATEWAY_WHITENED_ENDPOINTS_FILTER", None
-            ),
+            default=os.environ.get("WM_GW_WHITENED_ENDPOINTS_FILTER", None),
             help=(
                 "Destination endpoints list to whiten "
                 "(no payload content, only size)."
