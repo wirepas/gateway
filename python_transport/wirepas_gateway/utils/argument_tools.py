@@ -169,7 +169,7 @@ class ParserHelper:
         """ Commonly used MQTT arguments """
         self.mqtt.add_argument(
             "--mqtt_hostname",
-            default=os.environ.get("WM_GW_MQTT_HOST", None),
+            default=os.environ.get("WM_GW_MQTT_HOSTNAME", None),
             action="store",
             type=str,
             help="MQTT broker hostname.",
