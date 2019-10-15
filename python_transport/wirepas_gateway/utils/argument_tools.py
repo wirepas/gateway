@@ -249,7 +249,7 @@ class ParserHelper:
             default=os.environ.get("WM_SERVICES_MQTT_CERT_REQS", ssl.PROTOCOL_TLSv1_2),
             action="store",
             type=str,
-            help=("Specifies the version of the  SSL / TLS protocol to be used."),
+            help=("Specifies the version of the SSL / TLS protocol to be used."),
         )
 
         self.mqtt.add_argument(
