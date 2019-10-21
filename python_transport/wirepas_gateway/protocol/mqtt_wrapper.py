@@ -22,9 +22,6 @@ class MQTTWrapper(Thread):
     # Keep alive time with broker
     KEEP_ALIVE_S = 60
 
-    # Reconnect timeout in Seconds
-    TIMEOUT_RECONNECT_S = 120
-
     def __init__(
         self,
         settings,
@@ -71,6 +68,8 @@ class MQTTWrapper(Thread):
         except (socket.gaierror, ValueError) as e:
             self.logger.error("Cannot connect to mqtt %s", e)
             exit(-1)
+
+        self.timeout = settings.mqtt_reconnect_delay
 
         # Set options to initial socket
         self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
@@ -139,22 +138,24 @@ class MQTTWrapper(Thread):
 
         self.logger.error("MQTT, unexpected disconnection")
 
-        # Socket is not opened anymore, try to reconnect
-        timeout = MQTTWrapper.TIMEOUT_RECONNECT_S
-        while timeout > 0:
+        # Socket is not opened anymore, try to reconnect for timeout if set
+        timeout = self.timeout
+        no_timeout = (timeout == 0)
+
+        while no_timeout or timeout > 0:
             try:
                 ret = self._client.reconnect()
                 if ret == mqtt.MQTT_ERR_SUCCESS:
                     break
             except Exception:
-                # Retry to connect in 1 sec up to timeout
+                # Retry to connect in 1 sec up to timeout if set
                 sleep(1)
                 timeout -= 1
                 self.logger.debug("Retrying to connect in 1 sec")
 
-        if timeout <= 0:
+        if not no_timeout and timeout <= 0:
             self.logger.error(
-                "Unable to reconnect after %s seconds", MQTTWrapper.TIMEOUT_RECONNECT_S
+                "Unable to reconnect after %s seconds", self.timeout
             )
             return None
 

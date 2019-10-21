@@ -282,6 +282,15 @@ class ParserHelper:
             help=("When true the client will skip the TLS check."),
         )
 
+        self.mqtt.add_argument(
+            "--mqtt_reconnect_delay",
+            default=0,
+            action="store",
+            type=int,
+            help=("Delay in seconds to try to reconnect when connection to"
+                 "broker is lost (0 to try forever)"),
+        )
+
     @staticmethod
     def _deprecated_message(new_arg_name, deprecated_from="2.x"):
         """ Alerts the user that an argument will be deprecated within the
