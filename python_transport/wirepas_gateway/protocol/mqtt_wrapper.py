@@ -23,9 +23,6 @@ class MQTTWrapper(Thread):
     # Keep alive time with broker
     KEEP_ALIVE_S = 60
 
-    # Reconnect timeout in Seconds
-    TIMEOUT_RECONNECT_S = 120
-
     def __init__(
         self,
         settings,
@@ -75,6 +72,8 @@ class MQTTWrapper(Thread):
         except (socket.gaierror, ValueError) as e:
             self.logger.error("Cannot connect to mqtt %s", e)
             exit(-1)
+
+        self.timeout = settings.mqtt_reconnect_delay
 
         # Set options to initial socket
         self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
@@ -149,24 +148,29 @@ class MQTTWrapper(Thread):
             self.logger.error("Impossible to connect - authentication failure ?")
             return None
 
-        # Socket is not opened anymore, try to reconnect
-        timeout = MQTTWrapper.TIMEOUT_RECONNECT_S
-        while timeout > 0:
+        # Socket is not opened anymore, try to reconnect for timeout if set
+        loop_forever = (self.timeout == 0)
+        delay = 0
+
+        # Loop forever or until timeout is over
+        while loop_forever or (delay <= self.timeout):
             try:
                 ret = self._client.reconnect()
                 if ret == mqtt.MQTT_ERR_SUCCESS:
                     break
             except Exception:
-                # Retry to connect in 1 sec up to timeout
+                # Retry to connect in 1 sec up to timeout if set
                 sleep(1)
-                timeout -= 1
+                delay += 1
                 self.logger.debug("Retrying to connect in 1 sec")
 
-        if timeout <= 0:
-            self.logger.error(
-                "Unable to reconnect after %s seconds", MQTTWrapper.TIMEOUT_RECONNECT_S
-            )
-            return None
+        if not loop_forever:
+            # In case of timeout set, check if it exits because of timeout
+            if delay > self.timeout:
+                self.logger.error(
+                    "Unable to reconnect after %s seconds", delay
+                )
+                return None
 
         # Socket must be available once reconnect is successful
         if self._client.socket() is None:
