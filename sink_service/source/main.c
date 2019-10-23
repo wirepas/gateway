@@ -20,10 +20,8 @@
 
 #define LOG_MODULE_NAME "Main"
 #define MAX_LOG_LEVEL INFO_LOG_LEVEL
-#include "logger.h"
 
-/* Default serial port */
-static char * port_name = "/dev/ttyACM0";
+#include "logger.h"
 
 /* Maximum size of dbus service name */
 #define MAX_SIZE_SERVICE_NAME 100
@@ -31,6 +29,8 @@ static char * port_name = "/dev/ttyACM0";
 #define BASE_SERVICE_NAME "com.wirepas.sink.sink0"
 /* max poll fail duration undefined */
 #define UNDEFINED_MAX_POLL_FAIL_DURATION 0xffffffff
+
+static char * port_name = "/dev/ttyACM0";
 
 /* Dbus bus instance*/
 static sd_bus * m_bus = NULL;
@@ -60,6 +60,46 @@ static bool get_service_name(char service_name[MAX_SIZE_SERVICE_NAME], unsigned 
     return true;
 }
 
+/**
+ * \brief   Obtains environment parameters to control sink settings
+ * \param   bitrate
+ *          Pointer where to store bitrate value (if any)
+ * \param   port_name
+ *          Pointer where to store port_name value (if any)
+ * \param   sink_id
+ *          Pointer where to store sink_id value (if any)
+ * \param   max_poll_fail_duration
+ *          Pointer where to store max_poll_fail_duration value (if any)
+ */
+static void get_env_parameters(unsigned long * bitrate,
+                               char ** port_name,
+                               unsigned int * sink_id,
+                               unsigned int * max_poll_fail_duration)
+{
+    char * ptr;
+
+    if ((ptr = getenv("WM_GW_SINK_BITRATE")) != NULL)
+    {
+        *bitrate = strtoul(ptr, NULL, 0);
+        LOGI("WM_GW_SINK_BITRATE: %lu\n", *bitrate);
+    }
+    if ((ptr = getenv("WM_GW_SINK_ID")) != NULL)
+    {
+        *sink_id = strtoul(ptr, NULL, 0);
+        LOGI("WM_GW_SINK_ID: %lu\n", *sink_id);
+    }
+    if ((ptr = getenv("WM_GW_SINK_UART_PORT")) != NULL)
+    {
+        *port_name = ptr;
+        LOGI("WM_GW_SINK_UART_PORT: %s\n", *port_name);
+    }
+    if ((ptr = getenv("WM_GW_SINK_MAX_POLL_FAIL_DURATION")) != NULL)
+    {
+        *max_poll_fail_duration = strtoul(ptr, NULL, 0);
+        LOGI("WM_GW_SINK_MAX_POLL_FAIL_DURATION: %lu\n", *max_poll_fail_duration);
+    }
+}
+
 int main(int argc, char * argv[])
 {
     unsigned long bitrate = 125000;
@@ -70,7 +110,10 @@ int main(int argc, char * argv[])
     uint16_t mesh_version;
     unsigned int max_poll_fail_duration = UNDEFINED_MAX_POLL_FAIL_DURATION;
 
-    /* Parse arguments */
+    /* Acquires environment parameters */
+    get_env_parameters(&bitrate, &port_name, &sink_id, &max_poll_fail_duration);
+
+    /* Parse command line arguments - take precedence over environmental ones */
     while ((c = getopt(argc, argv, "b:p:i:d:")) != -1)
     {
         switch (c)

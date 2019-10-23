@@ -7,14 +7,7 @@ services:
 dist: "bionic"
 
 before_install:
-  - sudo apt-get install build-essential libsystemd-dev dbus qemu-user-static
-  - sudo gem install github_changelog_generator
-  - pip3 install --upgrade twine
-  - pip3 install pipenv
-  - sudo ./.ci/install-repo.sh
-  - ./.ci/install-devtools.sh
-  - pip3 install -r dev-requirements.txt
-  - pip3 install -r python_transport/docs/requirements.txt
+  - ./.ci/requirements.sh
   - ./.ci/style-check.sh
   - ./.ci/build.sh
   - ./.ci/build-images.sh

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 if [[ -f ".wnt-secrets" ]]
 then
     set -a
@@ -22,12 +24,16 @@ function pull_dependencies()
 function run_test()
 {
     export COMPOSE_CMD
+    export SINK_SERVICE_TEST
 
     COMPOSE_CMD="$1"
     _TIMEOUT="${2:-10}"
 
+    SINK_SERVICE_TEST="test_sink_env_params.sh"
+    docker-compose -f tests/services/sink-service.yml up --exit-code-from wm-sink
+
     timeout --preserve-status "${_TIMEOUT}" docker-compose \
-            -f tests/services/docker-compose.yml up \
+            -f tests/services/transport-service.yml up \
             --abort-on-container-exit \
             --exit-code-from wm-transport
 }
