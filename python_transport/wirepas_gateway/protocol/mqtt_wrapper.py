@@ -4,6 +4,7 @@
 
 import queue
 import socket
+import ssl
 from select import select
 from threading import Thread, current_thread
 from time import sleep
@@ -48,8 +49,8 @@ class MQTTWrapper(Thread):
                     ca_certs=settings.mqtt_ca_certs,
                     certfile=settings.mqtt_certfile,
                     keyfile=settings.mqtt_keyfile,
-                    cert_reqs=settings.mqtt_cert_reqs,
-                    tls_version=settings.mqtt_tls_version,
+                    cert_reqs=ssl.VerifyMode[settings.mqtt_cert_reqs],
+                    tls_version=ssl._SSLMethod[settings.mqtt_tls_version],
                     ciphers=settings.mqtt_ciphers,
                 )
             except Exception as e:
