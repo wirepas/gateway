@@ -243,8 +243,8 @@ class ParserHelper:
         self.mqtt.add_argument(
             "--mqtt_tls_version",
             default="PROTOCOL_TLSv1_2",
-            choices=["PROTOCOL_TLS", 
-                     "PROTOCOL_TLS_CLIENT", 
+            choices=["PROTOCOL_TLS",
+                     "PROTOCOL_TLS_CLIENT",
                      "PROTOCOL_TLS_SERVER",
                      "PROTOCOL_TLSv1",
                      "PROTOCOL_TLSv1_1",
