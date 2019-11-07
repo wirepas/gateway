@@ -4,11 +4,11 @@
 
 <!-- MarkdownTOC levels="1,2" autolink="true"  -->
 
-- [Installing a Gateway](#installing-a-gateway)
-- [Option 1: native installation](#option-1-native-installation)
-- [Option 2: Docker installation](#option-2-docker-installation)
-- [Contributing](#contributing)
-- [License](#license)
+  - [Installing a Gateway](#installing-a-gateway)
+  - [Option 1: native installation](#option-1-native-installation)
+  - [Option 2: Docker installation](#option-2-docker-installation)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 <!-- /MarkdownTOC -->
 
@@ -34,21 +34,16 @@ apis involved at each step.
 Multiple options are available depending on your need.
 They are all described in the following sections:
 
-[Option 1.1](#option-11)
-[Option 1.2](#option-12)
-[Option 1.1](#option-11-1)
-[Option 1.2](#option-12-1)
-
 - [Option 1: native installation](#option-1-native-installation)
-    - [Option 1.1](#option-11): from source code\
-      This option should be used if you plan to do modification on this reference code
-    - [Option 1.2](#option-12) from pre-built binaries\
-      This option should be used if you want to use a standard gateway without modification
+  - [Option 1.1](#option-11): from source code\
+    This option should be used if you plan to do modification on this reference code
+  - [Option 1.2](#option-12) from pre-built binaries\
+    This option should be used if you want to use a standard gateway without modification
 - [Option 2: Docker installation](#option-2-docker-installation)
-    - [Option 2.1](#option-21): by building your own docker image\
-      This option should be used if you plan to do modification and create your own docker images
-    - [Option 2.2](#option-22): by using Wirepas docker hub images\
-      This option should be used if you plan to use docker with Wirepas images from docker hub without modification
+  - [Option 2.1](#option-21): by building your own docker image\
+    This option should be used if you plan to do modification and create your own docker images
+  - [Option 2.2](#option-22): by using Wirepas docker hub images\
+    This option should be used if you plan to use docker with Wirepas images from docker hub without modification
 
 ## Option 1: native installation
 
@@ -158,7 +153,7 @@ from com.wirepas.sink.conf:
 
 *It is recommended to restart your gateway once this file is copied.*
 
-##### Option 1.1
+##### Option 1.1: from source code
 
 Sink service is written in C and can be built with following command from
 sink_service folder:
@@ -166,19 +161,19 @@ sink_service folder:
 ```shell
     make
 ```
-##### Option 1.2
+##### Option 1.2: from pre-built binaries
 
 Sink service prebuilt version is available on [this page][here_releases] from assets section.
 Download the one for your architecture (Arm or x86)
 
 #### Transport service
 
-##### Option 1.1
+##### Option 1.1: from source code
 
 To build the wheel yourself, please refer to the
 [transport's service readme file][here_transport_readme].
 
-##### Option 1.2
+##### Option 1.2: from pre-built binaries
 
 Transport service is implemented in python 3 and is delivered as a
 Python wheel, either through [PyPi][wirepas_gateway_pypi] or the
@@ -337,7 +332,7 @@ Communication between docker containers will happen on the host Dbus.
 
 ### Getting the docker image
 
-#### Option 2.1
+#### Option 2.1: by building your own docker image
 
 In the container folder you will find three folders, one for
 [development][here_container]
@@ -361,7 +356,7 @@ If you want to build a stable image for x86 type:
 
 Alternatively you can use our [ci tool][here_ci_docker_build].
 
-#### Option 2.2
+#### Option 2.2: by using Wirepas docker hub images
 
 Our pre-built images are available on docker hub under the
 following registry:
