@@ -270,7 +270,7 @@ class ParserHelper:
             default=False,
             action="store_true",
             help=(
-                "When False the broker will buffer session packets "
+                "When True the broker will buffer session packets "
                 "between reconnection."
             ),
         )

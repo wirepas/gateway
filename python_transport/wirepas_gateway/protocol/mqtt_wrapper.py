@@ -42,7 +42,10 @@ class MQTTWrapper(Thread):
         self.on_termination_cb = on_termination_cb
         self.on_connect_cb = on_connect_cb
 
-        self._client = mqtt.Client(client_id=settings.gateway_id)
+        self._client = mqtt.Client(
+            client_id=settings.gateway_id,
+            clean_session=not settings.mqtt_persist_session,
+        )
         if not settings.mqtt_force_unsecure:
             try:
                 self._client.tls_set(
