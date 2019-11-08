@@ -218,7 +218,7 @@ class TransportService(BusClient):
         self.logger.info("Gateway started with id: %s", self.gw_id)
 
         self.monitoringThread = None
-        self.minimun_sink_cost = settings.buffering_minimal_sink_cost
+        self.minimum_sink_cost = settings.buffering_minimal_sink_cost
 
         if settings.buffering_max_buffered_packets > 0:
             self.logger.info(
