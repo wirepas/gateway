@@ -450,5 +450,3 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [wirepas_gateway_pypi]: https://pypi.org/project/wirepas-gateway
 
 [dockerhub_wirepas]: https://hub.docker.com/r/wirepas/gateway
-[dockerhub_wirepas_x86]: https://hub.docker.com/r/wirepas/gateway-x86
-[dockerhub_wirepas_arm]: https://hub.docker.com/r/wirepas/gateway-arm
