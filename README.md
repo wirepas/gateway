@@ -14,7 +14,8 @@
 
 This repository contains Wirepas' reference gateway implementation, which
 relies on a set of services to exchange data from/to a Wirepas Mesh network
-from/to a MQTT broker or host device.
+from/to a MQTT broker or host device. The implemented API is described
+[here][wirepas_gateway_to_backend_api].
 
 The services will be known from now on as sink service and transport service.
 The sink service is responsible to interface locally with a Wirepas device
@@ -447,6 +448,7 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [wirepas_manifest]: https://github.com/wirepas/manifest
 [wirepas_c_mesh_api]: https://github.com/wirepas/c-mesh-api
 [wirepas_backend_apis]: https://github.com/wirepas/backend-client
+[wirepas_gateway_to_backend_api]: https://github.com/wirepas/backend-apis/blob/master/gateway_to_backend/README.md
 [wirepas_gateway_pypi]: https://pypi.org/project/wirepas-gateway
 
 [dockerhub_wirepas]: https://hub.docker.com/r/wirepas/gateway
