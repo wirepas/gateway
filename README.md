@@ -38,7 +38,7 @@ They are all described in the following sections:
 - [Option 1: native installation](#option-1-native-installation)
   - [Option 1.1](#option-11): from source code\
     This option should be used if you plan to do modification on this reference code
-  - [Option 1.2](#option-12) from pre-built binaries\
+  - [Option 1.2](#option-12): from pre-built binaries\
     This option should be used if you want to use a standard gateway without modification
 - [Option 2: Docker installation](#option-2-docker-installation)
   - [Option 2.1](#option-21): by building your own docker image\
@@ -140,9 +140,9 @@ Please read more on the repo tool usage from
 The implementation uses system bus that has enforced security.
 In order to obtain a service name on system bus, the user launching the sink
 service must be previously declared to system.
-Provided file com.wirepas.sink.conf inside sink_service folder
-must be copied under /etc/dbus-1/system.d/ and edited with the user that will
-launch sink_service (and transport service).
+Provided file *com.wirepas.sink.conf* inside sink_service folder
+must be copied under */etc/dbus-1/system.d/* and edited with the user that will
+launch the sink_service (and transport service).
 
 To change the default wirepas user, please edit the following lines
 from com.wirepas.sink.conf:
