@@ -10,7 +10,6 @@
 """
 
 import argparse
-import ssl
 import sys
 import yaml
 
@@ -230,7 +229,8 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_cert_reqs",
-            default=ssl.CERT_REQUIRED,
+            default="CERT_REQUIRED",
+            choices=["CERT_REQUIRED", "CERT_OPTIONAL", "CERT_NONE"],
             action="store",
             type=str,
             help=(
@@ -241,7 +241,15 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_tls_version",
-            default=ssl.PROTOCOL_TLSv1_2,
+            default="PROTOCOL_TLSv1_2",
+            choices=[
+                "PROTOCOL_TLS",
+                "PROTOCOL_TLS_CLIENT",
+                "PROTOCOL_TLS_SERVER",
+                "PROTOCOL_TLSv1",
+                "PROTOCOL_TLSv1_1",
+                "PROTOCOL_TLSv1_2",
+            ],
             action="store",
             type=str,
             help=("Specifies the version of the SSL / TLS protocol to be used."),
@@ -263,7 +271,7 @@ class ParserHelper:
             default=False,
             action="store_true",
             help=(
-                "When False the broker will buffer session packets "
+                "When True the broker will buffer session packets "
                 "between reconnection."
             ),
         )
