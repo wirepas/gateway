@@ -80,6 +80,10 @@ class Sink:
         except GLib.Error as e:
             self.logger.exception("Fail to send message: %s", e.message)
             return ReturnCode.error_from_dbus_exception(e.message)
+        except OverflowError:
+            # It may happens as protobuf has bigger container value
+            self.logger.error("Invalid range value")
+            return GatewayResultCode.GW_RES_INVALID_PARAM
 
         return GatewayResultCode.GW_RES_OK
 
@@ -181,7 +185,15 @@ class Sink:
                 self.sink_id,
                 e.message,
             )
-            raise RuntimeError(ReturnCode.error_from_dbus_exception(e.message))
+            return ReturnCode.error_from_dbus_exception(e.message)
+        except OverflowError:
+            # It may happens as protobuf has bigger container value
+            self.logger.error(
+                "Invalid range value for param %s with value %s", key, value
+            )
+            return GatewayResultCode.GW_RES_INVALID_PARAM
+
+        return GatewayResultCode.GW_RES_OK
 
     def write_config(self, config):
         # Should always be available
@@ -206,7 +218,6 @@ class Sink:
             data = config["app_config_data"]
 
             self.logger.info("Set app config with %s", config)
-
             self.proxy.SetAppConfig(seq, diag, data)
         except KeyError:
             # App config not defined in new config
@@ -214,6 +225,10 @@ class Sink:
         except GLib.Error as e:
             res = ReturnCode.error_from_dbus_exception(e.message)
             self.logger.error("Cannot set App Config: %s", res.name)
+        except OverflowError:
+            # It may happens as protobuf has bigger container value
+            res = GatewayResultCode.GW_RES_INVALID_PARAM
+            self.logger.error("Invalid range value")
 
         config_to_dbus_param = dict(
             [
@@ -229,11 +244,11 @@ class Sink:
 
         # Any following call will stop the stack
         for param in config_to_dbus_param:
-            try:
-                self._set_param(config, param, config_to_dbus_param[param])
-            except RuntimeError as e:
-                self.logger.exception("Runtime error when setting parameter")
-                res = e.args[0]
+            tmp = self._set_param(config, param, config_to_dbus_param[param])
+            if tmp != GatewayResultCode.GW_RES_OK:
+                # Update result code only if not success to avoid erasing
+                # previous error (only one return code)
+                res = tmp
 
         # Set stack in state defined by new config or set it as it was
         # previously
@@ -357,6 +372,10 @@ class Sink:
         except GLib.Error as e:
             ret = ReturnCode.error_from_dbus_exception(e.message)
             self.logger.error("Cannot upload local scratchpad: %s", ret.name)
+        except OverflowError:
+            # It may happens as protobuf has bigger container value
+            ret = GatewayResultCode.GW_RES_INVALID_PARAM
+            self.logger.error("Invalid range value")
 
         if restart:
             try:
