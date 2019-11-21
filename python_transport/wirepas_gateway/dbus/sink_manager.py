@@ -259,7 +259,13 @@ class Sink:
             new_state = stack_started
 
         try:
-            self.proxy.SetStackState(new_state)
+            current_state = (self.proxy.StackStatus & 0x01) == 0
+            # Change stack state only if needed to avoid unnecessary events
+            if current_state != new_state:
+                self.logger.debug(
+                    "Change stack state from %s to %s", current_state, new_state
+                )
+                self.proxy.SetStackState(new_state)
         except GLib.Error as err:
             res = ReturnCode.error_from_dbus_exception(err.message)
             self.logger.exception(
