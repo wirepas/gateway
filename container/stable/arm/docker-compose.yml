@@ -11,12 +11,13 @@ services:
         image: ${IMAGE_NAME:-wirepas/gateway-rpi:latest}
         build:
             context: ../../..
-            dockerfile: container/stable/Dockerfile
+            dockerfile: container/Dockerfile
             args:
                 IMAGE_NAME: ${IMAGE_NAME:-wirepas/gateway-rpi:latest}
                 VERSION: ${VERSION:-"1.2.0-rc.1"}
                 BUILD_DATE: ${BUILD_DATE:-"undefined"}
-                DOCKER_BASE: wirepas/base:1.1-raspbian
+                DOCKER_BASE: balenalib/raspberrypi3
+                SOURCE_PATH: .ci/repo_stable
                 CROSS_BUILD_START_CMD: cross-build-start
                 CROSS_BUILD_END_CMD: cross-build-end
                 GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE:-gateway/stable.xml}
