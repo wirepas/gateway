@@ -24,7 +24,6 @@ BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 REGISTRY_NAME="wirepas"
 
 DOCKERFILE_PATH="./container"
-GIT_REPO_FOLDER="./.ci/_repo"
 BUILD_TAG=${BUILD_TAG:-$TRAVIS_TAG}
 
 ##
@@ -41,16 +40,20 @@ function _build
 
     if [[ ${_ARCH} == "arm" ]]
     then
-        DOCKER_BASE=wirepas/base:1.1-raspbian
+        DOCKER_BASE=balenalib/raspberrypi3
         CROSS_BUILD_START_CMD=cross-build-start
         CROSS_BUILD_END_CMD=cross-build-end
     else
-        DOCKER_BASE=wirepas/base:1.1-ubuntu
+        DOCKER_BASE=ubuntu:19.04
         CROSS_BUILD_START_CMD=:
         CROSS_BUILD_END_CMD=:
     fi
 
     echo "building ${_PATH}: ${IMAGE_NAME} (from: ${DOCKER_BASE})"
+
+    # to speed up builds
+    docker pull "${IMAGE_NAME}"
+
     #shellcheck disable=SC2086
     docker-compose -f "${_PATH}" \
                    build ${_CACHE} \
@@ -62,29 +65,33 @@ function _build
 
 function _fetch_dependencies
 {
-    # pull repository dependency
-    GIT_MANIFEST_FILE=gateway/dev.xml
-    GIT_MANIFEST_URL=https://github.com/wirepas/manifest.git
-    GIT_MANIFEST_BRANCH=master
-    _ROOT_PATH=$(pwd)
+    if [[ -z "${SKIP_PULL}" ]]
+    then
+        # pull repository dependency
+        GIT_REPO_FOLDER=${1}
+        GIT_MANIFEST_FILE=${GIT_MANIFEST_FILE:-"gateway/dev.xml"}
+        GIT_MANIFEST_URL=${GIT_MANIFEST_URL:-"https://github.com/wirepas/manifest.git"}
+        GIT_MANIFEST_BRANCH=${GIT_MANIFEST_BRANCH:-"master"}
 
-    LXGW_SERVICES_HASH="$(git log -n1 --pretty=%h)"
+        _ROOT_PATH=$(pwd)
 
-    rm -rf "${GIT_REPO_FOLDER}"
-    mkdir "${GIT_REPO_FOLDER}"
-    cd "${GIT_REPO_FOLDER}"
-    git config --global color.ui true
-    pipenv run --two repo init \
-               -u "${GIT_MANIFEST_URL}" \
-               -m "${GIT_MANIFEST_FILE}" \
-               -b "${GIT_MANIFEST_BRANCH}" \
-               --no-clone-bundle
-    pipenv --rm
-    pipenv run --two repo sync
-    cd "sink_service/c-mesh-api"
-    LXGW_C_MESH_API_HASH="$(git log -n1 --pretty=%h)"
-    cd "${_ROOT_PATH}"
-    cp -r "${GIT_REPO_FOLDER}/sink_service/" .
+        echo "fetching dependencies from: ${GIT_MANIFEST_URL}/${GIT_MANIFEST_FILE}/${GIT_MANIFEST_BRANCH}"
+        _ROOT_PATH=$(pwd)
+        rm -rf "${GIT_REPO_FOLDER}"
+        mkdir "${GIT_REPO_FOLDER}"
+        cd "${GIT_REPO_FOLDER}"
+        git config --global color.ui true
+        pipenv run --two repo init \
+                   -u "${GIT_MANIFEST_URL}" \
+                   -m "${GIT_MANIFEST_FILE}" \
+                   -b "${GIT_MANIFEST_BRANCH}" \
+                   --depth 2 \
+                   --no-tags \
+                   --no-clone-bundle
+        pipenv --rm
+        pipenv run --two repo sync
+        cd "${_ROOT_PATH}"
+    fi
 }
 
 
@@ -95,21 +102,33 @@ function _main
 {
 
     # builds x86 and arm images based on manifest files
-    if [[ ! -z ${BUILD_TAG} ]]
+    if [[ ! -z "${BUILD_TAG}" ]]
     then
 
+        GIT_MANIFEST_FILE=gateway/stable.xml
         GIT_MANIFEST_BRANCH=refs/tags/gateway/${BUILD_TAG}
+
+        REPO_STABLE=".ci/_repo_stable"
+        _fetch_dependencies "${REPO_STABLE}"
+
+        LXGW_SERVICES_HASH="$(git -C ${REPO_STABLE}/ log -n1 --pretty=%h)"
+        LXGW_C_MESH_API_HASH="$(git -C ${REPO_STABLE}/sink_service/c-mesh-api log -n1 --pretty=%h)"
 
         _build "${DOCKERFILE_PATH}/stable/arm/docker-compose.yml" "arm" "--no-cache"
         _build "${DOCKERFILE_PATH}/stable/x86/docker-compose.yml" "x86" "--no-cache"
     else
         BUILD_TAG="edge"
+        GIT_MANIFEST_BRANCH=master
 
         # builds x86 and arm images based on top of current revision
-        if [[ -z ${SKIP_PULL} ]]
-        then
-            _fetch_dependencies
-        fi
+        REPO_EDGE=".ci/_repo_edge"
+        _fetch_dependencies "${REPO_EDGE}"
+
+        LXGW_SERVICES_HASH="$(git log -n1 --pretty=%h)"
+        LXGW_C_MESH_API_HASH="$(git -C ${REPO_EDGE}/sink_service/c-mesh-api log -n1 --pretty=%h)"
+
+        # we want to copy the current changes (not what is in cr)
+        cp -vr "${GIT_REPO_FOLDER}/sink_service/c-mesh-api" "sink_service"
         _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "arm"
         _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "x86"
     fi
