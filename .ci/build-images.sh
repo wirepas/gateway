@@ -84,7 +84,7 @@ function _fetch_dependencies
     cd "sink_service/c-mesh-api"
     LXGW_C_MESH_API_HASH="$(git log -n1 --pretty=%h)"
     cd "${_ROOT_PATH}"
-    cp -r "${GIT_REPO_FOLDER}/sink_service/" .
+    cp -vr "${GIT_REPO_FOLDER}/sink_service/c-mesh-api" "sink_service/"
 }
 
 
