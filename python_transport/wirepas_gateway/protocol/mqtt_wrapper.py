@@ -4,6 +4,7 @@
 
 import queue
 import socket
+import ssl
 from select import select
 from threading import Thread, current_thread
 from time import sleep
@@ -41,15 +42,18 @@ class MQTTWrapper(Thread):
         self.on_termination_cb = on_termination_cb
         self.on_connect_cb = on_connect_cb
 
-        self._client = mqtt.Client(client_id=settings.gateway_id)
+        self._client = mqtt.Client(
+            client_id=settings.gateway_id,
+            clean_session=not settings.mqtt_persist_session,
+        )
         if not settings.mqtt_force_unsecure:
             try:
                 self._client.tls_set(
                     ca_certs=settings.mqtt_ca_certs,
                     certfile=settings.mqtt_certfile,
                     keyfile=settings.mqtt_keyfile,
-                    cert_reqs=settings.mqtt_cert_reqs,
-                    tls_version=settings.mqtt_tls_version,
+                    cert_reqs=ssl.VerifyMode[settings.mqtt_cert_reqs],
+                    tls_version=ssl._SSLMethod[settings.mqtt_tls_version],
                     ciphers=settings.mqtt_ciphers,
                 )
             except Exception as e:

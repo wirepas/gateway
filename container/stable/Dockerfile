@@ -41,8 +41,6 @@ RUN cd /app_build/python_transport/ \
     && echo "LXGW_VERSION=$(< wirepas_gateway/__about__.py awk '/__version__/{print $NF}'| tr -d '\"')" >> /app_build/manifest \
     && bash ./utils/generate_wheel.sh
 
-
-
 RUN ${CROSS_BUILD_END_CMD}
 
 # builds x86 gateway services
@@ -70,8 +68,6 @@ RUN pip3 install --no-cache-dir ${WM_TRANSPORT_PKG}
 
 RUN rm -rf "${WM_HOME}"/.cache && chown "${WM_USER}":"${WM_USER}" -R "${WM_HOME}"
 COPY --from=builder /app_build/container/common/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY --from=builder /app_build/container/common/generate_settings.sh "${TRANSPORT_SERVICE}/generate_settings.sh"
-COPY --from=builder /app_build/container/common/wm_transport_service.template "${TRANSPORT_SERVICE}/wm_transport_service.template"
 RUN ${CROSS_BUILD_END_CMD}
 
 WORKDIR ${WM_HOME}

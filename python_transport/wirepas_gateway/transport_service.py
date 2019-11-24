@@ -260,7 +260,7 @@ class TransportService(BusClient):
         sink = self.sink_manager.get_sink(sink_id)
         if sink is not None:
             if request.hop_limit > self.MAX_HOP_LIMIT:
-                res = GatewayResultCode.INVALID_MAX_HOP_COUNT
+                res = GatewayResultCode.GW_RES_INVALID_MAX_HOP_COUNT
             else:
                 res = sink.send_data(
                     request.destination_address,
