@@ -69,6 +69,7 @@ setup(
     keywords=about["__keywords__"],
     packages=find_packages(exclude=["contrib", "docs", "tests", "examples"]),
     install_requires=get_requirements("requirements.txt"),
+    python_requires=">=3.7",
     ext_modules=[
         Extension(
             "dbusCExtension",
