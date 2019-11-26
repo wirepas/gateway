@@ -11,7 +11,7 @@ failure()
 }
 
 # Call to register a pass
-sucess()
+success()
 {
     NB_PASS=$((NB_PASS + 1))
     return 0
@@ -30,7 +30,7 @@ function content_in_file
         return "${?}"
     fi
 
-    sucess
+    success
     return "${?}"
 }
 
@@ -73,7 +73,7 @@ function test_env_overflow
     fi
     set -e
 
-    sucess
+    success
     return "$?"
 }
 

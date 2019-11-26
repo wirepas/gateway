@@ -20,8 +20,10 @@
 
 #define LOG_MODULE_NAME "Main"
 #define MAX_LOG_LEVEL INFO_LOG_LEVEL
-
 #include "logger.h"
+
+/* Default serial port */
+static char * port_name = "/dev/ttyACM0";
 
 /* Maximum size of dbus service name */
 #define MAX_SIZE_SERVICE_NAME 100
@@ -29,8 +31,6 @@
 #define BASE_SERVICE_NAME "com.wirepas.sink.sink0"
 /* max poll fail duration undefined */
 #define UNDEFINED_MAX_POLL_FAIL_DURATION 0xffffffff
-
-static char * port_name = "/dev/ttyACM0";
 
 /* Dbus bus instance*/
 static sd_bus * m_bus = NULL;
