@@ -8,6 +8,13 @@ from time import time
 from uuid import getnode
 from threading import Thread
 
+# modem gRPC modules
+import grpc
+from GPS_Service_pb2 import *
+import GPS_Service_pb2_grpc
+
+import maersk_request_parser
+
 import wirepas_messaging
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
@@ -59,6 +66,37 @@ class TransportService(BusClient):
         last_will_message = wirepas_messaging.gateway.api.StatusEvent(
             self.gw_id, GatewayState.OFFLINE
         ).payload
+
+
+        # Get sink firmware version
+        sink = self.sink_manager.get_sinks()[0]
+        config = sink.read_config()
+        self.wirepas_version = "{}.{}.{}.{}".format(*config["firmware_version"])
+        self.logger.info("Wirepas firmware: %s", self.wirepas_version)
+
+        # Get firmware info
+        with open("/etc/mender/artifact_info", 'r') as info:
+            self.firmware = info.readline()[14:].rstrip('\r\n') # remove "artifact_name="
+
+        self.logger.info("Solidsense firmware: %s", self.firmware)
+
+        # get IMSI with gRPC
+        channel = grpc.insecure_channel("0.0.0.0:20231")
+        stub = GPS_Service_pb2_grpc.GPS_ServiceStub(channel)
+        req = ModemCmd(command="status")
+        resp = stub.modemCommand(req)
+
+        if resp.response == 'OK' and resp.status.SIM_status == 'READY':
+            self.imsi = int(rs.IMSI)
+        else:
+            self.imsi = 0
+            if resp.response == 'OK':
+                self.logger.warning("No SIM available!")
+            else:
+                self.logger.warning("No Modem service!")
+
+        self.logger.info("IMSI: %u", self.imsi)
+
 
         self.mqtt_wrapper = MQTTWrapper(
             settings,
@@ -124,6 +162,11 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_otap_process_scratchpad_request_topic(self.gw_id)
         self.mqtt_wrapper.subscribe(
             topic, self._on_otap_process_scratchpad_request_received
+        )
+
+        # Maersk requests
+        self.mqtt_wrapper.subscribe(
+            "gw-request/exec_cmd/" + self.gw_id, self._on_gw_request
         )
 
         self._set_status()
@@ -467,6 +510,18 @@ class TransportService(BusClient):
         )
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
+    @deferred_thread
+    def _on_gw_request(self, client, userdata, message):
+        # pylint: disable=unused-argument
+        self.logger.info("Gateway request received")
+
+        try:
+            response = maersk_request_parser.MaerskGatewayRequestParser(self.gw_id, self.firmware, self.imsi, self.wirepas_version, self.logger).parse(message.payload)
+            self.mqtt_wrapper.publish("gw-response/exec_cmd/" + self.gw_id, response, qos=2)
+
+        except Exception as e:
+            self.logger.error(str(e))
 
 
 def parse_setting_list(list_setting):
