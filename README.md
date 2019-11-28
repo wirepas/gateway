@@ -4,11 +4,11 @@
 
 <!-- MarkdownTOC levels="1,2" autolink="true"  -->
 
-  - [Installing a Gateway](#installing-a-gateway)
-  - [Option 1: native installation](#option-1-native-installation)
-  - [Option 2: Docker installation](#option-2-docker-installation)
-  - [Contributing](#contributing)
-  - [License](#license)
+- [Installing a Gateway](#installing-a-gateway)
+- [Option 1: native installation](#option-1-native-installation)
+- [Option 2: Docker installation](#option-2-docker-installation)
+- [Contributing](#contributing)
+- [License](#license)
 
 <!-- /MarkdownTOC -->
 
@@ -127,11 +127,9 @@ To clone a particular version, vX.Y.Z, please specify the tag with the
     repo init (...) -m gateway/stable.xml -b refs/tags/vX.Y.Z
 ```
 
-Usage of repo is also documented in the release
-Dockerfiles (see [Dockerfile][here_container_dockerfile]).
-
-Please read more on the repo tool usage from
-[its official documentation][repo_tool].
+Usage of repo is also documented in our
+[ci build scripts][here_ci_docker_build]. Please read more on
+the repo tool usage from [its official documentation][repo_tool].
 
 ### Installation
 
@@ -326,36 +324,42 @@ level. It can be launched from the command line with:
 
 ## Option 2: Docker installation
 
-The Docker gateway approach of Wirepas is to have a single container able to run one of the two services (sink service or transport service).
+The Docker gateway approach of Wirepas is to have a single container able
+to run one of the two services (sink service or transport service).
 A docker container will be started for each service.
-For example, if you have a gateway with two sinks and one transport service, three containers will be started (one for each sink and one for the transport service).
+For example, if you have a gateway with two sinks and one transport
+service, three containers will be started
+(one for each sink and one for the transport service).
 Communication between docker containers will happen on the host Dbus.
 
 ### Getting the docker image
 
 #### Option 2.1: by building your own docker image
 
-In the container folder you will find three folders, one for
-[development][here_container]
-purposes and two other for architecture images, x86 and arm.
+In the [container][here_container] folder you will find two folder,
+dev and stable. The dev folder contains a composition file with a preset
+of settings to build an image based on your local repository
+(assumes the c-mesh-api project is cloned within sink_service).
 
-The development folder builds an image based on the contents of the repository,
-whereas the other two folder will provide you a build for what is specified
-in the repo tool's manifest.
+The stable folder contains architecture specific folder, x86 and ARM.
+Within the folder you will find a composition file which contains the
+default relevant settings. In this case, the difference resides on the
+path to the source files and the definition of the base image.
 
-To make a development build type:
+All of these composition files build the images based on the
+same [Dockerfile][here_container_dockerfile].
+
+If you have cloned the repository through the repo manifest, you can
+make a development build with:
 
 ```bash
-    [IMAGE_NAME=wirepas/gateway-x86:edge] docker-compose -f container/dev/docker-compose.yml build
+    [IMAGE_NAME=wirepas/gateway:edge] docker-compose -f container/dev/docker-compose.yml build
 ```
 
-If you want to build a stable image for x86 type:
-
-```bash
-    docker-compose -f container/stable/x86/docker-compose.yml build
-```
-
-Alternatively you can use our [ci tool][here_ci_docker_build].
+If you only have the gateway repository cloned locally, you can follow the
+same build procedures as our ci. For that, run the
+[.ci/build-images.sh][here_ci_docker_build] script from the root
+of the repository.
 
 #### Option 2.2: by using Wirepas docker hub images
 
