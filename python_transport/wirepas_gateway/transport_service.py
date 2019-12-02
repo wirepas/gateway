@@ -742,7 +742,7 @@ def _update_parameters(settings, logger):
         settings.gateway_id = str(getnode())
 
     # Parse EP list that should not be published
-    if settings.ignored_endpoints_filter is not None:
+    if settings.ignored_endpoints_filter:
         try:
             settings.ignored_endpoints_filter = parse_setting_list(
                 settings.ignored_endpoints_filter
@@ -752,7 +752,7 @@ def _update_parameters(settings, logger):
             logger.error("Wrong format for ignored_endpoints_filter EP list (%s)", e)
             exit()
 
-    if settings.whitened_endpoints_filter is not None:
+    if settings.whitened_endpoints_filter:
         try:
             settings.whitened_endpoints_filter = parse_setting_list(
                 settings.whitened_endpoints_filter
