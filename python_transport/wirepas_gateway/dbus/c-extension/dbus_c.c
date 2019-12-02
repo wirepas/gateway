@@ -61,7 +61,7 @@ static int on_packet_received(sd_bus_message * m, void * userdata, sd_bus_error 
         PyObject * arglist;
         PyObject * result;
 
-        arglist = Py_BuildValue("(sLiibbibby#)",
+        arglist = Py_BuildValue("(sLIIBBIBBy#)",
                                 sd_bus_message_get_sender(m),
                                 timestamp_ms,
                                 src_addr,
