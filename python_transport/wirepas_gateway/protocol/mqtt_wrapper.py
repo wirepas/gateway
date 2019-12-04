@@ -228,6 +228,14 @@ class MQTTWrapper(Thread):
             self.on_termination_cb()
 
     def _publish_from_wrapper_thread(self, topic, payload, qos, retain):
+        """
+        Internal method to publish on Mqtt. This method is only called from
+        mqtt wrapper thread to avoid races.
+        :param topic: Topic to publish on
+        :param payload: Payload
+        :param qos: Qos to use
+        :param retain: Is it a retain message
+        """
         mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
         # self.logger.info("Publish {} qos={}".format(mid, qos))
         if self.publish_queue_size == 0:
@@ -237,7 +245,7 @@ class MQTTWrapper(Thread):
 
     def publish(self, topic, payload, qos=1, retain=False) -> None:
         """
-        Method to publish to Mqtt from a different thread.
+        Method to publish to Mqtt from any thread.
         :param topic: Topic to publish on
         :param payload: Payload
         :param qos: Qos to use
