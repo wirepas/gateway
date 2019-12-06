@@ -2,6 +2,16 @@
 #
 # See file LICENSE for full license details.
 #
+#  This is a modified version for Maersk application
+#  Modifications SolidRun / Sterwen Technology - 05/12/2019
+# added to version 1.0 of Maersk application
+#
+#  adjust import
+# update path to include local directory for grpc to Modem_GPS_Service
+import os, sys, inspect
+cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0], ".")))
+sys.path.insert(0, cmd_subfolder)
+
 import logging
 import os
 from time import time
@@ -87,7 +97,8 @@ class TransportService(BusClient):
         resp = stub.modemCommand(req)
 
         if resp.response == 'OK' and resp.status.SIM_status == 'READY':
-            self.imsi = int(rs.IMSI)
+            # correction of issue 282
+            self.imsi = int(resp.status.IMSI)
         else:
             self.imsi = 0
             if resp.response == 'OK':
