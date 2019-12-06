@@ -11,12 +11,13 @@ services:
         image: ${IMAGE_NAME:-wirepas/gateway-x86:latest}
         build:
             context: ../../..
-            dockerfile: container/stable/Dockerfile
+            dockerfile: container/Dockerfile
             args:
                 IMAGE_NAME: ${IMAGE_NAME:-wirepas/gateway-x86:latest}
                 VERSION: ${VERSION:-"1.2.0-rc.1"}
                 BUILD_DATE: ${BUILD_DATE:-"undefined"}
-                DOCKER_BASE: wirepas/base:1.1-ubuntu
+                DOCKER_BASE: ubuntu:19.04
+                SOURCE_PATH: .ci/repo_stable
                 CROSS_BUILD_START_CMD: ":"
                 CROSS_BUILD_END_CMD: ":"
                 GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE:-gateway/stable.xml}
@@ -57,6 +58,7 @@ services:
 
         volumes:
             - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+            # - ./my-tls-file:/etc/my-tls-file
 
         logging:
             driver: journald

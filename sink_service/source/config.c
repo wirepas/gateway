@@ -246,11 +246,45 @@ static int set_authen_key(sd_bus * bus,
 /**********************************************************************
  *                   DBUS Methods implementation                      *
  **********************************************************************/
+
+/**
+ * \brief   Internal wrapper to send a dbus signal
+ * \param   name
+ *          Name of the signal to generate
+ * \return  True if signal is correctly sent, false otherwise
+ */
+static bool send_dbus_signal(const char * name)
+{
+    /* Create a new signal to be generated on Dbus */
+    sd_bus_message * m = NULL;
+    int r = sd_bus_message_new_signal(m_bus, &m, m_object, m_interface, name);
+
+    if (r < 0)
+    {
+        LOGE("Cannot create signal error=%s\n", strerror(-r));
+        return false;
+    }
+
+    /* Send the signal on bus */
+    r = sd_bus_send(m_bus, m, NULL);
+    if (r < 0)
+    {
+        LOGE("Cannot send signal error=%s\n", strerror(-r));
+        sd_bus_message_unref(m);
+        return false;
+    }
+
+    /* Release message to free memory */
+    sd_bus_message_unref(m);
+
+    return true;
+}
+
 /**
  * \brief   Set stack state
  * \param   ... (from sd_bus function signature)
  */
-static int set_stack_sate(sd_bus_message * m, void * userdata, sd_bus_error * error)
+static int set_stack_state(sd_bus_message * m, void * userdata, sd_bus_error * error)
 {
     app_res_e res;
     bool state;
@@ -269,6 +303,11 @@ static int set_stack_sate(sd_bus_message * m, void * userdata, sd_bus_error * er
     {
         res = WPC_start_stack();
         WPC_set_autostart(1);
+        if (res == APP_RES_OK)
+        {
+            LOGD("Stack started manually\n");
+            send_dbus_signal("StackStarted");
+        }
     }
     else
     {
@@ -497,7 +536,7 @@ static const sd_bus_vtable config_vtable[] = {
     SD_BUS_WRITABLE_PROPERTY("AuthenticationKey", "ay", read_key, set_authen_key, 0, 0),
 
     /* Methods related to config */
-    SD_BUS_METHOD("SetStackState", "b", "b", set_stack_sate, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("SetStackState", "b", "b", set_stack_state, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("ClearCipherKey", "", "", clear_cipher_key, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("ClearAuthenticationKey", "", "", clear_authen_key, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("SetAppConfig", "yqay", "b", set_app_config, SD_BUS_VTABLE_UNPRIVILEGED),
@@ -571,11 +610,8 @@ static bool initialize_unmodifiable_variables()
     return res;
 }
 
-static void on_stack_status_changed(uint8_t status)
+static void on_stack_boot_status(uint8_t status)
 {
-    sd_bus_message * m = NULL;
-    int r;
-
     /* After a reboot, read again the variable as it can be because
      * of an otap and variables may change
      */
@@ -584,20 +620,7 @@ static void on_stack_status_changed(uint8_t status)
     if (status == 0)
     {
         LOGD("Stack restarted\n");
-        /* Create a new signal to be generated on Dbus */
-        r = sd_bus_message_new_signal(m_bus, &m, m_object, m_interface, "StackStarted");
-
-        if (r < 0)
-        {
-            LOGE("Cannot create signal error=%s\n", strerror(-r));
-            return;
-        }
-
-        /* Send the signal on bus */
-        sd_bus_send(m_bus, m, NULL);
-
-        /* Release message to free memory */
-        sd_bus_message_unref(m);
+        send_dbus_signal("StackStarted");
     }
 }
 
@@ -610,7 +633,7 @@ int Config_Init(sd_bus * bus, char * object, char * interface)
     m_interface = interface;
 
     /* Register for stack status */
-    if (WPC_register_for_stack_status(on_stack_status_changed) != APP_RES_OK)
+    if (WPC_register_for_stack_status(on_stack_boot_status) != APP_RES_OK)
     {
         LOGE("Fail to register for stack state\n");
         return -1;

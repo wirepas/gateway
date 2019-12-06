@@ -1,15 +1,15 @@
 language: python
 python:
-  - "3.6"
+  - "3.7"
 services:
   - docker
 
-dist: "xenial"
-jobs:
+dist: "bionic"
 
 before_install:
   - sudo apt-get install build-essential libsystemd-dev dbus qemu-user-static
   - sudo gem install github_changelog_generator
+  - pip3 install --upgrade pip
   - pip3 install --upgrade twine
   - pip3 install pipenv
   - sudo ./.ci/install-repo.sh
@@ -19,13 +19,14 @@ before_install:
   - ./.ci/style-check.sh
   - ./.ci/build.sh
   - ./.ci/build-images.sh
+  - ./.ci/service-tests.sh
   - ./.ci/fetch-artifacts.sh
+  - ./.ci/test-template-generation.sh
 
 install:
   - pip3 install ./dist/${PYTHON_PKG_NAME}*linux_x86_64.whl
 
 script:
-  - ./.ci/test-template-generation.sh
   - ./.ci/releases.sh
   - source releases.env
 

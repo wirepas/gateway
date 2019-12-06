@@ -1,0 +1,26 @@
+# Wirepas Gateway
+
+This registry contains the manifest for the
+[Wirepas gateway](https://github.com/wirepas/gateway).
+
+The manifest contains the
+[x86 and ARM builds for the gateway and updates](https://cloud.docker.com/u/wirepas/repository/docker/wirepas/gateway).
+
+<!--- START --->
+
+<!--- END --->
+
+
+Each platform build is present on wirepas/gateway-_target_.
+
+Available targets and tags:
+
+
+<!--- STARTx86 --->
+
+<!--- ENDx86 --->
+
+
+<!--- STARTarm --->
+
+<!--- ENDarm --->

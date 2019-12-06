@@ -29,7 +29,7 @@ class PrintClient(BusClient):
     ):
         """ logs incoming data from the WM network """
         self.logger.info(
-            "[%s] Sink %d FROM %d TO %d on EP %d Data Size is %d",
+            "[%s] Sink %s FROM %d TO %d on EP %d Data Size is %d",
             datetime.utcfromtimestamp(int(timestamp / 1000)).strftime(
                 "%Y-%m-%d %H:%M:%S"
             ),

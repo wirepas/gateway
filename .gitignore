@@ -27,6 +27,7 @@ release/
 .clang*
 .ci/manifest/*
 .ci/_repo/*
+.pylintrc
 dev-requirements.txt
 
 .repo/*
@@ -34,3 +35,7 @@ _repo/*
 python_transport/docs/source/api/
 container/wm_gateway.env
 container/common/wm_transport_service.yml
+tests/services/wait-for-it/*
+**/*.private*
+.ci/_repo*
+sink_service.log
