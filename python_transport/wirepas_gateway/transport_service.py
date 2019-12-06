@@ -217,7 +217,7 @@ class TransportService(BusClient):
 
         self.logger.info("Gateway started with id: %s", self.gw_id)
 
-        self.monitoringThread = None
+        self.monitoring_thread = None
         self.minimum_sink_cost = settings.buffering_minimal_sink_cost
 
         if settings.buffering_max_buffered_packets > 0:
@@ -227,7 +227,7 @@ class TransportService(BusClient):
                 settings.buffering_max_delay_without_publish,
             )
             # Create and start a monitoring thread for black hole issue
-            self.monitoringThread = ConnectionToBackendMonitorThread(
+            self.monitoring_thread = ConnectionToBackendMonitorThread(
                 self.logger,
                 self.MONITORING_BUFFERING_PERIOD_S,
                 self.mqtt_wrapper,
@@ -236,7 +236,7 @@ class TransportService(BusClient):
                 settings.buffering_max_buffered_packets,
                 settings.buffering_max_delay_without_publish,
             )
-            self.monitoringThread.start()
+            self.monitoring_thread.start()
 
     def _on_mqtt_wrapper_termination_cb(self):
         """
@@ -399,9 +399,9 @@ class TransportService(BusClient):
 
     def on_sink_connected(self, name):
         self.logger.info("Sink connected, sending new configs")
-        if self.monitoringThread is not None:
+        if self.monitoring_thread is not None:
             # Black hole algorithm in place do not initialize here the cost
-            self.monitoringThread.initialize_sink(name)
+            self.monitoring_thread.initialize_sink(name)
         else:
             sink = self.sink_manager.get_sink(name)
             if sink is not None:
