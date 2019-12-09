@@ -222,7 +222,7 @@ class TransportService(BusClient):
 
         if settings.buffering_max_buffered_packets > 0:
             self.logger.info(
-                " Black hole detection enabled: max_packets=%d packets, max_delay=%d",
+                " Black hole detection enabled: max_packets=%s packets, max_delay=%s",
                 settings.buffering_max_buffered_packets,
                 settings.buffering_max_delay_without_publish,
             )
