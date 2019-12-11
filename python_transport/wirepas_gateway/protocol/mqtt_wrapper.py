@@ -6,8 +6,9 @@ import queue
 import socket
 import ssl
 from select import select
-from threading import Thread, current_thread
+from threading import Thread
 from time import sleep
+from datetime import datetime
 
 from paho.mqtt import client as mqtt
 from paho.mqtt.client import connack_string
@@ -22,9 +23,6 @@ class MQTTWrapper(Thread):
 
     # Keep alive time with broker
     KEEP_ALIVE_S = 60
-
-    # Reconnect timeout in Seconds
-    TIMEOUT_RECONNECT_S = 120
 
     def __init__(
         self,
@@ -41,11 +39,16 @@ class MQTTWrapper(Thread):
         self.logger = logger
         self.on_termination_cb = on_termination_cb
         self.on_connect_cb = on_connect_cb
+        # Set to track the unpublished packets
+        self._unpublished_mid_set = set()
+        # Variable to keep track of latest published packet
+        self._timestamp_last_publish = datetime.now()
 
         self._client = mqtt.Client(
             client_id=settings.gateway_id,
             clean_session=not settings.mqtt_persist_session,
         )
+
         if not settings.mqtt_force_unsecure:
             try:
                 self._client.tls_set(
@@ -62,6 +65,7 @@ class MQTTWrapper(Thread):
 
         self._client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
         self._client.on_connect = self._on_connect
+        self._client.on_publish = self._on_publish
 
         if last_will_topic is not None and last_will_data is not None:
             self._set_last_will(last_will_topic, last_will_data)
@@ -75,6 +79,8 @@ class MQTTWrapper(Thread):
         except (socket.gaierror, ValueError) as e:
             self.logger.error("Cannot connect to mqtt %s", e)
             exit(-1)
+
+        self.timeout = settings.mqtt_reconnect_delay
 
         # Set options to initial socket
         self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
@@ -96,6 +102,11 @@ class MQTTWrapper(Thread):
         if self.on_connect_cb is not None:
             self.on_connect_cb()
 
+    def _on_publish(self, client, userdata, mid):
+        self._unpublished_mid_set.remove(mid)
+        self._timestamp_last_publish = datetime.now()
+        return
+
     def _do_select(self, sock):
         # Select with a timeout of 1 sec to call loop misc from time to time
         r, w, _ = select(
@@ -112,7 +123,10 @@ class MQTTWrapper(Thread):
                 # next select will exit immediately if queue not empty
                 while True:
                     topic, payload, qos, retain = self._publish_queue.get()
-                    self._client.publish(topic, payload, qos=qos, retain=retain)
+
+                    self._publish_from_wrapper_thread(
+                        topic, payload, qos=qos, retain=retain
+                    )
 
                     # FIX: read internal sockpairR as it is written but
                     # never read as we don't use the internal paho loop
@@ -149,24 +163,27 @@ class MQTTWrapper(Thread):
             self.logger.error("Impossible to connect - authentication failure ?")
             return None
 
-        # Socket is not opened anymore, try to reconnect
-        timeout = MQTTWrapper.TIMEOUT_RECONNECT_S
-        while timeout > 0:
+        # Socket is not opened anymore, try to reconnect for timeout if set
+        loop_forever = self.timeout == 0
+        delay = 0
+
+        # Loop forever or until timeout is over
+        while loop_forever or (delay <= self.timeout):
             try:
                 ret = self._client.reconnect()
                 if ret == mqtt.MQTT_ERR_SUCCESS:
                     break
             except Exception:
-                # Retry to connect in 1 sec up to timeout
+                # Retry to connect in 1 sec up to timeout if set
                 sleep(1)
-                timeout -= 1
+                delay += 1
                 self.logger.debug("Retrying to connect in 1 sec")
 
-        if timeout <= 0:
-            self.logger.error(
-                "Unable to reconnect after %s seconds", MQTTWrapper.TIMEOUT_RECONNECT_S
-            )
-            return None
+        if not loop_forever:
+            # In case of timeout set, check if it exits because of timeout
+            if delay > self.timeout:
+                self.logger.error("Unable to reconnect after %s seconds", delay)
+                return None
 
         # Socket must be available once reconnect is successful
         if self._client.socket() is None:
@@ -210,25 +227,49 @@ class MQTTWrapper(Thread):
             # thread has exited
             self.on_termination_cb()
 
+    def _publish_from_wrapper_thread(self, topic, payload, qos, retain):
+        """Internal method to publish on Mqtt. This method is only called from
+        mqtt wrapper thread to avoid races.
+
+        Args:
+            topic: Topic to publish on
+            payload: Payload
+            qos: Qos to use
+            retain: Is it a retain message
+
+        """
+        mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
+        if self.publish_queue_size == 0:
+            # Reset last published packet
+            self._timestamp_last_publish = datetime.now()
+        self._unpublished_mid_set.add(mid)
+
     def publish(self, topic, payload, qos=1, retain=False) -> None:
+        """ Method to publish to Mqtt from any thread
+
+        Args:
+            topic: Topic to publish on
+            payload: Payload
+            qos: Qos to use
+            retain: Is it a retain message
+
         """
-        Method to publish to Mqtt from a different thread.
-        :param topic: Topic to publish on
-        :param payload: Payload
-        :param qos: Qos to use
-        :param retain: Is it a retain message
-        """
-        if current_thread().ident == self.ident:
-            # Already on right thread
-            self._client.publish(topic, payload, qos, retain)
-        else:
-            # Send it to the queue to be published from Mqtt thread
-            self._publish_queue.put((topic, payload, qos, retain))
+        # Send it to the queue to be published from Mqtt thread
+        self._publish_queue.put((topic, payload, qos, retain))
 
     def subscribe(self, topic, cb, qos=2) -> None:
         self.logger.debug("Subscribing to: {}".format(topic))
         self._client.subscribe(topic, qos)
         self._client.message_callback_add(topic, cb)
+
+    @property
+    def publish_queue_size(self):
+        return len(self._unpublished_mid_set)
+
+    @property
+    def last_published_packet_s(self):
+        delta = datetime.now() - self._timestamp_last_publish
+        return delta.total_seconds()
 
 
 class SelectableQueue(queue.Queue):

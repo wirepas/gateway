@@ -280,6 +280,25 @@ class Sink:
 
         return res
 
+    @property
+    def cost(self):
+        try:
+            cost = self.proxy.SinkCost
+        except GLib.Error:
+            self.logger.error("Cannot get sink cost for sink {}".format(self.sink_id))
+            cost = 0
+        return cost
+
+    @cost.setter
+    def cost(self, new_cost):
+        if new_cost is None or new_cost < 0 or new_cost > 254:
+            raise ValueError("Wrong sink cost value {}".format(new_cost))
+
+        try:
+            self.proxy.SinkCost = new_cost
+        except GLib.Error:
+            self.logger.error("Cannot set sink cost for sink {}".format(self.sink_id))
+
     def get_scratchpad_status(self):
         d = {}
 
