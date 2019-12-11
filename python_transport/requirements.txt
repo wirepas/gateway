@@ -8,4 +8,4 @@ pydbus==0.6.0
 PyYAML==5.1.2
 
 # mqtt
-paho-mqtt==1.4.0
+paho-mqtt==1.5.0
