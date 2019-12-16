@@ -233,7 +233,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_cert_reqs",
-            default="CERT_REQUIRED",
+            default=os.environ.get("WM_SERVICES_MQTT_CERT_REQS", "CERT_REQUIRED"),
             choices=["CERT_REQUIRED", "CERT_OPTIONAL", "CERT_NONE"],
             action="store",
             type=str,
@@ -246,7 +246,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_tls_version",
-            default="PROTOCOL_TLSv1_2",
+            default=os.environ.get("WM_SERVICES_MQTT_TLS_VERSION", "PROTOCOL_TLSv1_2"),
             choices=[
                 "PROTOCOL_TLS",
                 "PROTOCOL_TLS_CLIENT",
@@ -274,7 +274,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_persist_session",
-            default=os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False),
+            default=bool(os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False)),
             action="store_true",
             help=(
                 "When True the broker will buffer session packets "
@@ -284,21 +284,21 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_force_unsecure",
-            default=os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False),
+            default=bool(os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False)),
             action="store_true",
             help=("When True the broker will skip the TLS handshake."),
         )
 
         self.mqtt.add_argument(
             "--mqtt_allow_untrusted",
-            default=os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False),
+            default=bool(os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False)),
             action="store_true",
             help=("When true the client will skip the certificate name check."),
         )
 
         self.mqtt.add_argument(
             "--mqtt_reconnect_delay",
-            default=0,
+            default=os.environ.get("WM_SERVICES_MQTT_RECONNECT_DELAY", 0),
             action="store",
             type=int,
             help=(
@@ -311,7 +311,7 @@ class ParserHelper:
         """ Parameters used to avoid black hole case """
         self.buffering.add_argument(
             "--buffering_max_buffered_packets",
-            default=0,
+            default=os.environ.get("WM_GW_BUFFERING_MAX_BUFFERED_PACKETS", 0),
             action="store",
             type=int,
             help=(
@@ -322,7 +322,7 @@ class ParserHelper:
 
         self.buffering.add_argument(
             "--buffering_max_delay_without_publish",
-            default=0,
+            default=os.environ.get("WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH", 0),
             action="store",
             type=int,
             help=(
@@ -336,7 +336,7 @@ class ParserHelper:
         # buffering limitation is not in use
         self.buffering.add_argument(
             "--buffering_minimal_sink_cost",
-            default=0,
+            default=os.environ.get("WM_GW_BUFFERING_MINIMAL_SINK_COST", 0),
             action="store",
             type=int,
             help=(
