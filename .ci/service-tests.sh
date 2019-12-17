@@ -21,16 +21,20 @@ function pull_dependencies()
     fi
 }
 
-function run_test()
+function sink_service_tests()
 {
-    export COMPOSE_CMD
     export SINK_SERVICE_TEST
-
-    COMPOSE_CMD="$1"
-    _TIMEOUT="${2:-10}"
-
-    SINK_SERVICE_TEST="test_sink_env_params.sh"
+    SINK_SERVICE_TEST="$1"
     docker-compose -f tests/services/sink-service.yml up --exit-code-from wm-sink
+}
+
+function transport_service_tests()
+{
+    export TRANSPORT_SERVICE_TEST
+    local _TIMEOUT
+
+    TRANSPORT_SERVICE_TEST="$1"
+    _TIMEOUT="${2:-10}"
 
     timeout --preserve-status "${_TIMEOUT}" docker-compose \
             -f tests/services/transport-service.yml up \
@@ -38,7 +42,13 @@ function run_test()
             --exit-code-from wm-transport
 }
 
+function main()
+{
+    pull_dependencies
 
-pull_dependencies
+    sink_service_tests "test_sink_env_params.sh"
+    transport_service_tests "transport" "10"
+}
 
-run_test "$@"
+
+main "${@}"

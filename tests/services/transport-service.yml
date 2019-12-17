@@ -21,18 +21,20 @@ services:
 
         depends_on:
             - mosquitto
+        working_dir: "/tests"
 
         volumes:
             - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
             - ./wait-for-it:/usr/bin/tools/wait-for-it
+            - ../../python_transport/tests:/tests
 
         logging:
             driver: journald
 
-        command: transport
+        command: ["${TRANSPORT_SERVICE_TEST}"]
 
     mosquitto:
-        container_name: mosquitto
+        container_name: gw-test-mosquitto
         image: wirepas/mosquitto
         restart: "always"
         expose:
