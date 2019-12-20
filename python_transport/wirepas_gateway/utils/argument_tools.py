@@ -154,6 +154,18 @@ class ParserHelper:
 
         return self._groups[name]
 
+    @staticmethod
+    def str2bool(value):
+        """ Ensures string to bool conversion """
+        if isinstance(value, bool):
+            return value
+        if value.lower() in ("yes", "true", "t", "y", "1"):
+            return True
+        elif value.lower() in ("no", "false", "f", "n", "0"):
+            return False
+        else:
+            raise argparse.ArgumentTypeError("Boolean value expected.")
+
     def add_file_settings(self):
         """ For file setting handling"""
         self.file_settings.add_argument(
@@ -275,7 +287,9 @@ class ParserHelper:
         self.mqtt.add_argument(
             "--mqtt_persist_session",
             default=bool(os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False)),
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=(
                 "When True the broker will buffer session packets "
                 "between reconnection."
@@ -285,14 +299,18 @@ class ParserHelper:
         self.mqtt.add_argument(
             "--mqtt_force_unsecure",
             default=bool(os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False)),
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=("When True the broker will skip the TLS handshake."),
         )
 
         self.mqtt.add_argument(
             "--mqtt_allow_untrusted",
             default=bool(os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False)),
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=("When true the client will skip the certificate name check."),
         )
 
@@ -402,7 +420,9 @@ class ParserHelper:
             "-ua",
             "--unsecure_authentication",
             default=False,
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=ParserHelper._deprecated_message("mqtt_force_unsecure"),
         )
 
@@ -426,7 +446,9 @@ class ParserHelper:
             "-fp",
             "--full_python",
             default=False,
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=("Do not use C extension for optimization."),
         )
 
