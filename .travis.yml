@@ -9,7 +9,6 @@ dist: "bionic"
 before_install:
   - ./.ci/requirements.sh
   - ./.ci/style-check.sh
-  - ./.ci/build.sh
   - ./.ci/build-images.sh
   - ./.ci/service-tests.sh
   - ./.ci/fetch-artifacts.sh
