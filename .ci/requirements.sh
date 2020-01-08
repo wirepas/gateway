@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2019 Wirepas Ltd
 
-sudo apt-get install build-essential libsystemd-dev dbus qemu-user-static
+sudo apt-get install build-essential libsystemd-dev dbus qemu-user-static libsystemd-dev
 sudo gem install github_changelog_generator
 pip3 install --upgrade twine
 pip3 install pipenv
