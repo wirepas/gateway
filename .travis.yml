@@ -6,6 +6,11 @@ services:
 
 dist: "bionic"
 
+addons:
+  apt:
+    packages:
+      - docker-ce
+
 before_install:
   - ./.ci/requirements.sh
   - ./.ci/style-check.sh
