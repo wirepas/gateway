@@ -154,11 +154,30 @@ class ParserHelper:
 
         return self._groups[name]
 
+    @staticmethod
+    def str2bool(value):
+        """ Ensures string to bool conversion """
+        if isinstance(value, bool):
+            return value
+        if value.lower() in ("yes", "true", "t", "y", "1"):
+            return True
+        elif value.lower() in ("no", "false", "f", "n", "0"):
+            return False
+        else:
+            raise argparse.ArgumentTypeError("Boolean value expected.")
+
+    @staticmethod
+    def str2none(value):
+        """ Ensures string to bool conversion """
+        if value == "":
+            return None
+        return value
+
     def add_file_settings(self):
         """ For file setting handling"""
         self.file_settings.add_argument(
             "--settings",
-            type=str,
+            type=self.str2none,
             required=False,
             default=os.environ.get("WM_GW_FILE_SETTINGS", None),
             help="A yaml file with argument parameters (see help for options).",
@@ -170,7 +189,7 @@ class ParserHelper:
             "--mqtt_hostname",
             default=os.environ.get("WM_SERVICES_MQTT_HOSTNAME", None),
             action="store",
-            type=str,
+            type=self.str2none,
             help="MQTT broker hostname.",
         )
 
@@ -178,7 +197,7 @@ class ParserHelper:
             "--mqtt_username",
             default=os.environ.get("WM_SERVICES_MQTT_USERNAME", None),
             action="store",
-            type=str,
+            type=self.str2none,
             help="MQTT broker username.",
         )
 
@@ -186,7 +205,7 @@ class ParserHelper:
             "--mqtt_password",
             default=os.environ.get("WM_SERVICES_MQTT_PASSWORD", None),
             action="store",
-            type=str,
+            type=self.str2none,
             help="MQTT broker password.",
         )
 
@@ -202,7 +221,7 @@ class ParserHelper:
             "--mqtt_ca_certs",
             default=os.environ.get("WM_SERVICES_MQTT_CA_CERTS", None),
             action="store",
-            type=str,
+            type=self.str2none,
             help=(
                 "A string path to the Certificate "
                 "Authority certificate files that "
@@ -215,7 +234,7 @@ class ParserHelper:
             "--mqtt_certfile",
             default=os.environ.get("WM_SERVICES_MQTT_CLIENT_CRT", None),
             action="store",
-            type=str,
+            type=self.str2none,
             help=("Strings pointing to the PEM encoded client certificate."),
         )
 
@@ -223,7 +242,7 @@ class ParserHelper:
             "--mqtt_keyfile",
             default=os.environ.get("WM_SERVICES_MQTT_CLIENT_KEY", None),
             action="store",
-            type=str,
+            type=self.str2none,
             help=(
                 "Strings pointing to the PEM "
                 "encoded client private keys "
@@ -236,7 +255,7 @@ class ParserHelper:
             default=os.environ.get("WM_SERVICES_MQTT_CERT_REQS", "CERT_REQUIRED"),
             choices=["CERT_REQUIRED", "CERT_OPTIONAL", "CERT_NONE"],
             action="store",
-            type=str,
+            type=self.str2none,
             help=(
                 "Defines the certificate "
                 "requirements that the client "
@@ -256,7 +275,7 @@ class ParserHelper:
                 "PROTOCOL_TLSv1_2",
             ],
             action="store",
-            type=str,
+            type=self.str2none,
             help=("Specifies the version of the SSL / TLS protocol to be used."),
         )
 
@@ -264,7 +283,7 @@ class ParserHelper:
             "--mqtt_ciphers",
             default=os.environ.get("WM_SERVICES_MQTT_CIPHERS", None),
             action="store",
-            type=str,
+            type=self.str2none,
             help=(
                 "A string specifying which "
                 "encryption ciphers are allowable "
@@ -275,7 +294,9 @@ class ParserHelper:
         self.mqtt.add_argument(
             "--mqtt_persist_session",
             default=bool(os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False)),
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=(
                 "When True the broker will buffer session packets "
                 "between reconnection."
@@ -285,14 +306,18 @@ class ParserHelper:
         self.mqtt.add_argument(
             "--mqtt_force_unsecure",
             default=bool(os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False)),
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=("When True the broker will skip the TLS handshake."),
         )
 
         self.mqtt.add_argument(
             "--mqtt_allow_untrusted",
             default=bool(os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False)),
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=("When true the client will skip the certificate name check."),
         )
 
@@ -363,7 +388,7 @@ class ParserHelper:
             "-s",
             "--host",
             default=None,
-            type=str,
+            type=self.str2none,
             help=ParserHelper._deprecated_message("mqtt_hostname"),
         )
 
@@ -379,7 +404,7 @@ class ParserHelper:
             "-u",
             "--username",
             default=None,
-            type=str,
+            type=self.str2none,
             help=ParserHelper._deprecated_message("mqtt_username"),
         )
 
@@ -387,7 +412,7 @@ class ParserHelper:
             "-pw",
             "--password",
             default=None,
-            type=str,
+            type=self.str2none,
             help=ParserHelper._deprecated_message("mqtt_password"),
         )
 
@@ -402,7 +427,9 @@ class ParserHelper:
             "-ua",
             "--unsecure_authentication",
             default=False,
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=ParserHelper._deprecated_message("mqtt_force_unsecure"),
         )
 
@@ -410,7 +437,7 @@ class ParserHelper:
             "-i",
             "--gwid",
             default=None,
-            type=str,
+            type=self.str2none,
             help=ParserHelper._deprecated_message("gateway_id"),
         )
 
@@ -418,7 +445,7 @@ class ParserHelper:
         self.gateway.add_argument(
             "--gateway_id",
             default=os.environ.get("WM_GW_ID", None),
-            type=str,
+            type=self.str2none,
             help=("Id of the gateway. It must be unique on same broker."),
         )
 
@@ -426,7 +453,9 @@ class ParserHelper:
             "-fp",
             "--full_python",
             default=False,
-            action="store_true",
+            type=self.str2bool,
+            nargs="?",
+            const=True,
             help=("Do not use C extension for optimization."),
         )
 
