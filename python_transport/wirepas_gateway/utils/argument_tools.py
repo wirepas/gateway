@@ -388,7 +388,7 @@ class ParserHelper:
             "-s",
             "--host",
             default=None,
-            type=self.str2none,
+            type=str,
             help=ParserHelper._deprecated_message("mqtt_hostname"),
         )
 
@@ -404,7 +404,7 @@ class ParserHelper:
             "-u",
             "--username",
             default=None,
-            type=self.str2none,
+            type=str,
             help=ParserHelper._deprecated_message("mqtt_username"),
         )
 
@@ -412,7 +412,7 @@ class ParserHelper:
             "-pw",
             "--password",
             default=None,
-            type=self.str2none,
+            type=str,
             help=ParserHelper._deprecated_message("mqtt_password"),
         )
 
@@ -420,6 +420,7 @@ class ParserHelper:
             "-t",
             "--tlsfile",
             default=None,
+            type=str,
             help=ParserHelper._deprecated_message("mqtt_certfile"),
         )
 
@@ -462,6 +463,7 @@ class ParserHelper:
         self.gateway.add_argument(
             "-gm",
             "--gateway_model",
+            type=self.str2none,
             default=os.environ.get("WM_GW_MODEL", None),
             help=("Model name of the gateway."),
         )
@@ -469,6 +471,7 @@ class ParserHelper:
         self.gateway.add_argument(
             "-gv",
             "--gateway_version",
+            type=self.str2none,
             default=os.environ.get("WM_GW_VERSION", None),
             help=("Version of the gateway."),
         )
@@ -477,6 +480,7 @@ class ParserHelper:
         self.filtering.add_argument(
             "-iepf",
             "--ignored_endpoints_filter",
+            type=self.str2none,
             default=os.environ.get("WM_GW_IGNORED_ENDPOINTS_FILTER", None),
             help=("Destination endpoints list to ignore (not published)."),
         )
@@ -484,6 +488,7 @@ class ParserHelper:
         self.filtering.add_argument(
             "-wepf",
             "--whitened_endpoints_filter",
+            type=self.str2none,
             default=os.environ.get("WM_GW_WHITENED_ENDPOINTS_FILTER", None),
             help=(
                 "Destination endpoints list to whiten "
