@@ -52,7 +52,7 @@ function _build
     echo "building ${_PATH}: ${IMAGE_NAME} (from: ${DOCKER_BASE})"
 
     # to speed up builds
-    docker pull "${IMAGE_NAME}"
+    docker pull "${IMAGE_NAME}" || true
 
     #shellcheck disable=SC2086
     docker-compose -f "${_PATH}" \
