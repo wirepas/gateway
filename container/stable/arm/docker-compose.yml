@@ -17,7 +17,7 @@ services:
                 VERSION: ${VERSION:-"1.2.0-rc.1"}
                 BUILD_DATE: ${BUILD_DATE:-"undefined"}
                 DOCKER_BASE: balenalib/raspberrypi3
-                SOURCE_PATH: .ci/repo_stable
+                SOURCE_PATH: .ci/_repo_stable
                 CROSS_BUILD_START_CMD: cross-build-start
                 CROSS_BUILD_END_CMD: cross-build-end
                 GIT_MANIFEST_FILE: ${GIT_MANIFEST_FILE:-gateway/stable.xml}
