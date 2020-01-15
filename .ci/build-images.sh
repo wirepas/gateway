@@ -127,13 +127,15 @@ function _main
         LXGW_SERVICES_HASH="$(git log -n1 --pretty=%h)"
         LXGW_C_MESH_API_HASH="$(git -C ${REPO_EDGE}/sink_service/c-mesh-api log -n1 --pretty=%h)"
 
-        # we want to copy the current changes (not what is in cr)
-        cp -vr "${GIT_REPO_FOLDER}/sink_service/c-mesh-api" "sink_service"
+        # The edge builds relies on the current gateway branch.
+        # The c-mesh-api must be pulled into the root level so that
+        # it is taken in use by the current build.
+        # If you would use the source from REPO_EDGE, you end up building
+        # the previous commit merged in master.
+        cp -vr "${REPO_EDGE}/sink_service/c-mesh-api" "sink_service"
         _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "arm"
         _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "x86"
     fi
-
-
 }
 
 
