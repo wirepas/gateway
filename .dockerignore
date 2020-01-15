@@ -10,7 +10,6 @@
 
 
 *.idea/*
-*.ci/*
 img/*
 
 .clang-format
@@ -33,6 +32,5 @@ python_transport/build/*
 python_transport/dist/*
 python_transport/docs/source/api/*
 python_transport/docs/build/*
-
 
 container/common/wm_transport_service.yml
