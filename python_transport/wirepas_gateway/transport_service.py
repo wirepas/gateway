@@ -406,7 +406,7 @@ class TransportService(BusClient):
             sink = self.sink_manager.get_sink(name)
             if sink is not None:
                 self.logger.info(
-                    "Initialize sinkCost of sink {} to minimum".format(name)
+                    "Initialize sinkCost of sink {} to minimum {}".format(name, self.minimum_sink_cost)
                 )
                 sink.cost = self.minimum_sink_cost
 
