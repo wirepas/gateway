@@ -167,6 +167,18 @@ class ParserHelper:
             raise argparse.ArgumentTypeError("Boolean value expected.")
 
     @staticmethod
+    def str2int(value):
+        """ Ensures string to bool conversion """
+        try:
+            value = int(value)
+        except ValueError:
+            if value == "":
+                value = 0
+            else:
+                raise argparse.ArgumentTypeError("Integer value expected.")
+        return value
+
+    @staticmethod
     def str2none(value):
         """ Ensures string to bool conversion """
         if value == "":
@@ -213,7 +225,7 @@ class ParserHelper:
             "--mqtt_port",
             default=os.environ.get("WM_SERVICES_MQTT_PORT", 8883),
             action="store",
-            type=int,
+            type=self.str2int,
             help="MQTT broker port.",
         )
 
@@ -325,7 +337,7 @@ class ParserHelper:
             "--mqtt_reconnect_delay",
             default=os.environ.get("WM_SERVICES_MQTT_RECONNECT_DELAY", 0),
             action="store",
-            type=int,
+            type=self.str2int,
             help=(
                 "Delay in seconds to try to reconnect when connection to"
                 "broker is lost (0 to try forever)"
@@ -338,7 +350,7 @@ class ParserHelper:
             "--buffering_max_buffered_packets",
             default=os.environ.get("WM_GW_BUFFERING_MAX_BUFFERED_PACKETS", 0),
             action="store",
-            type=int,
+            type=self.str2int,
             help=(
                 "Maximum number of messages to buffer before "
                 "rising sink cost (0 will disable feature)"
@@ -349,7 +361,7 @@ class ParserHelper:
             "--buffering_max_delay_without_publish",
             default=os.environ.get("WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH", 0),
             action="store",
-            type=int,
+            type=self.str2int,
             help=(
                 "Maximum time to wait in seconds without any "
                 "successful publish with packet queued "
@@ -363,7 +375,7 @@ class ParserHelper:
             "--buffering_minimal_sink_cost",
             default=os.environ.get("WM_GW_BUFFERING_MINIMAL_SINK_COST", 0),
             action="store",
-            type=int,
+            type=self.str2int,
             help=(
                 "Minimal sink cost for a sink on this gateway. "
                 "Can be used to minimize traffic on a gateway, but "
@@ -396,7 +408,7 @@ class ParserHelper:
             "-p",
             "--port",
             default=8883,
-            type=int,
+            type=self.str2int,
             help=ParserHelper._deprecated_message("mqtt_port"),
         )
 
