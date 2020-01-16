@@ -3,8 +3,6 @@
 
 set -e
 
-export WM_GW_SINK_UART_PORT
-export WM_GW_SINK_UART_BITRATE
 export WM_GW_ID
 export WM_GW_MODEL
 export WM_GW_VERSION
@@ -16,13 +14,10 @@ export WM_SERVICES_MQTT_USERNAME
 export WM_SERVICES_MQTT_FORCE_UNSECURE
 export WM_SERVICES_MQTT_ALLOW_UNTRUSTED
 
-TARGET=${1}
+export WM_GW_SINK_UART_PORT
+export WM_GW_SINK_BITRATE
+export WM_GW_SINK_ID
 
-echo "Image source manifest"
-cat "${SERVICE_HOME}/manifest"
-
-WM_GW_SINK_UART_PORT="${WM_GW_SINK_UART_PORT:-${WM_SINK_UART_PORT}}"
-WM_GW_SINK_UART_BITRATE="${WM_GW_SINK_UART_BITRATE:-${WM_SINK_UART_BITRATE}}"
 WM_GW_ID="${WM_GW_ID:-${WM_SERVICES_GATEWAY_ID}}"
 WM_GW_MODEL="${WM_GW_MODEL:-${WM_SERVICES_GATEWAY_MODEL}}"
 WM_GW_VERSION="${WM_GW_VERSION:-${WM_SERVICES_GATEWAY_VERSION}}"
@@ -35,6 +30,15 @@ WM_SERVICES_MQTT_ALLOW_UNTRUSTED="${WM_SERVICES_MQTT_ALLOW_UNTRUSTED:-${WM_SERVI
 WM_SERVICES_MQTT_FORCE_UNSECURE="${WM_SERVICES_MQTT_FORCE_UNSECURE:-${WM_SERVICES_ALLOW_UNSECURE}}"
 WM_SERVICES_MQTT_CA_CERTS="${WM_SERVICES_MQTT_CA_CERTS:-${WM_SERVICES_CERTIFICATE_CHAIN}}"
 
+WM_GW_SINK_UART_PORT="${WM_GW_SINK_UART_PORT:-${WM_SINK_UART_PORT}}"
+WM_GW_SINK_BITRATE="${WM_GW_SINK_BITRATE:-${WM_SINK_UART_BITRATE}}"
+WM_GW_SINK_ID="${WM_GW_SINK_ID:-${WM_SINK_ID}}"
+
+TARGET=${1}
+
+echo "Image source manifest"
+cat "${SERVICE_HOME}/manifest"
+
 if [[ "${TARGET}" == "sink" || "${TARGET}" == "transport" ]]
 then
     if [[ "${TARGET}" == "transport" ]]
@@ -45,10 +49,7 @@ then
 
     if [[ "${TARGET}" == "sink" ]]
     then
-       TARGET="/usr/local/bin/sinkService \
-                -p ${WM_SINK_UART_PORT} \
-                -b ${WM_SINK_UART_BITRATE} \
-                -i ${WM_SINK_ID}"
+       TARGET="/usr/local/bin/sinkService"
     fi
 
     echo "Starting service: ${TARGET}"
@@ -59,3 +60,4 @@ else
 fi
 
 echo "exiting"
+
