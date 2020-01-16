@@ -8,7 +8,7 @@ env_vars = dict()
 env_vars["WM_SERVICES_MQTT_HOSTNAME"] = "hostname"
 env_vars["WM_SERVICES_MQTT_USERNAME"] = "username"
 env_vars["WM_SERVICES_MQTT_PASSWORD"] = "password"
-env_vars["WM_SERVICES_MQTT_PORT"] = 1998
+env_vars["WM_SERVICES_MQTT_PORT"] = 19723788
 env_vars["WM_SERVICES_MQTT_CA_CERTS"] = "path/ca_certs"
 env_vars["WM_SERVICES_MQTT_CLIENT_CRT"] = "path/client_crt"
 env_vars["WM_SERVICES_MQTT_CLIENT_KEY"] = "path/client_key"
@@ -165,6 +165,81 @@ def content_tests(settings, vcopy):
     assert vcopy["WM_SERVICES_MQTT_CERT_REQS"] == settings.mqtt_cert_reqs
     assert vcopy["WM_SERVICES_MQTT_TLS_VERSION"] == settings.mqtt_tls_version
     assert vcopy["WM_SERVICES_MQTT_RECONNECT_DELAY"] == settings.mqtt_reconnect_delay
+
+
+def test_defaults():
+    """
+    Tests a few of the critical default values such as port number.
+    The goal is to ensure that the custom type does no interfere with the
+    acquisition.
+    """
+
+    parse = ParserHelper(
+        description="Wirepas Gateway Transport service arguments",
+        version=transport_version,
+    )
+
+    parse.add_file_settings()
+    parse.add_mqtt()
+    parse.add_gateway_config()
+    parse.add_filtering_config()
+    parse.add_buffering_settings()
+
+    sys.argv = [sys.argv[0]]
+    settings = parse.settings()
+
+    assert settings.mqtt_hostname is None
+    assert settings.mqtt_username is None
+    assert settings.mqtt_password is None
+    assert settings.mqtt_port == 8883
+    assert settings.mqtt_ca_certs is None
+    assert settings.mqtt_certfile is None
+    assert settings.mqtt_keyfile is None
+    assert settings.mqtt_ciphers is None
+    assert settings.mqtt_persist_session is False
+    assert settings.mqtt_force_unsecure is False
+    assert settings.mqtt_allow_untrusted is False
+    assert settings.mqtt_reconnect_delay == 0
+    assert settings.buffering_max_buffered_packets == 0
+    assert settings.buffering_max_delay_without_publish == 0
+    assert settings.buffering_minimal_sink_cost == 0
+    assert settings.gateway_id is None
+    assert settings.gateway_model is None
+    assert settings.gateway_version is None
+    assert settings.ignored_endpoints_filter is None
+    assert settings.whitened_endpoints_filter is None
+    assert settings.mqtt_cert_reqs == "CERT_REQUIRED"
+    assert settings.mqtt_tls_version == "PROTOCOL_TLSv1_2"
+
+
+def test_type_conversion():
+    """
+    Ensures that int, str and boolean conversion works as expected.
+    """
+
+    os.environ["WM_GW_ID"] = ""
+    os.environ["WM_SERVICES_MQTT_HOSTNAME"] = ""
+    os.environ["WM_SERVICES_MQTT_PERSIST_SESSION"] = ""
+    os.environ["WM_SERVICES_MQTT_RECONNECT_DELAY"] = "0111"
+    sys.argv = [sys.argv[0]]
+
+    parse = ParserHelper(
+        description="Wirepas Gateway Transport service arguments",
+        version=transport_version,
+    )
+
+    parse.add_file_settings()
+    parse.add_mqtt()
+    parse.add_gateway_config()
+    parse.add_filtering_config()
+    parse.add_buffering_settings()
+
+    settings = parse.settings()
+
+    assert settings.gateway_id is None
+    assert settings.mqtt_hostname is None
+    assert settings.mqtt_persist_session is False
+    assert settings.mqtt_reconnect_delay == 111
 
 
 def test_argument_file_ingestion():
