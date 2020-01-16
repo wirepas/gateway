@@ -52,7 +52,8 @@ then
     fi
 
     echo "Starting service: ${TARGET}"
-    exec "${TARGET}"
+    #shellcheck disable=SC2086
+    exec ${TARGET}
 else
     exec "$@"
 fi
