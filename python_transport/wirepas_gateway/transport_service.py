@@ -346,7 +346,8 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_received_data_topic(
             self.gw_id, sink_id, network_address, src_ep, dst_ep
         )
-        self.logger.debug("Sending data to: %s", topic)
+        self.logger.debug("Uplink traffic: %s | %s", topic, event.event_id)
+
         # Set qos to 1 to avoid loading too much the broker
         # unique id in event header can be used for duplicate filtering in
         # backends
@@ -421,7 +422,6 @@ class TransportService(BusClient):
     @deferred_thread
     def _on_send_data_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("Request to send data")
         try:
             request = wirepas_messaging.gateway.api.SendDataRequest.from_payload(
                 message.payload
@@ -433,7 +433,7 @@ class TransportService(BusClient):
         # Get the sink-id from topic
         _, sink_id = TopicParser.parse_send_data_topic(message.topic)
 
-        self.logger.debug("Request for sink %s", sink_id)
+        self.logger.debug("Downlink traffic: %s | %s", sink_id, request.req_id)
 
         sink = self.sink_manager.get_sink(sink_id)
         if sink is not None:
