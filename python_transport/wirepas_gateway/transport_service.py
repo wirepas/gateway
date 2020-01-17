@@ -346,9 +346,7 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_received_data_topic(
             self.gw_id, sink_id, network_address, src_ep, dst_ep
         )
-        self.logger.debug(
-            "Send data: %s | %s", topic, event.event_id
-        )
+        self.logger.debug("Send data: %s | %s", topic, event.event_id)
         # Set qos to 1 to avoid loading too much the broker
         # unique id in event header can be used for duplicate filtering in
         # backends
