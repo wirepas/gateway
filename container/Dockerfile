@@ -86,12 +86,16 @@ ARG GIT_MANIFEST_FILE
 ARG GIT_MANIFEST_URL
 ARG GIT_MANIFEST_BRANCH
 ARG VERSION
+ARG LXGW_C_MESH_API_HASH
+ARG LXGW_SERVICES_HASH
 
 LABEL com.wirepas.image.base="${DOCKER_BASE}"
 LABEL com.wirepas.source.manifest="${GIT_MANIFEST_URL}/${GIT_MANIFEST_FILE}#${GIT_MANIFEST_BRANCH}"
+LABEL com.wirepas.source.cmeshapi="${LXGW_C_MESH_API_HASH}"
+LABEL com.wirepas.source.gateway="${LXGW_SERVICES_HASH}"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.ref.name="${IMAGE_NAME}"
-LABEL org.opencontainers.image.schema-version="1.0"
+LABEL org.opencontainers.image.schema-version="2.0"
 LABEL org.opencontainers.image.title="Wirepas gateway"
 LABEL org.opencontainers.image.url="https://github.com/wirepas/gateway"
 LABEL org.opencontainers.image.vendor="Wirepas Ltd"
