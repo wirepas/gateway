@@ -6,7 +6,7 @@ import queue
 import socket
 import ssl
 from select import select
-from threading import Thread
+from threading import Thread, Lock
 from time import sleep
 from datetime import datetime
 
@@ -264,7 +264,7 @@ class MQTTWrapper(Thread):
 
     @property
     def publish_queue_size(self):
-        return len(self._unpublished_mid_set)
+        return len(self._unpublished_mid_set) + self._publish_queue.get_size()
 
     @property
     def last_published_packet_s(self):
@@ -281,6 +281,8 @@ class SelectableQueue(queue.Queue):
     def __init__(self):
         super().__init__()
         self._putsocket, self._getsocket = socket.socketpair()
+        self._lock = Lock()
+        self._size = 0
 
     def fileno(self):
         """
@@ -289,16 +291,28 @@ class SelectableQueue(queue.Queue):
         """
         return self._getsocket.fileno()
 
+    def get_size(self):
+        with self._lock:
+            return self._size
+
     def put(self, item, block=True, timeout=None):
-        # Insert item in queue
-        super().put(item, block, timeout)
-        # Send 1 byte on socket to signal select
-        self._putsocket.send(b"x")
+        with self._lock:
+            if self._size == 0:
+                # Send 1 byte on socket to signal select
+                self._putsocket.send(b"x")
+            self._size = self._size + 1
+
+            # Insert item in queue
+            super().put(item, block, timeout)
 
     def get(self, block=False, timeout=None):
-        # Get item first so get can be called and
-        # raise empty exception without blocking in recv
-        item = super().get(block, timeout)
-        # Consume 1 byte from socket for each item
-        self._getsocket.recv(1)
-        return item
+        with self._lock:
+            # Get item first so get can be called and
+            # raise empty exception
+            item = super().get(block, timeout)
+
+            self._size = self._size - 1
+            if self._size == 0:
+                # Consume 1 byte from socket
+                self._getsocket.recv(1)
+            return item
