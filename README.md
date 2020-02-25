@@ -433,18 +433,18 @@ and please review our [code of conduct][here_code_of_conduct].
 Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [LICENSE][here_license] for full license details.
 
-[here_contribution]: https://github.com/wirepas/gateway/blob/master/CONTRIBUTING.md
-[here_code_of_conduct]: https://github.com/wirepas/gateway/blob/master/CODE_OF_CONDUCT.md
-[here_license]: https://github.com/wirepas/gateway/blob/master/LICENSE
-[here_img_overview]: https://github.com/wirepas/gateway/blob/master/img/wm-gateway-overview.png?raw=true
-[here_ci_docker_build]: https://github.com/wirepas/gateway/blob/master/.ci/build-images.sh
+[here_contribution]: CONTRIBUTING.md
+[here_code_of_conduct]: CODE_OF_CONDUCT.md
+[here_license]: LICENSE
+[here_img_overview]: img/wm-gateway-overview.png?raw=true
+[here_ci_docker_build]: .ci/build-images.sh
 [here_releases]: https://github.com/wirepas/gateway/releases
-[here_container]: https://github.com/wirepas/gateway/tree/master/container/
-[here_container_dockerfile]: https://github.com/wirepas/gateway/tree/master/container/Dockerfile
-[here_container_env]: https://github.com/wirepas/gateway/tree/master/container/wm_gateway.env
-[here_dbus_manifest]: https://github.com/wirepas/gateway/blob/master/sink_service/com.wirepas.sink.conf
-[here_container_entrypoint]: https://github.com/wirepas/gateway/blob/master/container/common/docker-entrypoint.sh
-[here_transport_readme]: https://github.com/wirepas/gateway/blob/master/python_transport/README.md
+[here_container]: master/container/
+[here_container_dockerfile]: container/Dockerfile
+[here_container_env]: container/wm_gateway.env
+[here_dbus_manifest]: sink_service/com.wirepas.sink.conf
+[here_container_entrypoint]: container/common/docker-entrypoint.sh
+[here_transport_readme]: python_transport/README.md
 [here wiki systemd]: https://github.com/wirepas/gateway/wiki/How-to-start-a-native-gateway-with-systemd
 
 [repo_tool]: https://source.android.com/setup/develop/repo
