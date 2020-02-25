@@ -439,7 +439,7 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [here_img_overview]: img/wm-gateway-overview.png?raw=true
 [here_ci_docker_build]: .ci/build-images.sh
 [here_releases]: https://github.com/wirepas/gateway/releases
-[here_container]: master/container/
+[here_container]: container/
 [here_container_dockerfile]: container/Dockerfile
 [here_container_env]: container/wm_gateway.env
 [here_dbus_manifest]: sink_service/com.wirepas.sink.conf
