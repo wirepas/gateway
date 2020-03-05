@@ -41,8 +41,6 @@ class MQTTWrapper(Thread):
         self.on_connect_cb = on_connect_cb
         # Set to track the unpublished packets
         self._unpublished_mid_set = set()
-        # Variable to keep track of latest published packet
-        self._timestamp_last_publish = datetime.now()
 
         self._client = mqtt.Client(
             client_id=settings.gateway_id,
@@ -104,7 +102,7 @@ class MQTTWrapper(Thread):
 
     def _on_publish(self, client, userdata, mid):
         self._unpublished_mid_set.remove(mid)
-        self._timestamp_last_publish = datetime.now()
+        self._publish_queue.on_publish_event()
         return
 
     def _do_select(self, sock):
@@ -239,9 +237,6 @@ class MQTTWrapper(Thread):
 
         """
         mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
-        if self.publish_queue_size == 0:
-            # Reset last published packet
-            self._timestamp_last_publish = datetime.now()
         self._unpublished_mid_set.add(mid)
 
     def publish(self, topic, payload, qos=1, retain=False) -> None:
@@ -267,9 +262,8 @@ class MQTTWrapper(Thread):
         return len(self._unpublished_mid_set) + self._publish_queue.get_size()
 
     @property
-    def last_published_packet_s(self):
-        delta = datetime.now() - self._timestamp_last_publish
-        return delta.total_seconds()
+    def publish_waiting_s(self):
+        return self._publish_queue.waiting_event_s
 
 
 class SelectableQueue(queue.Queue):
@@ -283,6 +277,9 @@ class SelectableQueue(queue.Queue):
         self._putsocket, self._getsocket = socket.socketpair()
         self._lock = Lock()
         self._size = 0
+        # Variables to keep track of publishing events delay
+        self._packets_publishing = 0
+        self._timestamp_last_event = 0
 
     def fileno(self):
         """
@@ -297,6 +294,11 @@ class SelectableQueue(queue.Queue):
 
     def put(self, item, block=True, timeout=None):
         with self._lock:
+            if self._packets_publishing == 0:
+                # Start publishing process - Reset event timestamp
+                self._timestamp_last_event = datetime.now()
+            self._packets_publishing = self._packets_publishing + 1
+
             if self._size == 0:
                 # Send 1 byte on socket to signal select
                 self._putsocket.send(b"x")
@@ -316,3 +318,17 @@ class SelectableQueue(queue.Queue):
                 # Consume 1 byte from socket
                 self._getsocket.recv(1)
             return item
+
+    def on_publish_event(self):
+        with self._lock:
+            self._packets_publishing = self._packets_publishing - 1
+            self._timestamp_last_event = datetime.now()
+
+    @property
+    def waiting_event_s(self):
+        with self._lock:
+            if self._packets_publishing != 0:
+                delta = datetime.now() - self._timestamp_last_event
+                return delta.total_seconds()
+            else:
+                return 0

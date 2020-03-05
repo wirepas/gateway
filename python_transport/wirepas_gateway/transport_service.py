@@ -95,12 +95,8 @@ class ConnectionToBackendMonitorThread(Thread):
             # No max delay set, not enabled
             return False
 
-        if self.mqtt_wrapper.publish_queue_size <= 0:
-            # No packet queued, so nothing to check
-            return False
-
         return (
-            self.mqtt_wrapper.last_published_packet_s > self.max_delay_without_publish
+            self.mqtt_wrapper.publish_waiting_s > self.max_delay_without_publish
         )
 
     def _is_buffer_threshold_reached(self):
