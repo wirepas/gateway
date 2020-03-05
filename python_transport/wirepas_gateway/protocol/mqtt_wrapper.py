@@ -130,6 +130,14 @@ class MQTTWrapper(Thread):
             1,
         )
 
+        if sock in r:
+            self._client.loop_read()
+
+        if sock in w:
+            self._client.loop_write()
+
+        self._client.loop_misc()
+
         # Check if we have something to publish
         if self._publish_queue in r:
             try:
@@ -157,14 +165,6 @@ class MQTTWrapper(Thread):
             except queue.Empty:
                 # No more packet to publish
                 pass
-
-        if sock in r:
-            self._client.loop_read()
-
-        if sock in w:
-            self._client.loop_write()
-
-        self._client.loop_misc()
 
     def _get_socket(self):
         sock = self._client.socket()
