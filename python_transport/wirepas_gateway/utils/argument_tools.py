@@ -402,6 +402,17 @@ class ParserHelper:
             ),
         )
 
+        self.buffering.add_argument(
+            "--buffering_monitor_period",
+            default=os.environ.get("WM_GW_BUFFERING_MONITOR_PERIOD", 0),
+            action="store",
+            type=self.str2int,
+            help=(
+                "Delay in seconds between two logs of the network/buffering"
+                "state (0 will disable feature)"
+            ),
+        )
+
     def add_debug_settings(self):
         self.debug.add_argument(
             "--debug_incr_data_event_id",

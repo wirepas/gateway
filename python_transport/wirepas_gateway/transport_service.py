@@ -7,7 +7,7 @@ import os
 import wirepas_mesh_messaging as wmm
 from time import time, sleep
 from uuid import getnode
-from threading import Thread
+from threading import Thread, Lock
 
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
@@ -20,6 +20,92 @@ from wirepas_gateway import __pkg_name__
 
 # This constant is the actual API level implemented by this transport module (cf WP-RM-128)
 IMPLEMENTED_API_VERSION = 2
+
+
+class NetMonitoringThread(Thread):
+    """
+    Thread that prints periodic network status messages
+    """
+
+    def __init__(self, logger, transport, backend_monitor, mqtt_wrapper, period):
+        Thread.__init__(self)
+
+        self.logger = logger
+        self.period = period
+        # Daemonize thread to exit with full process
+        self.daemon = True
+
+        # Other Objects
+        self.transport = transport
+        self.backend_monitor = backend_monitor
+        self.mqtt_wrapper = mqtt_wrapper
+
+        self._lock = Lock()
+        self.sink_stats = {}
+        for sink in transport.sink_manager.get_sinks():
+            self.on_sink_connected(sink.sink_id)
+
+    def on_sink_connected(self, sink_id):
+        with self._lock:
+            self.sink_stats[sink_id] = [
+                0,
+                0,
+            ]  # number of messages, timestamp of last message
+
+    def on_sink_disconnected(self, sink_id):
+        with self._lock:
+            del self.sink_stats[sink_id]
+
+    def on_sink_rx(self, sink_id):
+        with self._lock:
+            sink_data = self.sink_stats[sink_id]
+            sink_data[0] = sink_data[0] + 1
+            sink_data[1] = int(time())
+
+    def run(self):
+        if self.period == 0:
+            return
+
+        while True:
+            sleep(self.period)
+
+            self.logger.info(
+                "Net-State: MQTT %s, MQTT messages sent %u, messages received %u",
+                "CONNECTED" if self.mqtt_wrapper._client.socket() else "DISCONNECTED",
+                self.mqtt_wrapper.published_total,
+                self.mqtt_wrapper.suscribed_total,
+            )
+
+            if self.backend_monitor:
+                self.logger.info(
+                    "           MQTT buffers %u (%u max), publish delay %u sec"
+                    "(%u max), sinks cost %s",
+                    self.mqtt_wrapper.publish_queue_size,
+                    self.backend_monitor.max_buffered_packets,
+                    self.mqtt_wrapper.last_published_packet_s
+                    if self.mqtt_wrapper.publish_queue_size != 0
+                    else 0,
+                    self.backend_monitor.max_delay_without_publish,
+                    "HIGH" if self.backend_monitor.disconnected else "LOW",
+                )
+            else:
+                self.logger.info(
+                    "           MQTT buffers %u, publish delay %u sec",
+                    self.mqtt_wrapper.publish_queue_size,
+                    self.mqtt_wrapper.last_published_packet_s
+                    if self.mqtt_wrapper.publish_queue_size != 0
+                    else 0,
+                )
+
+            with self._lock:
+                for id, data in self.sink_stats.items():
+                    self.logger.info(
+                        "           Sink [%s]  messages received %u,"
+                        "last message %u s ago",
+                        id,
+                        data[0],
+                        0 if data[0] == 0 else (int(time()) - data[1]),
+                    )
 
 
 class ConnectionToBackendMonitorThread(Thread):
@@ -238,6 +324,15 @@ class TransportService(BusClient):
         else:
             self.data_event_id = None
 
+        self.net_monitoring_thread = NetMonitoringThread(
+            self.logger,
+            self,
+            self.monitoring_thread,
+            self.mqtt_wrapper,
+            settings.buffering_monitor_period,
+        )
+        self.net_monitoring_thread.start()
+
     def _on_mqtt_wrapper_termination_cb(self):
         """
         Callback used to be informed when the MQTT wrapper has exited
@@ -363,6 +458,9 @@ class TransportService(BusClient):
         # backends
         self.mqtt_wrapper.publish(topic, event.payload, qos=1)
 
+        # update sink stats
+        self.net_monitoring_thread.on_sink_rx(sink_id)
+
     def on_stack_started(self, name):
         sink = self.sink_manager.get_sink(name)
         if sink is None:
@@ -429,9 +527,15 @@ class TransportService(BusClient):
 
         self._send_asynchronous_get_configs_response()
 
+        # update sink stats
+        self.net_monitoring_thread.on_sink_connected(name)
+
     def on_sink_disconnected(self, name):
         self.logger.info("Sink disconnected, sending new configs")
         self._send_asynchronous_get_configs_response()
+
+        # update sink stats
+        self.net_monitoring_thread.on_sink_disconnected(name)
 
     @deferred_thread
     def _on_send_data_cmd_received(self, client, userdata, message):
