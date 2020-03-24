@@ -88,6 +88,7 @@ setup(
         "console_scripts": [
             "wm-gw=wirepas_gateway.transport_service:main",
             "wm-dbus-print=wirepas_gateway.dbus_print_client:main",
+            "wm-node-conf=wirepas_gateway.configure_node:main",
         ]
     },
 )
