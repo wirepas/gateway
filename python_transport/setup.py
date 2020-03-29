@@ -45,7 +45,6 @@ def custom_scheme():
     }
 
 
-
 def get_list_files(root, flist=None):
     if flist is None:
         flist = list()
