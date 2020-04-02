@@ -168,6 +168,48 @@ class ConnectionToBackendMonitorThread(Thread):
                 sink.cost = self.minimum_sink_cost
 
 
+class PeriodicPublishStatusThread(Thread):
+    def __init__(self, logger, period, mqtt_wrapper, topic, payload):
+        """
+        Thread to periodically publish gateway status if retain flag is not
+        supported by broker.
+
+        Args:
+            logger: logger used to log messages
+            period: the period to check the buffer status
+            mqtt_wrapper: the mqtt wrapper to get access to queue level
+        """
+        Thread.__init__(self)
+
+        self.logger = logger
+
+        # Daemonize thread to exit with full process
+        self.daemon = True
+        self.running = False
+
+        # How often to publish
+        self.period = period
+        self.mqtt_wrapper = mqtt_wrapper
+        self.topic = topic
+        self.payload = payload
+
+    def run(self):
+        """
+        Main loop to publish status
+        """
+        self.running = True
+        while self.running:
+            self.logger.debug("Publish status")
+            self.mqtt_wrapper.publish(self.topic, self.payload, qos=1, retain=False)
+            sleep(self.period)
+
+    def stop(self):
+        """
+        Stop the publish script
+        """
+        self.running = False
+
+
 class TransportService(BusClient):
     """
     Implementation of gateway to backend protocol
@@ -181,6 +223,9 @@ class TransportService(BusClient):
 
     # Period in s to check for black hole issue
     MONITORING_BUFFERING_PERIOD_S = 1
+
+    # Period to send status in case broker do not support retain flag
+    GATEWAY_STATUS_PERIOD_S = 30
 
     def __init__(self, settings, logger=None, **kwargs):
         self.logger = logger or logging.getLogger(__name__)
@@ -197,6 +242,10 @@ class TransportService(BusClient):
         self.gw_model = settings.gateway_model
         self.gw_version = settings.gateway_version
 
+        # Does broker support retain flag
+        self.retain_not_supported = settings.mqtt_retain_flag_not_supported
+        self.status_publish_thread = None
+
         self.whitened_ep_filter = settings.whitened_endpoints_filter
 
         last_will_topic = TopicGenerator.make_status_topic(self.gw_id)
@@ -209,6 +258,7 @@ class TransportService(BusClient):
             self.logger,
             self._on_mqtt_wrapper_termination_cb,
             self._on_connect,
+            self._on_disconnect,
             last_will_topic,
             last_will_message,
         )
@@ -254,7 +304,20 @@ class TransportService(BusClient):
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
 
-        self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
+        if self.retain_not_supported:
+            if self.status_publish_thread is None:
+                self.status_publish_thread = PeriodicPublishStatusThread(
+                    self.logger,
+                    self.GATEWAY_STATUS_PERIOD_S,
+                    self.mqtt_wrapper,
+                    topic,
+                    event_online.payload,
+                )
+                self.status_publish_thread.start()
+            else:
+                self.logger.warning("Publish thread already running")
+        else:
+            self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
 
     def _on_connect(self):
         # Register for get gateway info
@@ -294,6 +357,12 @@ class TransportService(BusClient):
         self._set_status()
 
         self.logger.info("MQTT connected!")
+
+    def _on_disconnect(self):
+        self.logger.info("MQTT disconnected!")
+        if self.status_publish_thread is not None:
+            self.status_publish_thread.stop()
+            self.status_publish_thread = None
 
     def on_data_received(
         self,
