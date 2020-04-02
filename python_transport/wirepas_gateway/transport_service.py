@@ -197,6 +197,9 @@ class TransportService(BusClient):
         self.gw_model = settings.gateway_model
         self.gw_version = settings.gateway_version
 
+        # Does broker support retain flag
+        self.retain_supported = not settings.mqtt_retain_flag_not_supported
+
         self.whitened_ep_filter = settings.whitened_endpoints_filter
 
         last_will_topic = TopicGenerator.make_status_topic(self.gw_id)
@@ -253,8 +256,9 @@ class TransportService(BusClient):
         )
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
-
-        self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
+        self.mqtt_wrapper.publish(
+            topic, event_online.payload, qos=1, retain=self.retain_supported
+        )
 
     def _on_connect(self):
         # Register for get gateway info
@@ -290,6 +294,14 @@ class TransportService(BusClient):
         self.mqtt_wrapper.subscribe(
             topic, self._on_otap_process_scratchpad_request_received
         )
+
+        if not self.retain_supported:
+            # In case retain flag is not supported, it will allow gateway to
+            # resend its status every time a backend ask for it
+            # If retain is supported, no need to subscribe as backend will
+            # already receive the last retained status
+            topic = TopicGenerator.make_get_gateway_status_request_topic()
+            self.mqtt_wrapper.subscribe(topic, self._on_get_status_request_received)
 
         self._set_status()
 
@@ -645,6 +657,12 @@ class TransportService(BusClient):
         )
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
+    @deferred_thread
+    def _on_get_status_request_received(self, client, userdata, message):
+        # This particular message has no payload
+        self.logger.debug("Get status request received")
+        self._set_status()
 
 
 def parse_setting_list(list_setting):

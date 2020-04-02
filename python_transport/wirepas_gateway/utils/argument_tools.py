@@ -344,6 +344,28 @@ class ParserHelper:
             ),
         )
 
+        self.mqtt.add_argument(
+            "--mqtt_max_qos_supported",
+            default=os.environ.get("WM_SERVICES_MQTT_MAX_QOS_SUPPORTED", 2),
+            action="store",
+            type=self.str2int,
+            help=(
+                "Max qos supported by broker in case it has limitation"
+                "compare to MQTT specification that is 2."
+            ),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_retain_flag_not_supported",
+            default=bool(
+                os.environ.get("WM_SERVICES_MQTT_RETAIN_FLAG_NOT_SUPPORTED", False)
+            ),
+            type=self.str2bool,
+            nargs="?",
+            const=True,
+            help=("Set to false if broker do not support retain flag"),
+        )
+
     def add_buffering_settings(self):
         """ Parameters used to avoid black hole case """
         self.buffering.add_argument(
