@@ -78,6 +78,40 @@ HANDLER_WRITE_UINT32(network_add, WPC_set_network_address)
 HANDLER_READ_BOOL(cipher_key, WPC_is_cipher_key_set)
 HANDLER_READ_BOOL(authen_key, WPC_is_authentication_key_set)
 
+
+/**
+ * \brief   Read channel map
+ *          It is a wrapper on top of default reader to avoid
+ *          doing the call over dual mcu api for nothing.
+ * \param   ... (from sd_bus property handler)
+ */
+static int channel_map_read_handler_wrapper(
+        sd_bus * bus,
+        const char * path,
+        const char * interface,
+        const char * property,
+        sd_bus_message * reply,
+        void * userdata,
+        sd_bus_error * error)
+{
+    if (m_sink_config.version[0] >= 4)
+    {
+        LOGD("No need to ask channel map if stack >= 4\n");
+        SET_WPC_ERROR(error, "WPC_get_channel_map", APP_RES_ATTRIBUTE_NOT_SET);
+        return -EINVAL;
+    }
+    else
+    {
+        return channel_map_read_handler(
+                bus,
+                path,
+                interface,
+                property,
+                reply,
+                userdata,
+                error);
+    }
+}
 /**
  * \brief   Get firmware version
  * \param   ... (from sd_bus property handler)
@@ -529,7 +563,7 @@ static const sd_bus_vtable config_vtable[] = {
     SD_BUS_WRITABLE_PROPERTY("NetworkAddress", "u", network_add_read_handler, network_add_write_handler, 0, 0),
     SD_BUS_WRITABLE_PROPERTY("NetworkChannel", "y", network_channel_read_handler, network_channel_write_handler, 0, 0),
     SD_BUS_WRITABLE_PROPERTY("SinkCost", "y", sink_cost_read_handler, sink_cost_write_handler, 0, 0),
-    SD_BUS_WRITABLE_PROPERTY("ChannelMap", "u", channel_map_read_handler, channel_map_write_handler, 0, 0),
+    SD_BUS_WRITABLE_PROPERTY("ChannelMap", "u", channel_map_read_handler_wrapper, channel_map_write_handler, 0, 0),
 
     /* Write only parameters (no write only concept so handled in read handler) */
     SD_BUS_WRITABLE_PROPERTY("CipherKey", "ay", read_key, set_cipher_key, 0, 0),
