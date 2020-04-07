@@ -98,7 +98,7 @@ class Sink:
     def _get_param(self, dic, key, attribute):
         try:
             dic[key] = getattr(self.proxy, attribute)
-        except (GLib.Error, AttributeError):
+        except (GLib.Error, AttributeEr:
             # Exception raised when getting attribute (probably not set)
             # Discard channel_map as parameter present only for old stacks
             if key != "channel_map":
