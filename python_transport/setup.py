@@ -42,6 +42,8 @@ def custom_scheme():
         "root": "..",
         "version_scheme": custom_version,
         "local_scheme": "no-local-version",
+        "write_to": "python_transport/version.py",
+        "fallback_version": str(fallback_version["version"]),
     }
 
 
@@ -76,6 +78,13 @@ def get_requirements(*args):
 about = {}
 with open(get_absolute_path("./wirepas_gateway/__about__.py")) as f:
     exec(f.read(), about)
+
+fallback_version = {}
+try:
+    with open(get_absolute_path("./version.py")) as f:
+        exec(f.read(), fallback_version)
+except FileNotFoundError:
+    fallback_version["version"] = "0.1.0"
 
 setup(
     name=about["__pkg_name__"],
