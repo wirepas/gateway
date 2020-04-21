@@ -16,7 +16,7 @@ services:
                 IMAGE_NAME: ${IMAGE_NAME:-wirepas/gateway-x86:latest}
                 VERSION: ${VERSION:-"1.2.0-rc.1"}
                 BUILD_DATE: ${BUILD_DATE:-"undefined"}
-                DOCKER_BASE: ubuntu:19.04
+                DOCKER_BASE: ubuntu:19.10
                 SOURCE_PATH: .ci/_repo_stable
                 CROSS_BUILD_START_CMD: ":"
                 CROSS_BUILD_END_CMD: ":"
