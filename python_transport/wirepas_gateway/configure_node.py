@@ -20,8 +20,8 @@ class NodeRole:
 
     class BaseRole(Enum):
         SINK = 0x1
-        ROUTEUR = 0x2
-        NON_ROUTEUR = 0x3
+        ROUTER = 0x2
+        NON_ROUTER = 0x3
 
     class RoleFlags(Enum):
         CSMA_CA = 0x1
@@ -50,9 +50,9 @@ class NodeRole:
         if "sink" in str_lower:
             base = cls.BaseRole.SINK
         elif "non-router" in str_lower:
-            base = cls.BaseRole.NON_ROUTEUR
+            base = cls.BaseRole.NON_ROUTER
         elif "router" in str_lower:
-            base = cls.BaseRole.ROUTEUR
+            base = cls.BaseRole.ROUTER
         else:
             raise ValueError("Cannot determine base role from %s" % node_role_str)
 
@@ -81,9 +81,9 @@ class NodeRole:
         if base_int == 1:
             base = cls.BaseRole.SINK
         elif base_int == 2:
-            base = cls.BaseRole.ROUTEUR
+            base = cls.BaseRole.ROUTER
         elif base_int == 3:
-            base = cls.BaseRole.NON_ROUTEUR
+            base = cls.BaseRole.NON_ROUTER
 
         # Define flags
         flags = []
@@ -103,9 +103,9 @@ class NodeRole:
         val = 0
         if self.base == self.BaseRole.SINK:
             val += 1
-        elif self.base == self.BaseRole.ROUTEUR:
+        elif self.base == self.BaseRole.ROUTER:
             val += 2
-        elif self.base == self.BaseRole.NON_ROUTEUR:
+        elif self.base == self.BaseRole.NON_ROUTER:
             val += 3
 
         if self.RoleFlags.CSMA_CA in self.flags:
