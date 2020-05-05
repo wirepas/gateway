@@ -133,6 +133,15 @@ class TopicGenerator:
             [str(gw_id), str(sink_id), str(network_id), str(src_ep), str(dst_ep)],
         )
 
+    @staticmethod
+    def make_received_multi_data_topic(
+        gw_id="+", sink_id="+", network_id="+", src_ep="+", dst_ep="+"
+    ):
+        return TopicGenerator._make_event_topic(
+            "multi_received_data",
+            [str(gw_id), str(sink_id), str(network_id), str(src_ep), str(dst_ep)],
+        )
+
 
 class TopicParser:
     """

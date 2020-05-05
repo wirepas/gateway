@@ -10,6 +10,7 @@ from threading import Thread
 
 import wirepas_messaging
 from wirepas_gateway.dbus.dbus_client import BusClient
+from wirepas_gateway.protocol.packet_queue import MessageQueue
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
 from wirepas_gateway.utils import ParserHelper
@@ -238,6 +239,40 @@ class TransportService(BusClient):
             )
             self.monitoring_thread.start()
 
+        # Create a group
+        # TODO: take it from conf
+        group_ep_11 = MessageQueue(
+            logger=self.logger,
+            dst_endpoints=[11],
+            on_multi_packet_ready_cb=self._on_time_to_publish_group_cb,
+            max_packets=8,
+            max_queuing_time_s=100,
+            filter_name="Ep_10",
+        )
+
+        group_ep_255 = MessageQueue(
+            logger=self.logger,
+            dst_endpoints=[255],
+            on_multi_packet_ready_cb=self._on_time_to_publish_group_cb,
+            max_packets=10,
+            max_queuing_time_s=65,
+            filter_name="Diags",
+        )
+
+        group_ep_11.start()
+        group_ep_255.start()
+
+        self._packet_group_filters = [group_ep_11, group_ep_255]
+
+    def _on_time_to_publish_group_cb(self, messages, filter_name):
+        self.logger.debug("Time to send group data")
+        topic = "gw-event/multi_packet"
+        self.logger.debug("Uplink traffic: %s | group %s", topic, filter_name)
+        collection_message = wirepas_messaging.gateway.api.GenericCollection(messages)
+
+        self.mqtt_wrapper.publish(topic, collection_message.payload, qos=1)
+        return True
+
     def _on_mqtt_wrapper_termination_cb(self):
         """
         Callback used to be informed when the MQTT wrapper has exited
@@ -309,6 +344,15 @@ class TransportService(BusClient):
         data,
     ):
 
+        sink = self.sink_manager.get_sink(sink_id)
+        if sink is None:
+            # It can happen at sink connection as messages can be received
+            # before sinks are identified
+            self.logger.info(
+                "Message received from unknown sink at the moment %s", sink_id
+            )
+            return
+
         if self.whitened_ep_filter is not None and dst_ep in self.whitened_ep_filter:
             # Only publish payload size but not the payload
             self.logger.debug("Filtering payload data")
@@ -332,17 +376,16 @@ class TransportService(BusClient):
             hop_count=hop_count,
         )
 
-        sink = self.sink_manager.get_sink(sink_id)
-        if sink is None:
-            # It can happen at sink connection as messages can be received
-            # before sinks are identified
-            self.logger.info(
-                "Message received from unknown sink at the moment %s", sink_id
-            )
-            return
-
         network_address = sink.get_network_address()
 
+        # Check if message must be queued
+        for group in self._packet_group_filters:
+            if group.is_message_for_me(dst_ep):
+                group.queue_message(event)
+                self.logger.debug("Message queued to %s queue" % group.filter_name)
+                return
+
+        # Not a grouped message, publish it alone
         topic = TopicGenerator.make_received_data_topic(
             self.gw_id, sink_id, network_address, src_ep, dst_ep
         )
