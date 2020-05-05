@@ -68,6 +68,10 @@ class TopicGenerator:
     def make_get_gateway_info_request_topic(gw_id):
         return TopicGenerator._make_request_topic("get_gw_info", [str(gw_id)])
 
+    @staticmethod
+    def make_get_gateway_status_request_topic():
+        return TopicGenerator._make_request_topic("get_gw_status", [])
+
     ##################
     # Response Part
     ##################

@@ -44,6 +44,10 @@ class MQTTWrapper(Thread):
         # Variable to keep track of latest published packet
         self._timestamp_last_publish = datetime.now()
 
+        # load special settings for borker compatibility
+        self.max_qos = settings.mqtt_max_qos_supported
+        self.retain_supported = not settings.mqtt_retain_flag_not_supported
+
         self._client = mqtt.Client(
             client_id=settings.gateway_id,
             clean_session=not settings.mqtt_persist_session,
@@ -65,6 +69,7 @@ class MQTTWrapper(Thread):
 
         self._client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
         self._client.on_connect = self._on_connect
+        self._client.on_disconnect = self._on_disconnect
         self._client.on_publish = self._on_publish
 
         if last_will_topic is not None and last_will_data is not None:
@@ -101,6 +106,10 @@ class MQTTWrapper(Thread):
         self.connected = True
         if self.on_connect_cb is not None:
             self.on_connect_cb()
+
+    def _on_disconnect(self, client, userdata, rc):
+        if rc != 0:
+            self.logger.error("MQTT disconnect: %s (%s)", connack_string(rc), rc)
 
     def _on_publish(self, client, userdata, mid):
         self._unpublished_mid_set.remove(mid)
@@ -196,7 +205,7 @@ class MQTTWrapper(Thread):
 
     def _set_last_will(self, topic, data):
         # Set Last wil message
-        self._client.will_set(topic, data, qos=2, retain=True)
+        self._client.will_set(topic, data, qos=1, retain=self.retain_supported)
 
     def run(self):
         self.running = True
@@ -238,6 +247,13 @@ class MQTTWrapper(Thread):
             retain: Is it a retain message
 
         """
+        # Limit qos in case broker has a limit
+        if qos > self.max_qos:
+            qos = self.max_qos
+
+        # Clear retain flag if not supported
+        retain = retain and self.retain_supported
+
         mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
         if self.publish_queue_size == 0:
             # Reset last published packet
@@ -250,14 +266,32 @@ class MQTTWrapper(Thread):
         Args:
             topic: Topic to publish on
             payload: Payload
-            qos: Qos to use
-            retain: Is it a retain message
+            qos: Qos to use. Can be less than requested if broker does
+                 not support it
+            retain: Is it a retain message. Can be discarded if broker
+                 does not support it
 
         """
+        # No need to check qos or retain at this stage as
+        # done later in real publish to broker
+
         # Send it to the queue to be published from Mqtt thread
         self._publish_queue.put((topic, payload, qos, retain))
 
     def subscribe(self, topic, cb, qos=2) -> None:
+        """ Method to subscribe to mqtt topic
+
+        Args:
+            topic: Topic to publish on
+            cb: Callback to call on message reception
+            qos: Qos to use. Can be less than requested if broker does
+                 not support it
+
+        """
+        # Limit qos in case broker has a limit
+        if qos > self.max_qos:
+            qos = self.max_qos
+
         self.logger.debug("Subscribing to: {}".format(topic))
         self._client.subscribe(topic, qos)
         self._client.message_callback_add(topic, cb)
