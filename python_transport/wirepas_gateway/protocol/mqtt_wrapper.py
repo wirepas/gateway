@@ -63,6 +63,11 @@ class MQTTWrapper(Thread):
                 self.logger.error("Cannot use secure authentication %s", e)
                 exit(-1)
 
+        self.logger.info(
+            "Max inflight messages set to %s", settings.mqtt_max_inflight_messages
+        )
+        self._client.max_inflight_messages_set(settings.mqtt_max_inflight_messages)
+
         self._client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
         self._client.on_connect = self._on_connect
         self._client.on_publish = self._on_publish
