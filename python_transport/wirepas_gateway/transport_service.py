@@ -264,6 +264,16 @@ class TransportService(BusClient):
 
         self._packet_group_filters = [group_ep_11, group_ep_255]
 
+        self.message_handler_map = {
+            "GetConfigsRequest": self._process_get_configs_request,
+            "SetConfigRequest": self._process_set_config_request,
+            "SendDataRequest": self._process_send_data_request,
+            "GetScratchpadStatusRequest": self._process_otap_scratchpad_request,
+            "UploadScratchpadRequest": self._process_otap_upload_scratchpad_request,
+            "ProcessScratchpadRequest": self._process_otap_scratchpad_request,
+            "GetGatewayInfoRequest": self._process_get_gateway_info_request,
+        }
+
     def _on_time_to_publish_group_cb(self, messages, filter_name):
         self.logger.debug("Time to send group data")
         topic = "gw-event/multi_packet"
@@ -325,6 +335,9 @@ class TransportService(BusClient):
         self.mqtt_wrapper.subscribe(
             topic, self._on_otap_process_scratchpad_request_received
         )
+
+        topic = TopicGenerator.make_collection_request_topic(self.gw_id)
+        self.mqtt_wrapper.subscribe(topic, self._on_collection_message_received)
 
         self._set_status()
 
@@ -697,7 +710,26 @@ class TransportService(BusClient):
             self._process_otap_scratchpad_request(request)
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
+
+    @deferred_thread
+    def _on_collection_message_received(self, client, userdata, message):
+        self.logger.info("Collection message received")
+        try:
+            collection_message = wirepas_messaging.gateway.api.GenericCollection.from_payload(
+                message.payload
+            )
+        except GatewayAPIParsingException as e:
+            self.logger.error(str(e))
             return
+
+        for message in collection_message.messages:
+            try:
+                self.message_handler_map[message.__class__.__name__](message)
+            except KeyError:
+                self.logger.error(
+                    "Gateway can handle this type of message %s"
+                    % message.__class__.__name__
+                )
 
 
 def parse_setting_list(list_setting):

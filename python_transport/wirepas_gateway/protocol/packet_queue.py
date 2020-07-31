@@ -145,6 +145,7 @@ class MessageQueue(Thread):
                     send = True
 
                 if send:
+                    # TODO list can contain more than max packets. Should be tested somwhere
                     if self.on_packets_ready_cb(self._messages_list, self.filter_name):
                         # Reset counter and list
                         self._next_expiration_date = None
