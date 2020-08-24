@@ -10,6 +10,7 @@ from threading import Thread
 
 import wirepas_messaging
 from wirepas_gateway.dbus.dbus_client import BusClient
+from wirepas_gateway.protocol.packet_queue import MessageQueue
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
 from wirepas_gateway.utils import ParserHelper
@@ -238,6 +239,50 @@ class TransportService(BusClient):
             )
             self.monitoring_thread.start()
 
+        # Create a group
+        # TODO: take it from conf
+        group_ep_11 = MessageQueue(
+            logger=self.logger,
+            dst_endpoints=[11],
+            on_multi_packet_ready_cb=self._on_time_to_publish_group_cb,
+            max_packets=8,
+            max_queuing_time_s=100,
+            filter_name="Ep_10",
+        )
+
+        group_ep_255 = MessageQueue(
+            logger=self.logger,
+            dst_endpoints=[255],
+            on_multi_packet_ready_cb=self._on_time_to_publish_group_cb,
+            max_packets=10,
+            max_queuing_time_s=65,
+            filter_name="Diags",
+        )
+
+        group_ep_11.start()
+        group_ep_255.start()
+
+        self._packet_group_filters = [group_ep_11, group_ep_255]
+
+        self.message_handler_map = {
+            "GetConfigsRequest": self._process_get_configs_request,
+            "SetConfigRequest": self._process_set_config_request,
+            "SendDataRequest": self._process_send_data_request,
+            "GetScratchpadStatusRequest": self._process_otap_scratchpad_request,
+            "UploadScratchpadRequest": self._process_otap_upload_scratchpad_request,
+            "ProcessScratchpadRequest": self._process_otap_scratchpad_request,
+            "GetGatewayInfoRequest": self._process_get_gateway_info_request,
+        }
+
+    def _on_time_to_publish_group_cb(self, messages, filter_name):
+        self.logger.debug("Time to send group data")
+        topic = "gw-event/multi_packet"
+        self.logger.debug("Uplink traffic: %s | group %s", topic, filter_name)
+        collection_message = wirepas_messaging.gateway.api.GenericCollection(messages)
+
+        self.mqtt_wrapper.publish(topic, collection_message.payload, qos=1)
+        return True
+
     def _on_mqtt_wrapper_termination_cb(self):
         """
         Callback used to be informed when the MQTT wrapper has exited
@@ -291,6 +336,9 @@ class TransportService(BusClient):
             topic, self._on_otap_process_scratchpad_request_received
         )
 
+        topic = TopicGenerator.make_collection_request_topic(self.gw_id)
+        self.mqtt_wrapper.subscribe(topic, self._on_collection_message_received)
+
         self._set_status()
 
         self.logger.info("MQTT connected!")
@@ -308,6 +356,15 @@ class TransportService(BusClient):
         hop_count,
         data,
     ):
+
+        sink = self.sink_manager.get_sink(sink_id)
+        if sink is None:
+            # It can happen at sink connection as messages can be received
+            # before sinks are identified
+            self.logger.info(
+                "Message received from unknown sink at the moment %s", sink_id
+            )
+            return
 
         if self.whitened_ep_filter is not None and dst_ep in self.whitened_ep_filter:
             # Only publish payload size but not the payload
@@ -332,17 +389,16 @@ class TransportService(BusClient):
             hop_count=hop_count,
         )
 
-        sink = self.sink_manager.get_sink(sink_id)
-        if sink is None:
-            # It can happen at sink connection as messages can be received
-            # before sinks are identified
-            self.logger.info(
-                "Message received from unknown sink at the moment %s", sink_id
-            )
-            return
-
         network_address = sink.get_network_address()
 
+        # Check if message must be queued
+        for group in self._packet_group_filters:
+            if group.is_message_for_me(dst_ep):
+                group.queue_message(event)
+                self.logger.debug("Message queued to %s queue" % group.filter_name)
+                return
+
+        # Not a grouped message, publish it alone
         topic = TopicGenerator.make_received_data_topic(
             self.gw_id, sink_id, network_address, src_ep, dst_ep
         )
@@ -419,20 +475,9 @@ class TransportService(BusClient):
         self.logger.info("Sink disconnected, sending new configs")
         self._send_asynchronous_get_configs_response()
 
-    @deferred_thread
-    def _on_send_data_cmd_received(self, client, userdata, message):
-        # pylint: disable=unused-argument
-        try:
-            request = wirepas_messaging.gateway.api.SendDataRequest.from_payload(
-                message.payload
-            )
-        except GatewayAPIParsingException as e:
-            self.logger.error(str(e))
-            return
-
-        # Get the sink-id from topic
-        _, sink_id = TopicParser.parse_send_data_topic(message.topic)
-
+    def _process_send_data_request(self, request, sink_id=None):
+        if sink_id is None:
+            sink_id = request.sink_id
         self.logger.debug("Downlink traffic: %s | %s", sink_id, request.req_id)
 
         sink = self.sink_manager.get_sink(sink_id)
@@ -464,17 +509,20 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     @deferred_thread
-    def _on_get_configs_cmd_received(self, client, userdata, message):
+    def _on_send_data_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("Config request received")
         try:
-            request = wirepas_messaging.gateway.api.GetConfigsRequest.from_payload(
+            request = wirepas_messaging.gateway.api.SendDataRequest.from_payload(
                 message.payload
             )
+            # Get the sink-id from topic (for backward compatibility)
+            _, sink_id = TopicParser.parse_send_data_topic(message.topic)
+            self._process_send_data_request(request, sink_id)
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return
 
+    def _process_get_configs_request(self, request):
         # Create a list of different sink configs
         configs = []
         for sink in self.sink_manager.get_sinks():
@@ -489,21 +537,19 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
-    def _on_get_gateway_info_cmd_received(self, client, userdata, message):
+    @deferred_thread
+    def _on_get_configs_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        """
-        This function doesn't need the decorator @deferred_thread as request is handled
-        without I/O
-        """
-        self.logger.info("Gateway info request received")
+        self.logger.info("Config request received")
         try:
-            request = wirepas_messaging.gateway.api.GetGatewayInfoRequest.from_payload(
+            request = wirepas_messaging.gateway.api.GetConfigsRequest.from_payload(
                 message.payload
             )
+            self._process_get_configs_request(request)
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return
 
+    def _process_get_gateway_info_request(self, request):
         response = wirepas_messaging.gateway.api.GetGatewayInfoResponse(
             request.req_id,
             self.gw_id,
@@ -517,18 +563,22 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_get_gateway_info_response_topic(self.gw_id)
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
-    @deferred_thread
-    def _on_set_config_cmd_received(self, client, userdata, message):
+    def _on_get_gateway_info_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("Set config request received")
+        """
+        This function doesn't need the decorator @deferred_thread as request is handled
+        without I/O
+        """
+        self.logger.info("Gateway info request received")
         try:
-            request = wirepas_messaging.gateway.api.SetConfigRequest.from_payload(
+            request = wirepas_messaging.gateway.api.GetGatewayInfoRequest.from_payload(
                 message.payload
             )
+            self._process_get_gateway_info_request(request)
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return
 
+    def _process_set_config_request(self, request):
         self.logger.debug("Set sink config: %s", request)
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
@@ -548,17 +598,18 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     @deferred_thread
-    def _on_otap_status_request_received(self, client, userdata, message):
+    def _on_set_config_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("OTAP status request received")
+        self.logger.info("Set config request received")
         try:
-            request = wirepas_messaging.gateway.api.GetScratchpadStatusRequest.from_payload(
+            request = wirepas_messaging.gateway.api.SetConfigRequest.from_payload(
                 message.payload
             )
+            self._process_set_config_request(request)
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return
 
+    def _process_otap_status_request(self, request):
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
             d = sink.get_scratchpad_status()
@@ -589,17 +640,18 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     @deferred_thread
-    def _on_otap_upload_scratchpad_request_received(self, client, userdata, message):
+    def _on_otap_status_request_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("OTAP upload request received")
+        self.logger.info("OTAP status request received")
         try:
-            request = wirepas_messaging.gateway.api.UploadScratchpadRequest.from_payload(
+            request = wirepas_messaging.gateway.api.GetScratchpadStatusRequest.from_payload(
                 message.payload
             )
+            self._process_otap_status_request(request)
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return
 
+    def _process_otap_upload_scratchpad_request(self, request):
         self.logger.info("OTAP upload request received for %s", request.sink_id)
 
         sink = self.sink_manager.get_sink(request.sink_id)
@@ -619,17 +671,18 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     @deferred_thread
-    def _on_otap_process_scratchpad_request_received(self, client, userdata, message):
+    def _on_otap_upload_scratchpad_request_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("OTAP process request received")
+        self.logger.info("OTAP upload request received")
         try:
-            request = wirepas_messaging.gateway.api.ProcessScratchpadRequest.from_payload(
+            request = wirepas_messaging.gateway.api.UploadScratchpadRequest.from_payload(
                 message.payload
             )
+            self._process_otap_upload_scratchpad_request(request)
         except GatewayAPIParsingException as e:
             self.logger.error(str(e))
-            return
 
+    def _process_otap_scratchpad_request(self, request):
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
             res = sink.process_scratchpad()
@@ -645,6 +698,38 @@ class TransportService(BusClient):
         )
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
+    @deferred_thread
+    def _on_otap_process_scratchpad_request_received(self, client, userdata, message):
+        # pylint: disable=unused-argument
+        self.logger.info("OTAP process request received")
+        try:
+            request = wirepas_messaging.gateway.api.ProcessScratchpadRequest.from_payload(
+                message.payload
+            )
+            self._process_otap_scratchpad_request(request)
+        except GatewayAPIParsingException as e:
+            self.logger.error(str(e))
+
+    @deferred_thread
+    def _on_collection_message_received(self, client, userdata, message):
+        self.logger.info("Collection message received")
+        try:
+            collection_message = wirepas_messaging.gateway.api.GenericCollection.from_payload(
+                message.payload
+            )
+        except GatewayAPIParsingException as e:
+            self.logger.error(str(e))
+            return
+
+        for message in collection_message.messages:
+            try:
+                self.message_handler_map[message.__class__.__name__](message)
+            except KeyError:
+                self.logger.error(
+                    "Gateway can handle this type of message %s"
+                    % message.__class__.__name__
+                )
 
 
 def parse_setting_list(list_setting):

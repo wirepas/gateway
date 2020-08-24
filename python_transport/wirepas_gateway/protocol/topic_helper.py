@@ -68,6 +68,10 @@ class TopicGenerator:
     def make_get_gateway_info_request_topic(gw_id):
         return TopicGenerator._make_request_topic("get_gw_info", [str(gw_id)])
 
+    @staticmethod
+    def make_collection_request_topic(gw_id="+"):
+        return TopicGenerator._make_request_topic("multiple_request", [str(gw_id)])
+
     ##################
     # Response Part
     ##################
@@ -130,6 +134,15 @@ class TopicGenerator:
     ):
         return TopicGenerator._make_event_topic(
             "received_data",
+            [str(gw_id), str(sink_id), str(network_id), str(src_ep), str(dst_ep)],
+        )
+
+    @staticmethod
+    def make_received_multi_data_topic(
+        gw_id="+", sink_id="+", network_id="+", src_ep="+", dst_ep="+"
+    ):
+        return TopicGenerator._make_event_topic(
+            "multi_received_data",
             [str(gw_id), str(sink_id), str(network_id), str(src_ep), str(dst_ep)],
         )
 
