@@ -316,8 +316,8 @@ def main():
         type=key_type,
         default=os.environ.get("WM_CN_CIPHER_KEY", None),
         help="Network wide cipher key. "
-        "Ex: -ak 112233445566778899AABBCCDDEEFF11 "
-        "or -ak 11,22,33,44,55,66,77,88,99,AA,BB,CC,DD,EE,FF,11",
+        "Ex: -ck 112233445566778899AABBCCDDEEFF11 "
+        "or -ck 11,22,33,44,55,66,77,88,99,AA,BB,CC,DD,EE,FF,11",
     )
 
     parser.add_argument(
