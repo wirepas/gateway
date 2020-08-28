@@ -354,7 +354,8 @@ class TransportService(BusClient):
         )
         self.logger.debug("Uplink traffic: %s | %s", topic, event.event_id)
 
-        # No need to protect data_event_id as on_data_received is always called from same thread
+        # No need to protect data_event_id as on_data_received is always
+        # called from same thread
         if self.data_event_id is not None:
             self.data_event_id += 1
 

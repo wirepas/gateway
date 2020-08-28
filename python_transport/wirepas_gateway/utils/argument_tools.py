@@ -402,7 +402,8 @@ class ParserHelper:
             const=True,
             help=(
                 "When true the data received event id will be incremental "
-                "starting at 0 when service starts. Otherwise it will be random 64 bits id."
+                "starting at 0 when service starts. Otherwise it will be "
+                "random 64 bits id."
             ),
         )
 
