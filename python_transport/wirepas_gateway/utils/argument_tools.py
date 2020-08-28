@@ -391,6 +391,21 @@ class ParserHelper:
             ),
         )
 
+    def add_debug_settings(self):
+        print(os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID"))
+        print(bool(os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID")))
+        self.debug.add_argument(
+            "--debug_incr_data_event_id",
+            default=os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID", False),
+            type=self.str2bool,
+            nargs="?",
+            const=True,
+            help=(
+                "When true the data received event id will be incremental "
+                "starting at 0 when service starts. Otherwise it will be random 64 bits id."
+            ),
+        )
+
     @staticmethod
     def _deprecated_message(new_arg_name, deprecated_from="2.x"):
         """ Alerts the user that an argument will be deprecated within the

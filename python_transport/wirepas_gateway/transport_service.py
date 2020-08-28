@@ -238,6 +238,11 @@ class TransportService(BusClient):
             )
             self.monitoring_thread.start()
 
+        if settings.debug_incr_data_event_id:
+            self.data_event_id = 0
+        else:
+            self.data_event_id = None
+
     def _on_mqtt_wrapper_termination_cb(self):
         """
         Callback used to be informed when the MQTT wrapper has exited
@@ -318,6 +323,7 @@ class TransportService(BusClient):
             data_size = None
 
         event = wirepas_messaging.gateway.api.ReceivedDataEvent(
+            event_id=self.data_event_id,
             gw_id=self.gw_id,
             sink_id=sink_id,
             rx_time_ms_epoch=timestamp,
@@ -347,6 +353,10 @@ class TransportService(BusClient):
             self.gw_id, sink_id, network_address, src_ep, dst_ep
         )
         self.logger.debug("Uplink traffic: %s | %s", topic, event.event_id)
+
+        # No need to protect data_event_id as on_data_received is always called from same thread
+        if self.data_event_id is not None:
+            self.data_event_id += 1
 
         # Set qos to 1 to avoid loading too much the broker
         # unique id in event header can be used for duplicate filtering in
@@ -800,6 +810,7 @@ def main():
     parse.add_gateway_config()
     parse.add_filtering_config()
     parse.add_buffering_settings()
+    parse.add_debug_settings()
     parse.add_deprecated_args()
 
     settings = parse.settings()
