@@ -631,7 +631,24 @@ static bool initialize_unmodifiable_variables()
                                NULL,
                                "App Config Max size");
 
-    res &= (WPC_get_firmware_version(m_sink_config.version) != APP_RES_OK);
+    if (WPC_get_firmware_version(m_sink_config.version) == APP_RES_OK)
+    {
+        LOGI("Stack version is: %d.%d.%d.%d\n",
+             m_sink_config.version[0],
+             m_sink_config.version[1],
+             m_sink_config.version[2],
+             m_sink_config.version[3]);
+    }
+    else
+    {
+        res = false;
+    }
+
+    if (!res)
+    {
+        LOGE("All the static settings cannot be read\n");
+    }
+
     return res;
 }
 
@@ -652,6 +669,7 @@ static void on_stack_boot_status(uint8_t status)
 int Config_Init(sd_bus * bus, char * object, char * interface)
 {
     int r;
+    uint8_t status;
 
     m_bus = bus;
     m_object = object;
@@ -674,6 +692,16 @@ int Config_Init(sd_bus * bus, char * object, char * interface)
     {
         LOGE("Fail to issue method call: %s\n", strerror(-r));
         return r;
+    }
+
+    /* Get the current stack status for informative purpose */
+    if (WPC_get_stack_status(&status) == APP_RES_OK)
+    {
+        LOGI("Stack is %s\n", status == 0 ? "started" : "stopped");
+    }
+    else
+    {
+        LOGE("Cannot determine stack state\n");
     }
 
     return 0;
