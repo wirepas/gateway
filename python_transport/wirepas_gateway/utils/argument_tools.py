@@ -344,6 +344,14 @@ class ParserHelper:
             ),
         )
 
+        self.mqtt.add_argument(
+            "--mqtt_max_inflight_messages",
+            default=os.environ.get("WM_SERVICES_MQTT_MAX_INFLIGHT_MESSAGES", 20),
+            action="store",
+            type=self.str2int,
+            help=("Max inflight messages for messages with qos > 0"),
+        )
+
     def add_buffering_settings(self):
         """ Parameters used to avoid black hole case """
         self.buffering.add_argument(

@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
 # Copyright 2020 Wirepas Ltd licensed under Apache License, Version 2.0
 #
 # See file LICENSE for full license details.
 #
 import binascii
 import argparse
+import os
 
 from enum import Enum
 
@@ -260,6 +262,7 @@ def main():
         "-s",
         "--sink_name",
         type=str,
+        default=os.environ.get("WM_CN_SINK_ID", None),
         help="Sink name as configured in sinkService. Ex: -s sink0",
     )
 
@@ -267,6 +270,7 @@ def main():
         "-n",
         "--node_address",
         type=int_type,
+        default=os.environ.get("WM_CN_NODE_ADDRESS", None),
         help="Node address as an int. Ex: -n 0xABC or -n 123",
     )
 
@@ -274,6 +278,7 @@ def main():
         "-r",
         "--node_role",
         type=node_role_type,
+        default=os.environ.get("WM_CN_NODE_ROLE", None),
         help="Node role as a string being any combination of a base role "
         "sink/router/non-router and list of flags from [csma-ca, autorole]."
         'Ex: -r "sink csma-ca" or -r "router csma-ca autorole"',
@@ -283,6 +288,7 @@ def main():
         "-N",
         "--network_address",
         type=int_type,
+        default=os.environ.get("WM_CN_NETWORK_ADDRESS", None),
         help="Network address as an int. Ex: -N 0xA1B2C3 or -N 123456",
     )
 
@@ -290,6 +296,7 @@ def main():
         "-c",
         "--network_channel",
         type=int_type,
+        default=os.environ.get("WM_CN_NETWORK_CHANNEL", None),
         help="Network channel as an int. Ex: -c 5",
     )
 
@@ -297,22 +304,28 @@ def main():
         "-ak",
         "--authentication_key",
         type=key_type,
+        default=os.environ.get("WM_CN_AUTHENTICATION_KEY", None),
         help="Network wide 128 bytes authentication key. "
-        "Ex: -ak 1122334455667788AABBCCDDEEFF11 "
-        "or -ak 11,22,33,44,55,66,77,88,AA,BB,CC,DD,EE,FF,11",
+        "Ex: -ak 112233445566778899AABBCCDDEEFF11 "
+        "or -ak 11,22,33,44,55,66,77,88,99,AA,BB,CC,DD,EE,FF,11",
     )
 
     parser.add_argument(
         "-ck",
         "--cipher_key",
         type=key_type,
+        default=os.environ.get("WM_CN_CIPHER_KEY", None),
         help="Network wide cipher key. "
-        "Ex: -ak 1122334455667788AABBCCDDEEFF11 "
-        "or -ak 11,22,33,44,55,66,77,88,AA,BB,CC,DD,EE,FF,11",
+        "Ex: -ck 112233445566778899AABBCCDDEEFF11 "
+        "or -ck 11,22,33,44,55,66,77,88,99,AA,BB,CC,DD,EE,FF,11",
     )
 
     parser.add_argument(
-        "-S", "--start", type=bool_type, help="Start the sink after configuration"
+        "-S",
+        "--start",
+        type=bool_type,
+        default=os.environ.get("WM_CN_START_SINK", None),
+        help="Start the sink after configuration",
     )
 
     args = parser.parse_args()
