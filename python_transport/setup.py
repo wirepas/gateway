@@ -39,10 +39,8 @@ def custom_scheme():
         return tag
 
     return {
-        "root": "..",
         "version_scheme": custom_version,
         "local_scheme": "no-local-version",
-        "write_to": "python_transport/version.py",
         "fallback_version": str(fallback_version["version"]),
     }
 
