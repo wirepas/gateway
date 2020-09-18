@@ -81,21 +81,21 @@ endif
 .PHONY: all
 all: app
 
-app: $(TARGET_APP)
+app: $(TARGET_APP) $(MESH_LIB)
 
 .PHONY: clean
 clean:
 	$(call CLEAN)
 
 $(MESH_LIB_FOLDER):
-	$(error Please add the c-mesh-api library under c-mesh-api folder.\
-			It is needed to handle dualmcu protocol)
+	$(error c-mesh-api library is required and is managed as a git submodule.\
+		Please run "git submodule update --init")
 
 .PHONY: $(MESH_LIB)
 $(MESH_LIB): $(MESH_LIB_FOLDER)
 	make -C $(MESH_LIB_FOLDER)
 
-$(BUILDPREFIX)%.o: $(SOURCEPREFIX)%.c
+$(BUILDPREFIX)%.o: $(SOURCEPREFIX)%.c $(MESH_LIB_FOLDER)
 	$(call COMPILE,$@,$<)
 
 $(BUILDPREFIX)$(MAIN_APP): $(OBJECTS) $(MESH_LIB)
