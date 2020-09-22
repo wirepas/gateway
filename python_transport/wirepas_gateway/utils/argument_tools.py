@@ -305,7 +305,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_persist_session",
-            default=bool(os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False)),
+            default=os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False),
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -317,7 +317,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_force_unsecure",
-            default=bool(os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False)),
+            default=os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False),
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -326,7 +326,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_allow_untrusted",
-            default=bool(os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False)),
+            default=os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False),
             type=self.str2bool,
             nargs="?",
             const=True,
