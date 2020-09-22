@@ -392,8 +392,6 @@ class ParserHelper:
         )
 
     def add_debug_settings(self):
-        print(os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID"))
-        print(bool(os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID")))
         self.debug.add_argument(
             "--debug_incr_data_event_id",
             default=os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID", False),
