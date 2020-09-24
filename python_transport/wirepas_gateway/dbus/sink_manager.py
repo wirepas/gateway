@@ -211,25 +211,6 @@ class Sink:
         # so the last error code will be returned
         res = GatewayResultCode.GW_RES_OK
 
-        # First try to set app_config as any other config will stop the stack
-        try:
-            seq = config["app_config_seq"]
-            diag = config["app_config_diag"]
-            data = config["app_config_data"]
-
-            self.logger.info("Set app config with %s", config)
-            self.proxy.SetAppConfig(seq, diag, data)
-        except KeyError:
-            # App config not defined in new config
-            self.logger.debug("Missing key app_config key in config: %s", config)
-        except GLib.Error as e:
-            res = ReturnCode.error_from_dbus_exception(e.message)
-            self.logger.error("Cannot set App Config: %s", res.name)
-        except OverflowError:
-            # It may happens as protobuf has bigger container value
-            res = GatewayResultCode.GW_RES_INVALID_PARAM
-            self.logger.error("Invalid range value")
-
         config_to_dbus_param = dict(
             [
                 ("node_address", "NodeAddress"),
@@ -249,6 +230,25 @@ class Sink:
                 # Update result code only if not success to avoid erasing
                 # previous error (only one return code)
                 res = tmp
+
+        # Set app_config after node role config in case role was not sink before
+        try:
+            seq = config["app_config_seq"]
+            diag = config["app_config_diag"]
+            data = config["app_config_data"]
+
+            self.logger.info("Set app config with %s", config)
+            self.proxy.SetAppConfig(seq, diag, data)
+        except KeyError:
+            # App config not defined in new config
+            self.logger.debug("Missing key app_config key in config: %s", config)
+        except GLib.Error as e:
+            res = ReturnCode.error_from_dbus_exception(e.message)
+            self.logger.error("Cannot set App Config: %s", res.name)
+        except OverflowError:
+            # It may happens as protobuf has bigger container value
+            res = GatewayResultCode.GW_RES_INVALID_PARAM
+            self.logger.error("Invalid range value")
 
         # Set stack in state defined by new config or set it as it was
         # previously
