@@ -10,14 +10,9 @@ export REGISTRY_NAME
 export DOCKER_BASE
 export CROSS_BUILD_START_CMD
 export CROSS_BUILD_END_CMD
-export GIT_MANIFEST_FILE
-export GIT_MANIFEST_URL
-export GIT_MANIFEST_BRANCH
 export LXGW_C_MESH_API_HASH
 export LXGW_SERVICES_HASH
 export BUILD_TAG
-
-SKIP_PULL=${1:-}
 
 VERSION=$(< python_transport/wirepas_gateway/__about__.py awk '/__version__/{print $NF}'| tr -d '\"')
 BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
@@ -65,33 +60,8 @@ function _build
 
 function _fetch_dependencies
 {
-    if [[ -z "${SKIP_PULL}" ]]
-    then
-        # pull repository dependency
-        GIT_REPO_FOLDER=${1}
-        GIT_MANIFEST_FILE=${GIT_MANIFEST_FILE:-"gateway/dev.xml"}
-        GIT_MANIFEST_URL=${GIT_MANIFEST_URL:-"https://github.com/wirepas/manifest.git"}
-        GIT_MANIFEST_BRANCH=${GIT_MANIFEST_BRANCH:-"master"}
-
-        _ROOT_PATH=$(pwd)
-
-        echo "fetching dependencies from: ${GIT_MANIFEST_URL}/${GIT_MANIFEST_FILE}/${GIT_MANIFEST_BRANCH}"
-        _ROOT_PATH=$(pwd)
-        rm -rf "${GIT_REPO_FOLDER}"
-        mkdir "${GIT_REPO_FOLDER}"
-        cd "${GIT_REPO_FOLDER}"
-        git config --global color.ui true
-        pipenv run --two repo init \
-                   -u "${GIT_MANIFEST_URL}" \
-                   -m "${GIT_MANIFEST_FILE}" \
-                   -b "${GIT_MANIFEST_BRANCH}" \
-                   --depth 2 \
-                   --no-tags \
-                   --no-clone-bundle
-        pipenv --rm
-        pipenv run --two repo sync
-        cd "${_ROOT_PATH}"
-    fi
+	# Only dependency is c-mesh-api managed by git submodule
+	git submodule update --init
 }
 
 
@@ -100,42 +70,20 @@ function _fetch_dependencies
 ##
 function _main
 {
-
-    # builds x86 and arm images based on manifest files
-    if [[ ! -z "${BUILD_TAG}" ]]
+    if [[ -z "${BUILD_TAG}" ]]
     then
-
-        GIT_MANIFEST_FILE=gateway/stable.xml
-        GIT_MANIFEST_BRANCH=refs/tags/gateway/${BUILD_TAG}
-
-        REPO_STABLE=".ci/_repo_stable"
-        _fetch_dependencies "${REPO_STABLE}"
-
-        LXGW_SERVICES_HASH="$(git -C ${REPO_STABLE}/ log -n1 --pretty=%h)"
-        LXGW_C_MESH_API_HASH="$(git -C ${REPO_STABLE}/sink_service/c-mesh-api log -n1 --pretty=%h)"
-
-        _build "${DOCKERFILE_PATH}/stable/arm/docker-compose.yml" "arm" "--no-cache"
-        _build "${DOCKERFILE_PATH}/stable/x86/docker-compose.yml" "x86" "--no-cache"
-    else
         BUILD_TAG="edge"
-        GIT_MANIFEST_BRANCH=master
-
-        # builds x86 and arm images based on top of current revision
-        REPO_EDGE=".ci/_repo_edge"
-        _fetch_dependencies "${REPO_EDGE}"
-
-        LXGW_SERVICES_HASH="$(git log -n1 --pretty=%h)"
-        LXGW_C_MESH_API_HASH="$(git -C ${REPO_EDGE}/sink_service/c-mesh-api log -n1 --pretty=%h)"
-
-        # The edge builds relies on the current gateway branch.
-        # The c-mesh-api must be pulled into the root level so that
-        # it is taken in use by the current build.
-        # If you would use the source from REPO_EDGE, you end up building
-        # the previous commit merged in master.
-        cp -vr "${REPO_EDGE}/sink_service/c-mesh-api" "sink_service"
-        _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "arm"
-        _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "x86"
     fi
+
+    # builds x86 and arm images based on current repository version
+    _fetch_dependencies
+
+    LXGW_SERVICES_HASH="$(git log -n1 --pretty=%h)"
+    LXGW_C_MESH_API_HASH="$(git -C sink_service/c-mesh-api log -n1 --pretty=%h)"
+
+    _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "arm"
+    _build "${DOCKERFILE_PATH}/dev/docker-compose.yml" "x86"
+
 }
 
 

@@ -88,48 +88,17 @@ service, which interfaces
 with the sink devices. The backend-apis contains api and message wrapper
 over the protocol buffers that are transmitted over MQTT.
 
-We are currently using the [repo tool][repo_tool] to upkeep the project
-dependencies and for that reason we recommend that you use it as well.
+We are using [git submodule][git_submodule] to upkeep the project
+dependency with [c-mesh-api][wirepas_c_mesh_api] and we use the standard
+python dependency (requirement.txt) for [backend-apis][wirepas_backend_apis]
+and its wirepas_messaging wheel.
 
-The manifest files are located in at the
-[manifest repository][wirepas_manifest] and are organized inside the
-gateway folder as follows:
-
--   dev.xml: points to the development branches, intended for collaborators
--   stable.xml: points to the latest release
-
-If you wish to pull the latest release then use the following command:
+Once this repository is cloned, please synchronize it to get the c-mesh-api
+code at the right place.
 
 ```shell
-    repo init -u https://github.com/wirepas/manifest.git \
-              -m gateway/stable.xml \
-              --no-clone-bundle
+    git submodule update --init
 ```
-
-and if you wish to track the development branches, please use
-
-```shell
-    repo init -u https://github.com/wirepas/manifest.git \
-              -m gateway/dev.xml \
-              --no-clone-bundle
-```
-
-afterwards download the repositories with
-
-```shell
-    repo sync
-```
-
-To clone a particular version, vX.Y.Z, please specify the tag with the
- *-b* switch and use the stable manifest:
-
-```shell
-    repo init (...) -m gateway/stable.xml -b refs/tags/vX.Y.Z
-```
-
-Usage of repo is also documented in our
-[ci build scripts][here_ci_docker_build]. Please read more on
-the repo tool usage from [its official documentation][repo_tool].
 
 ### Installation
 
@@ -336,25 +305,10 @@ Communication between docker containers will happen on the host Dbus.
 
 #### Option 2.1: by building your own docker image
 
-In the [container][here_container] folder you will find two folder,
-dev and stable. The dev folder contains a composition file with a preset
+In the [container][here_container] folder you will find a dev folder.
+It contains a composition file with a preset
 of settings to build an image based on your local repository
 (assumes the c-mesh-api project is cloned within sink_service).
-
-The stable folder contains architecture specific folder, x86 and ARM.
-Within the folder you will find a composition file which contains the
-default relevant settings. In this case, the difference resides on the
-path to the source files and the definition of the base image.
-
-All of these composition files build the images based on the
-same [Dockerfile][here_container_dockerfile].
-
-If you have cloned the repository through the repo manifest, you can
-make a development build with:
-
-```bash
-    [IMAGE_NAME=wirepas/gateway:edge] docker-compose -f container/dev/docker-compose.yml build
-```
 
 If you only have the gateway repository cloned locally, you can follow the
 same build procedures as our ci. For that, run the
@@ -447,7 +401,7 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [here_transport_readme]: python_transport/README.md
 [here wiki systemd]: https://github.com/wirepas/gateway/wiki/How-to-start-a-native-gateway-with-systemd
 
-[repo_tool]: https://source.android.com/setup/develop/repo
+[git_submodule]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 
 [wirepas_manifest]: https://github.com/wirepas/manifest
 [wirepas_c_mesh_api]: https://github.com/wirepas/c-mesh-api
