@@ -9,7 +9,7 @@ RUN ./utils/generate_wheel.sh
 # It should be an option of wirepas-messaging wheel instead
 
 # Install wirepas-messaging manually to avoid installing grpcio
-RUN pip3 install protobuf==3.10.0 --user
+#RUN pip3 install protobuf==3.10.0 --user
 RUN pip3 install --no-deps wirepas_messaging==1.2.0 --user
 
 # Install manually gateway too to avoid installing grpcio again
@@ -17,12 +17,12 @@ RUN pip3 install --no-deps wirepas_messaging==1.2.0 --user
 RUN sed -i.bak '/wirepas_messaging/d' requirements.txt
 RUN pip3 install -r requirements.txt --no-deps dist/wirepas_gateway*.whl --user
 
-FROM debian:buster-slim
+FROM wirepas/gateway_base_runner:test
 
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
 
-RUN useradd -ms /bin/bash wirepas
+#RUN useradd -ms /bin/bash wirepas
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
