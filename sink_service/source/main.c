@@ -62,8 +62,8 @@ static bool get_service_name(char service_name[MAX_SIZE_SERVICE_NAME], unsigned 
 
 /**
  * \brief   Obtains environment parameters to control sink settings
- * \param   bitrate
- *          Pointer where to store bitrate value (if any)
+ * \param   baudrate
+ *          Pointer where to store baudrate value (if any)
  * \param   port_name
  *          Pointer where to store port_name value (if any)
  * \param   sink_id
@@ -71,7 +71,7 @@ static bool get_service_name(char service_name[MAX_SIZE_SERVICE_NAME], unsigned 
  * \param   max_poll_fail_duration
  *          Pointer where to store max_poll_fail_duration value (if any)
  */
-static void get_env_parameters(unsigned long * bitrate,
+static void get_env_parameters(unsigned long * baudrate,
                                char ** port_name,
                                unsigned int * sink_id,
                                unsigned int * max_poll_fail_duration)
@@ -80,8 +80,8 @@ static void get_env_parameters(unsigned long * bitrate,
 
     if ((ptr = getenv("WM_GW_SINK_BITRATE")) != NULL)
     {
-        *bitrate = strtoul(ptr, NULL, 0);
-        LOGI("WM_GW_SINK_BITRATE: %lu\n", *bitrate);
+        *baudrate = strtoul(ptr, NULL, 0);
+        LOGI("WM_GW_SINK_BITRATE: %lu\n", *baudrate);
     }
     if ((ptr = getenv("WM_GW_SINK_ID")) != NULL)
     {
@@ -100,18 +100,43 @@ static void get_env_parameters(unsigned long * bitrate,
     }
 }
 
+// Usual baudrate to test in automatic mode
+// They are the ones frequently used in dual mcu application
+// 125000 is first as it was the original default value
+static const unsigned long auto_baudrate_list[] = {125000, 115200, 1000000};
+
+static int open_and_check_connection(unsigned long baudrate, char * port_name)
+{
+    uint16_t mesh_version;
+    if (WPC_initialize(port_name, baudrate) != APP_RES_OK)
+    {
+        LOGE("Cannot open serial sink connection (%s)\n", port_name);
+        return EXIT_FAILURE;
+    }
+
+    /* Check the connectivity with sink by reading mesh version */
+    if (WPC_get_mesh_API_version(&mesh_version) != APP_RES_OK)
+    {
+        LOGD("Cannot establish communication with sink with baudrate %d bps\n", baudrate);
+        WPC_close();
+        return EXIT_FAILURE;
+    }
+
+    LOGI("Node is running mesh API version %d (uart baudrate is %d bps)\n", mesh_version, baudrate);
+    return 0;
+}
+
 int main(int argc, char * argv[])
 {
-    unsigned long bitrate = 125000;
+    unsigned long baudrate = 0;
     char full_service_name[MAX_SIZE_SERVICE_NAME];
     int r;
     int c;
     unsigned int sink_id = 0;
-    uint16_t mesh_version;
     unsigned int max_poll_fail_duration = UNDEFINED_MAX_POLL_FAIL_DURATION;
 
     /* Acquires environment parameters */
-    get_env_parameters(&bitrate, &port_name, &sink_id, &max_poll_fail_duration);
+    get_env_parameters(&baudrate, &port_name, &sink_id, &max_poll_fail_duration);
 
     /* Parse command line arguments - take precedence over environmental ones */
     while ((c = getopt(argc, argv, "b:p:i:d:")) != -1)
@@ -119,9 +144,9 @@ int main(int argc, char * argv[])
         switch (c)
         {
             case 'b':
-                /* Get the bitrate */
-                bitrate = strtoul(optarg, NULL, 0);
-                LOGI("Bitrate set to %d\n", bitrate);
+                /* Get the baudrate */
+                baudrate = strtoul(optarg, NULL, 0);
+                LOGI("Baudrate set to %d\n", baudrate);
                 break;
             case 'p':
                 /* Get the port name */
@@ -137,7 +162,7 @@ int main(int argc, char * argv[])
             case '?':
             default:
                 LOGE("Error in argument parsing\n");
-                LOGE("Parameters are: -b <bitrate> -p <port> -i <sink_id>\n");
+                LOGE("Parameters are: -b <baudrate> -p <port> -i <sink_id>\n");
                 return EXIT_FAILURE;
         }
     }
@@ -148,16 +173,45 @@ int main(int argc, char * argv[])
         return EXIT_FAILURE;
     }
 
-    LOGI("Starting Sink service:\n\t-Port is %s\n\t-Bitrate is %d\n\t-Dbus "
+    LOGI("Starting Sink service:\n\t-Port is %s\n\t-Baudrate is %d\n\t-Dbus "
          "Service name is %s\n",
          port_name,
-         bitrate,
+         baudrate,
          full_service_name);
 
-    if (WPC_initialize(port_name, bitrate) != APP_RES_OK)
+    if (baudrate != 0)
     {
-        LOGE("Cannot open serial sink connection (%s)\n", port_name);
-        return EXIT_FAILURE;
+        // The baudrate to use is given
+        if (open_and_check_connection(baudrate, port_name) != 0)
+        {
+            LOGE("Cannot establish communication with sink\n");
+            return EXIT_FAILURE;
+        }
+    }
+    else
+    {
+        // Automatic baudrate, test the list one by one
+        size_t i;
+        for (i = 0; i < sizeof(auto_baudrate_list); i++)
+        {
+            LOGI("Auto baudrate: testing %d bps\n", auto_baudrate_list[i]);
+            if (open_and_check_connection(auto_baudrate_list[i], port_name) != 0)
+            {
+                LOGD("Cannot establish communication with sink\n");
+            }
+            else
+            {
+                LOGI("Uart baudrate found: %d bps\n", auto_baudrate_list[i]);
+                break;
+            }
+        }
+
+        if (i == sizeof(auto_baudrate_list))
+        {
+            LOGE("Cannot establish communication with sink with different "
+                 "tested baudrate\n");
+            return EXIT_FAILURE;
+        }
     }
 
     if (max_poll_fail_duration != UNDEFINED_MAX_POLL_FAIL_DURATION)
@@ -168,14 +222,6 @@ int main(int argc, char * argv[])
             return EXIT_FAILURE;
         }
     }
-
-    /* Do sanity check to test connectivity with sink */
-    if (WPC_get_mesh_API_version(&mesh_version) != APP_RES_OK)
-    {
-        LOGE("Cannot establish communication with sink over UART\n");
-        return EXIT_FAILURE;
-    }
-    LOGI("Node is running mesh API version %d\n", mesh_version);
 
     /* Connect to the user bus */
     r = sd_bus_open_system(&m_bus);
