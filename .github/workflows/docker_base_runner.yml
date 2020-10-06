@@ -54,7 +54,8 @@ jobs:
           context: .
           file: docker/base_runner/Dockerfile
           platforms: linux/amd64,linux/arm
-          build-args: PROTOBUF_VERSION=3.13.0
+          build-args: |
+            PROTOBUF_VERSION=3.13.0
+            GATEWAY_BUILD_SHA1= ${{ github.sha }}
           push: true
-          build-args: GATEWAY_BUILD_SHA1= ${{ github.sha }}
           tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
