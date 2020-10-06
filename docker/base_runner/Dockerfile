@@ -32,8 +32,8 @@ RUN tar -xf protobuf-python-$PROTOBUF_VERSION.tar.gz
 WORKDIR protobuf-$PROTOBUF_VERSION
 
 # Build the cpp part
-RUN ./configure
-RUN CXXFLAGS="-fPIC" make -j7
+RUN CXXFLAGS="-fPIC" ./configure
+RUN make -j7
 RUN make -j7 check || echo "Errors in check"
 RUN make install
 RUN ldconfig
