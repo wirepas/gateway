@@ -100,14 +100,39 @@ static void get_env_parameters(unsigned long * bitrate,
     }
 }
 
+// Usual bitrate to test in automatic mode
+// They are the ones frequently used in dual mcu application
+// 125000 is first as it was the original default value
+static const unsigned long auto_bitrates_list[] = {125000, 115200, 1000000};
+
+static int open_and_check_connection(unsigned long bitrate, char * port_name)
+{
+    uint16_t mesh_version;
+    if (WPC_initialize(port_name, bitrate) != APP_RES_OK)
+    {
+        LOGE("Cannot open serial sink connection (%s)\n", port_name);
+        return EXIT_FAILURE;
+    }
+
+    /* Check the connectivity with sink by reading mesh version */
+    if (WPC_get_mesh_API_version(&mesh_version) != APP_RES_OK)
+    {
+        LOGD("Cannot establish communication with sink with speed %d\n", bitrate);
+        WPC_close();
+        return EXIT_FAILURE;
+    }
+
+    LOGI("Node is running mesh API version %d (uart speed is %d)\n", mesh_version, bitrate);
+    return 0;
+}
+
 int main(int argc, char * argv[])
 {
-    unsigned long bitrate = 125000;
+    unsigned long bitrate = 0;
     char full_service_name[MAX_SIZE_SERVICE_NAME];
     int r;
     int c;
     unsigned int sink_id = 0;
-    uint16_t mesh_version;
     unsigned int max_poll_fail_duration = UNDEFINED_MAX_POLL_FAIL_DURATION;
 
     /* Acquires environment parameters */
@@ -154,10 +179,39 @@ int main(int argc, char * argv[])
          bitrate,
          full_service_name);
 
-    if (WPC_initialize(port_name, bitrate) != APP_RES_OK)
+    if (bitrate != 0)
     {
-        LOGE("Cannot open serial sink connection (%s)\n", port_name);
-        return EXIT_FAILURE;
+        // The bitrate to use is given
+        if (open_and_check_connection(bitrate, port_name) != 0)
+        {
+            LOGE("Cannot establish communication with sink\n");
+            return EXIT_FAILURE;
+        }
+    }
+    else
+    {
+        // Automatic bitrate, test the list one by one
+        size_t i;
+        for (i = 0; i < sizeof(auto_bitrates_list); i++)
+        {
+            LOGI("Auto speed: testing %d\n", auto_bitrates_list[i]);
+            if (open_and_check_connection(auto_bitrates_list[i], port_name) != 0)
+            {
+                LOGD("Cannot establish communication with sink\n");
+            }
+            else
+            {
+                LOGI("Uart speed found %d\n", auto_bitrates_list[i]);
+                break;
+            }
+        }
+
+        if (i == sizeof(auto_bitrates_list))
+        {
+            LOGE("Cannot establish communication with sink with different "
+                 "tested speed\n");
+            return EXIT_FAILURE;
+        }
     }
 
     if (max_poll_fail_duration != UNDEFINED_MAX_POLL_FAIL_DURATION)
@@ -168,14 +222,6 @@ int main(int argc, char * argv[])
             return EXIT_FAILURE;
         }
     }
-
-    /* Do sanity check to test connectivity with sink */
-    if (WPC_get_mesh_API_version(&mesh_version) != APP_RES_OK)
-    {
-        LOGE("Cannot establish communication with sink over UART\n");
-        return EXIT_FAILURE;
-    }
-    LOGI("Node is running mesh API version %d\n", mesh_version);
 
     /* Connect to the user bus */
     r = sd_bus_open_system(&m_bus);
