@@ -78,10 +78,12 @@ static void get_env_parameters(unsigned long * baudrate,
 {
     char * ptr;
 
-    if ((ptr = getenv("WM_GW_SINK_BITRATE")) != NULL)
+    // Read WM_GW_SINK_BAUDRATE and WM_GW_SINK_BITRATE
+    if (((ptr = getenv("WM_GW_SINK_BAUDRATE")) != NULL) ||
+        ((ptr = getenv("WM_GW_SINK_BITRATE")) != NULL))
     {
         *baudrate = strtoul(ptr, NULL, 0);
-        LOGI("WM_GW_SINK_BITRATE: %lu\n", *baudrate);
+        LOGI("WM_GW_SINK_BAUDRATE: %lu\n", *baudrate);
     }
     if ((ptr = getenv("WM_GW_SINK_ID")) != NULL)
     {
