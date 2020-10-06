@@ -33,7 +33,7 @@ WORKDIR protobuf-$PROTOBUF_VERSION
 
 # Build the cpp part
 RUN ./configure
-RUN make -j7
+RUN CXXFLAGS="-fPIC" make -j7
 RUN make -j7 check || echo "Errors in check"
 RUN make install
 RUN ldconfig
