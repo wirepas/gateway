@@ -43,9 +43,9 @@ RUN protoc --version
 # Build the python part
 WORKDIR python
 
-RUN python3 setup.py build --cpp_implementation
-RUN python3 setup.py test --cpp_implementation || echo "Errors in python test"
-RUN python3 setup.py sdist bdist_wheel --cpp_implementation
+RUN python3 setup.py build --cpp_implementation --compile_static_extension
+RUN python3 setup.py test --cpp_implementation --compile_static_extension || echo "Errors in python test"
+RUN python3 setup.py sdist bdist_wheel --cpp_implementation --compile_static_extension
 
 
 
