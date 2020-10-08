@@ -23,28 +23,6 @@ with open(readme_file) as f:
     long_description = f.read()
 
 
-def custom_scheme():
-    def custom_version(version):
-        tag = str(version.tag)
-        if version.exact:
-            return tag
-
-        # split on rc and compute a pre-release tag for the next patch
-        tag_components = tag.rsplit("rc")
-        major, minor, patch = tag_components[0].split(".")
-        patch = int(patch) + 1
-        distance = version.distance
-        tag = f"{major}.{minor}.{patch}.dev{distance}"
-
-        return tag
-
-    return {
-        "version_scheme": custom_version,
-        "local_scheme": "no-local-version",
-        "fallback_version": str(fallback_version["version"]),
-    }
-
-
 def get_list_files(root, flist=None):
     if flist is None:
         flist = list()
@@ -77,17 +55,9 @@ about = {}
 with open(get_absolute_path("./wirepas_gateway/__about__.py")) as f:
     exec(f.read(), about)
 
-fallback_version = {}
-try:
-    with open(get_absolute_path("./version.py")) as f:
-        exec(f.read(), fallback_version)
-except FileNotFoundError:
-    fallback_version["version"] = "0.1.0"
-
 setup(
     name=about["__pkg_name__"],
-    use_scm_version=custom_scheme,
-    setup_requires=["setuptools_scm"],
+    version=about["__version__"],
     description=about["__description__"],
     long_description=long_description,
     long_description_content_type="text/markdown",
