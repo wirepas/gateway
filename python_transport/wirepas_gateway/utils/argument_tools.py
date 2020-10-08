@@ -305,7 +305,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_persist_session",
-            default=bool(os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False)),
+            default=os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False),
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -317,7 +317,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_force_unsecure",
-            default=bool(os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False)),
+            default=os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False),
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -326,7 +326,7 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_allow_untrusted",
-            default=bool(os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False)),
+            default=os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False),
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -388,6 +388,20 @@ class ParserHelper:
                 "Minimal sink cost for a sink on this gateway. "
                 "Can be used to minimize traffic on a gateway, but "
                 "it will reduce maximum number of hops for this gateway"
+            ),
+        )
+
+    def add_debug_settings(self):
+        self.debug.add_argument(
+            "--debug_incr_data_event_id",
+            default=os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID", False),
+            type=self.str2bool,
+            nargs="?",
+            const=True,
+            help=(
+                "When true the data received event id will be incremental "
+                "starting at 0 when service starts. Otherwise it will be "
+                "random 64 bits id."
             ),
         )
 

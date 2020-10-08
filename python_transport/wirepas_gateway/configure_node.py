@@ -248,6 +248,14 @@ def int_type(param_str):
     return value
 
 
+def get_default_value_from_env(env_var_name):
+    value = os.environ.get(env_var_name, None)
+    if value is not None and value == "":
+        return None
+    else:
+        return value
+
+
 def main():
     """Main service to configure a node locally on the gateway
 
@@ -262,7 +270,7 @@ def main():
         "-s",
         "--sink_name",
         type=str,
-        default=os.environ.get("WM_CN_SINK_ID", None),
+        default=get_default_value_from_env("WM_CN_SINK_ID"),
         help="Sink name as configured in sinkService. Ex: -s sink0",
     )
 
@@ -270,7 +278,7 @@ def main():
         "-n",
         "--node_address",
         type=int_type,
-        default=os.environ.get("WM_CN_NODE_ADDRESS", None),
+        default=get_default_value_from_env("WM_CN_NODE_ADDRESS"),
         help="Node address as an int. Ex: -n 0xABC or -n 123",
     )
 
@@ -278,7 +286,7 @@ def main():
         "-r",
         "--node_role",
         type=node_role_type,
-        default=os.environ.get("WM_CN_NODE_ROLE", None),
+        default=get_default_value_from_env("WM_CN_NODE_ROLE"),
         help="Node role as a string being any combination of a base role "
         "sink/router/non-router and list of flags from [csma-ca, autorole]."
         'Ex: -r "sink csma-ca" or -r "router csma-ca autorole"',
@@ -288,7 +296,7 @@ def main():
         "-N",
         "--network_address",
         type=int_type,
-        default=os.environ.get("WM_CN_NETWORK_ADDRESS", None),
+        default=get_default_value_from_env("WM_CN_NETWORK_ADDRESS"),
         help="Network address as an int. Ex: -N 0xA1B2C3 or -N 123456",
     )
 
@@ -296,7 +304,7 @@ def main():
         "-c",
         "--network_channel",
         type=int_type,
-        default=os.environ.get("WM_CN_NETWORK_CHANNEL", None),
+        default=get_default_value_from_env("WM_CN_NETWORK_CHANNEL"),
         help="Network channel as an int. Ex: -c 5",
     )
 
@@ -304,7 +312,7 @@ def main():
         "-ak",
         "--authentication_key",
         type=key_type,
-        default=os.environ.get("WM_CN_AUTHENTICATION_KEY", None),
+        default=get_default_value_from_env("WM_CN_AUTHENTICATION_KEY"),
         help="Network wide 128 bytes authentication key. "
         "Ex: -ak 112233445566778899AABBCCDDEEFF11 "
         "or -ak 11,22,33,44,55,66,77,88,99,AA,BB,CC,DD,EE,FF,11",
@@ -314,7 +322,7 @@ def main():
         "-ck",
         "--cipher_key",
         type=key_type,
-        default=os.environ.get("WM_CN_CIPHER_KEY", None),
+        default=get_default_value_from_env("WM_CN_CIPHER_KEY"),
         help="Network wide cipher key. "
         "Ex: -ck 112233445566778899AABBCCDDEEFF11 "
         "or -ck 11,22,33,44,55,66,77,88,99,AA,BB,CC,DD,EE,FF,11",
@@ -324,7 +332,7 @@ def main():
         "-S",
         "--start",
         type=bool_type,
-        default=os.environ.get("WM_CN_START_SINK", None),
+        default=get_default_value_from_env("WM_CN_START_SINK"),
         help="Start the sink after configuration",
     )
 

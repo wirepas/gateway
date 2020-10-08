@@ -15,7 +15,6 @@ build-*.txt
 **/dist/
 
 sink_service/build/
-sink_service/c-mesh-api/
 python_transport/docs/source/api/*
 
 public/
