@@ -7,8 +7,8 @@ ROOT_DIR=$(pwd)
 cd "${PYTHON_PKG_PATH}"
 
 set -a
-GH_RELEASE_PYTHON_VERSION=$(< "${PYTHON_PKG_NAME}"/__about__.py  \
-                     awk '/__version__/{print $NF}' | \
+GH_RELEASE_PYTHON_VERSION=$(< "${PYTHON_PKG_NAME}"/version.py  \
+                     awk '/version =/{print $NF}' | \
                      tr -d "\"")
 
 GH_RELEASE_CANDIDATE="false"

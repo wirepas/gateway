@@ -4,6 +4,8 @@
         See file LICENSE for full license details.
 """
 
+from pkg_resources import get_distribution, DistributionNotFound
+
 __author__ = "Wirepas Ltd"
 __author_email__ = "opensource@wirepas.com"
 __classifiers__ = [
@@ -19,5 +21,10 @@ __license__ = "Apache-2"
 __pkg_name__ = "wirepas_gateway"
 __title__ = "Wirepas Gateway Transport Service"
 __url__ = "https://github.com/wirepas/gateway"
-__version__ = "1.3.0"
 __keywords__ = "wirepas connectivity iot mesh"
+
+try:
+    __version__ = get_distribution(__pkg_name__).version
+except DistributionNotFound:
+    # package is not installed
+    pass
