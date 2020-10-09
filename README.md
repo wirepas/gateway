@@ -4,13 +4,15 @@
 
 <!-- MarkdownTOC levels="1,2" autolink="true"  -->
 
-- [Installing a Gateway](#installing-a-gateway)
+- [Gateway overview](#gateway-overview)
 - [Option 1: native installation](#option-1-native-installation)
 - [Option 2: Docker installation](#option-2-docker-installation)
 - [Contributing](#contributing)
 - [License](#license)
 
 <!-- /MarkdownTOC -->
+
+## Gateway overview 
 
 This repository contains Wirepas' reference gateway implementation, which
 relies on a set of services to exchange data from/to a Wirepas Mesh network
@@ -30,26 +32,7 @@ apis involved at each step.
 
 **Figure 1 -** Gateway services overview.
 
-## Installing a Gateway
-
-Multiple options are available depending on your need.
-They are all described in the following sections:
-
-- [Option 1: native installation](#option-1-native-installation)
-  - [Option 1.1](#option-11): from source code\
-    This option should be used if you plan to do modification on this reference code
-  - [Option 1.2](#option-12): from pre-built binaries\
-    This option should be used if you want to use a standard gateway without modification
-- [Option 2: Docker installation](#option-2-docker-installation)
-  - [Option 2.1](#option-21): by building your own docker image\
-    This option should be used if you plan to do modification and create your own docker images
-  - [Option 2.2](#option-22): by using Wirepas docker hub images\
-    This option should be used if you plan to use docker with Wirepas images from docker hub without modification
-
 ## Option 1: native installation
-
-This section covers both option 1.1 and 1.2 and some sections are
-only relevant for one of these options.
 
 ### Requirements
 
@@ -63,7 +46,7 @@ Systemd version must be higher or equal to *221*. You can check it with:
     systemd --version
 ```
 
-In order to build the sink service and the transport python wheel that contains C extensions, systemd headers are needed
+In order to build the sink service or the transport python wheel that contains C extensions, systemd headers are needed
 
 ```shell
     sudo apt install libsystemd-dev
@@ -78,7 +61,10 @@ Python 3 and a recent pip version (>= 18.1)
        && sudo pip3 install --upgrade pip
 ```
 
-### Getting the sources (option 1.1 only)
+### Getting the sources
+
+This step is required only if you plan to build yourself the services.
+If you want to use prebuilt binaries, please go to [Installation section](#installation) directly.
 
 This repository depends on two other projects, [c-mesh-api][wirepas_c_mesh_api]
 and [backend-apis][wirepas_backend_apis].
@@ -121,7 +107,7 @@ from com.wirepas.sink.conf:
 
 *It is recommended to restart your gateway once this file is copied.*
 
-##### Option 1.1: from source code
+##### Building from source code
 
 Sink service is written in C and can be built with following command from
 sink_service folder:
@@ -129,22 +115,18 @@ sink_service folder:
 ```shell
     make
 ```
-##### Option 1.2: from pre-built binaries
+##### Getting pre-built binaries
 
 Sink service prebuilt version is available on [this page][here_releases] from assets section.
 Download the one for your architecture (Arm or x86)
 
 #### Transport service
 
-##### Option 1.1: from source code
-
 To build the wheel yourself, please refer to the
 [transport's service readme file][here_transport_readme].
 
-##### Option 1.2: from pre-built binaries
-
-Transport service is implemented in python 3 and is delivered as a
-Python wheel, either through [PyPi][wirepas_gateway_pypi] or the
+Alternatively, you can use prebuilt Python wheels.
+You can either get it through [PyPi][wirepas_gateway_pypi] or the
 [release section of this repository][here_releases].
 
 The library contains a c extension which will be compiled upon installation.
@@ -176,7 +158,7 @@ A sink service must be started for each connected sink on Gateway:
 Parameters are:
 
 -   **uart_port:** uart port path (*default:* /dev/ttyACM0)
--   **bitrate:** bitrate of sink uart (*default:* 125000)
+-   **bitrate:** bitrate of sink uart (*default:* auto baudrate. 125000, 115200 and 1000000 bps are tested)
 -   **sink_id:** value between 0 and 9 (*default:* 0).
 
 If multiple sinks are present, they must have a different *sink_id*.
@@ -184,7 +166,7 @@ If multiple sinks are present, they must have a different *sink_id*.
 #### Transport service configuration
 
 Parameters can be set from command line or from a setting file in YAML format.
-To get an the full list of parameters, please run:
+To get the full list of parameters, please run:
 
 ```shell
     wm-gw --help
@@ -202,8 +184,6 @@ Here is an example to start the transport module from the command line:
           --mqtt_password <password> \
           [--mqtt_force_unsecure] \
           --gateway_id <gwid> \
-          [--ignored_endpoints_filter <ignored endpoints list>] \
-          [--whitened_endpoints_filter <whitened endpoints list>]
 ```
 
 where:
@@ -222,25 +202,6 @@ Necessary to establish connections to unsecure port (default: 1883).
 -   **gateway_id:** The desired gateway id, instead of a random generated one
 
     > It must be unique for each gateway reporting to same broker
-
--   **ignored_endpoints_filter:** destination endpoints list to ignore
-                               (not published)
-
-    *Example:*
-        To filter out destination endpoints  1, 2, 10, 11, 12:
-
-    ```shell
-        --ignored_endpoints_filter "[1,2, 10-12]"
-    ```
-
--   **whitened_endpoints_filter:** destination endpoints list to whiten
-                                 (no payload content, only size)
-
-    *Example:*
-        To whiten destination ep 1, 2, 10, 11, 12
-    ```shell
-        --whitened_endpoints_filter "[1,2, 10-12]"
-    ```
 
 #### From configuration file
 
@@ -293,87 +254,7 @@ level. It can be launched from the command line with:
 
 ## Option 2: Docker installation
 
-The Docker gateway approach of Wirepas is to have a single container able
-to run one of the two services (sink service or transport service).
-A docker container will be started for each service.
-For example, if you have a gateway with two sinks and one transport
-service, three containers will be started
-(one for each sink and one for the transport service).
-Communication between docker containers will happen on the host Dbus.
-
-### Getting the docker image
-
-#### Option 2.1: by building your own docker image
-
-In the [container][here_container] folder you will find a dev folder.
-It contains a composition file with a preset
-of settings to build an image based on your local repository
-(assumes the c-mesh-api project is cloned within sink_service).
-
-If you only have the gateway repository cloned locally, you can follow the
-same build procedures as our ci. For that, run the
-[.ci/build-images.sh][here_ci_docker_build] script from the root
-of the repository.
-
-#### Option 2.2: by using Wirepas docker hub images
-
-Our pre-built images are available on docker hub under the
-following registry:
-
--   [wirepas/gateway][dockerhub_wirepas]: multi architecture registry
-
-### Starting docker services
-
-When running the gateway over docker, the composition will mount your host's
-system dbus inside each container. This is necessary to allow exchanging data
-between both services. For that reason you will have to copy the
-[dbus manifest][here_dbus_manifest] to your host's and change the policy
-user to reflect what is used within the docker-compose.
-
-After configuring your host's dbus, review the
-[environment file][here_container_env] where you can define settings for the
-sink and transport service.
-
-The environment parameters will be evaluated by
-the [container's entry point][here_container_entrypoint]
-and passed on to the sink and transport service.
-
-Please ensure that you define the correct password and MQTT credentials and
-launch the services with:
-
-```shell
-    [IMAGE_NAME=wirepas/gateway-x86:edge] docker-compose -f container/dev/docker-compose.yml up [-d]
-```
-
-To view the logs, use
-
-```shell
-    docker-compose -f container/dev/docker-compose.yml logs
-```
-
-or specify which container you want to view the logs from with
-
-```shell
-    docker logs [container-name]
-```
-
-### Using custom TLS certificates within the container
-
-You must ensure that your custom certificate file exists inside the container
-where the transport service is running.
-
-You can achieve this by mounting the file using the composition file. Edit
-the docker-compose.yml file and add the following statement under the
-transport service's volumes section:
-
-```shell
-    volumes:
-      - (...)
-      - /my-tls-file/:/etc/my-tls-file
-```
-
-The environment variable, WM_SERVICES_CERTIFICATE_CHAIN, must match
-the container path that you picked (*/etc/my-tls-file*).
+In order to ease the installation in a Docker environment, please see the instruction in [docker folder](docker).
 
 ## Contributing
 
