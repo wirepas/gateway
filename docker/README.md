@@ -7,10 +7,23 @@ All are connected through DBus.
 Our Docker approach is to isolate each services and DBus in their own container.
 So a minimal docker based gateway will run three containers. 
 
+## Prerequisites
+
+ In order to run a Docker based gateway you need to install Docker engine:
+ 
+ * Recommanded version is 19.03.0+
+ * [Installation guide](https://docs.docker.com/engine/install/)
+ 
+ And optionnaly you can use docker-compose to ease the setup:
+ * Recommanded version is 1.26.0+
+ * [Installation guide](https://docs.docker.com/compose/install/)
+ 
+Installation is only tested on Linux but could work on Mac and Windows. For Windows and Docker desktop using WSL2, it will not work as devices cannot be mapped to a container yet.
+
 ## Docker images
 
 The different docker images are automatically built on each release or commit to master branch and published to Docker Hub.
-All images are multi-arch images and support Arm-v7 and amd64 architectures
+All images are multi-arch images and support Arm-v7 and Amd64 architectures
 
 ### Main images
 
@@ -18,7 +31,9 @@ The following images are the three ones mentionned above to create a minimal gat
 
 Image | Description | Docker Hub Link
 ----- | ----------- | --------------- 
-[Dbus](dbus_service) | This image run a dbus daemon and export its unix socket to other containers | [gateway_dbus_service](https://hub.docker.com/r/wirepas/gateway_dbus_service) | 
+[Dbus](dbus_service) | This image runs a dbus daemon and exports its unix socket to other containers | [gateway_dbus_service](https://hub.docker.com/r/wirepas/gateway_dbus_service)
+[Sink Service](sink_service) | This image handles the communication with a sink and exposes its services through on dbus through the dbus_service container | [gateway_sink_service](https://hub.docker.com/r/wirepas/gateway_sink_service)
+[Transport service](transport_service) | This image handles the communication with the different sinks through dbus and implements the Wirepas backend protocol | [gateway_transport_service](https://hub.docker.com/r/wirepas/gateway_transport_service)
 
 All these images have the following tags available:
 * __edge__: built from top of master
