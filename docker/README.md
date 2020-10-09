@@ -1,11 +1,11 @@
 # Docker based Gateway
 
 This folder contains all the necessary part to build and execute a docker based gateway.
-A minimal gateway is composed of a sink service and a transport service (but can have multiple sink services and multiple transports).
+A minimal gateway is composed of a sink service and a transport service (but can have multiple sink services and multiple transport services).
 All are connected through DBus.
 
-Our Docker approach is to isolate each services and DBus in their own container.
-So a minimal docker based gateway will run three containers. 
+Our Docker approach is to isolate each services and DBus in their own container. Isolating the dbus daemon in its own container compare of using the host one improves the security of the system.
+A minimal docker based gateway will run three containers. 
 
 ## Prerequisites
 
@@ -15,6 +15,7 @@ So a minimal docker based gateway will run three containers.
  * [Installation guide](https://docs.docker.com/engine/install/)
  
  And optionnaly you can use docker-compose to ease the setup:
+ 
  * Recommanded version is 1.26.0+
  * [Installation guide](https://docs.docker.com/compose/install/)
  
@@ -23,7 +24,7 @@ Installation is only tested on Linux but could work on Mac and Windows. For Wind
 ## Docker images
 
 The different docker images are automatically built on each release or commit to master branch and published to Docker Hub.
-All images are multi-arch images and support Arm-v7 and Amd64 architectures
+All images are multi-arch images and support Arm-v7 and Amd64 architectures.
 
 ### Main images
 
@@ -54,9 +55,9 @@ The [docker-compose](docker-compose) folder contains a reference docker compose 
 If you want to test a change you made or add new features in your own service, you can build your own images.
 How to publish them in your own registry is out of scope for this document.
 
-All the dockerfiles are available in this directory and can be build directly from root folder of this repository.
+All the dockerfiles are available in this directory and can be built directly from root folder of this repository.
 
-Example to build sink service tagged local/my_sink_service:tag1 :
+Example to build a custom sink service tagged local/my_sink_service:tag1 in your PC:
 ```bash
 docker build -f docker/dbus-service/Dockerfile -t local/my_sink_service:tag1
 ```
