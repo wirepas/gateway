@@ -18,7 +18,7 @@ services:
 
   transport-service:
     image: wirepas/gateway_transport_service:${GATEWAY_TAG:-latest}
-    container_name: transport-GNB
+    container_name: transport-service
     environment:
       # To be modified
       WM_GW_ID:
