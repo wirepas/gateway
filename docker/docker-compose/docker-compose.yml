@@ -1,0 +1,61 @@
+version: '3.7'
+
+volumes:
+    dbus-volume:
+
+services:
+  dbus-service:
+    image: wirepas/gateway_dbus_service:${GATEWAY_TAG:-latest}
+    container_name: dbus
+    restart: always
+    volumes:
+      - type: volume
+        source: dbus-volume
+        target: /var/run/dbus
+    logging:
+      driver: journald
+
+
+  transport-service:
+    image: wirepas/gateway_transport_service:${GATEWAY_TAG:-latest}
+    container_name: transport-service
+    environment:
+      # To be modified
+      WM_GW_ID:
+      WM_GW_MODEL:
+      WM_GW_VERSION:
+      WM_SERVICES_MQTT_HOSTNAME:
+      WM_SERVICES_MQTT_PORT:
+      WM_SERVICES_MQTT_USERNAME:
+      WM_SERVICES_MQTT_PASSWORD:
+    restart: always
+    depends_on:
+      - dbus-service
+    volumes:
+      - type: volume
+        source: dbus-volume
+        target: /var/run/dbus
+    logging:
+      driver: journald
+
+
+  sink-service:
+    image: wirepas/gateway_sink_service:${GATEWAY_TAG:-latest}
+    container_name: sink-service
+    restart: on-failure
+    depends_on:
+      - dbus-service
+    devices:
+      # To be modified
+      - <path to from_host>:/dev/mysink
+    environment:
+      WM_GW_SINK_BAUDRATE:
+      WM_GW_SINK_ID:
+      # Do not change (path of sink in container)
+      WM_GW_SINK_UART_PORT: /dev/mysink
+    volumes:
+      - type: volume
+        source: dbus-volume
+        target: /var/run/dbus
+    logging:
+      driver: journald
