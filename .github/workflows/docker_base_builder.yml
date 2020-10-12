@@ -50,4 +50,4 @@ jobs:
           platforms: linux/amd64,linux/arm
           push: true
           build-args: GATEWAY_BUILD_SHA1= ${{ github.sha }}
-          tags: $TAG1
+          tags: ${{ env.TAG1 }}
