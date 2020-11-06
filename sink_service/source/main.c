@@ -193,8 +193,10 @@ int main(int argc, char * argv[])
     else
     {
         // Automatic baudrate, test the list one by one
+        size_t number_of_baudrates =
+            sizeof(auto_baudrate_list) / sizeof(auto_baudrate_list[0]);
         size_t i;
-        for (i = 0; i < sizeof(auto_baudrate_list); i++)
+        for (i = 0; i < number_of_baudrates; i++)
         {
             LOGI("Auto baudrate: testing %d bps\n", auto_baudrate_list[i]);
             if (open_and_check_connection(auto_baudrate_list[i], port_name) != 0)
@@ -208,7 +210,7 @@ int main(int argc, char * argv[])
             }
         }
 
-        if (i == sizeof(auto_baudrate_list))
+        if (i == number_of_baudrates)
         {
             LOGE("Cannot establish communication with sink with different "
                  "tested baudrate\n");
