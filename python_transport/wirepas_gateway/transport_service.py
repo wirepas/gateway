@@ -4,21 +4,16 @@
 #
 import logging
 import os
+import wirepas_mesh_messaging as wmm
 from time import time, sleep
 from uuid import getnode
 from threading import Thread
 
-import wirepas_messaging
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
 from wirepas_gateway.utils import ParserHelper
 from wirepas_gateway.utils import LoggerHelper
-from wirepas_messaging.gateway.api import (
-    GatewayResultCode,
-    GatewayState,
-    GatewayAPIParsingException,
-)
 
 from wirepas_gateway import __version__ as transport_version
 from wirepas_gateway import __pkg_name__
@@ -200,8 +195,8 @@ class TransportService(BusClient):
         self.whitened_ep_filter = settings.whitened_endpoints_filter
 
         last_will_topic = TopicGenerator.make_status_topic(self.gw_id)
-        last_will_message = wirepas_messaging.gateway.api.StatusEvent(
-            self.gw_id, GatewayState.OFFLINE
+        last_will_message = wmm.StatusEvent(
+            self.gw_id, wmm.GatewayState.OFFLINE
         ).payload
 
         self.mqtt_wrapper = MQTTWrapper(
@@ -253,9 +248,7 @@ class TransportService(BusClient):
         self.stop_dbus_client()
 
     def _set_status(self):
-        event_online = wirepas_messaging.gateway.api.StatusEvent(
-            self.gw_id, GatewayState.ONLINE
-        )
+        event_online = wmm.StatusEvent(self.gw_id, wmm.GatewayState.ONLINE)
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
 
@@ -322,7 +315,7 @@ class TransportService(BusClient):
         else:
             data_size = None
 
-        event = wirepas_messaging.gateway.api.ReceivedDataEvent(
+        event = wmm.ReceivedDataEvent(
             event_id=self.data_event_id,
             gw_id=self.gw_id,
             sink_id=sink_id,
@@ -371,8 +364,12 @@ class TransportService(BusClient):
             return
 
         # Generate a setconfig answer with req_id of 0
-        response = wirepas_messaging.gateway.api.SetConfigResponse(
-            0, self.gw_id, GatewayResultCode.GW_RES_OK, sink.sink_id, sink.read_config()
+        response = wmm.SetConfigResponse(
+            0,
+            self.gw_id,
+            wmm.GatewayResultCode.GW_RES_OK,
+            sink.sink_id,
+            sink.read_config(),
         )
         topic = TopicGenerator.make_set_config_response_topic(self.gw_id, sink.sink_id)
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
@@ -387,8 +384,8 @@ class TransportService(BusClient):
 
         # Generate a setconfig answer with req_id of 0 as not from
         # a real request
-        response = wirepas_messaging.gateway.api.GetConfigsResponse(
-            0, self.gw_id, GatewayResultCode.GW_RES_OK, configs
+        response = wmm.GetConfigsResponse(
+            0, self.gw_id, wmm.GatewayResultCode.GW_RES_OK, configs
         )
         topic = TopicGenerator.make_get_configs_response_topic(self.gw_id)
 
@@ -434,10 +431,8 @@ class TransportService(BusClient):
     def _on_send_data_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
         try:
-            request = wirepas_messaging.gateway.api.SendDataRequest.from_payload(
-                message.payload
-            )
-        except GatewayAPIParsingException as e:
+            request = wmm.SendDataRequest.from_payload(message.payload)
+        except wmm.GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return
 
@@ -449,7 +444,7 @@ class TransportService(BusClient):
         sink = self.sink_manager.get_sink(sink_id)
         if sink is not None:
             if request.hop_limit > self.MAX_HOP_LIMIT:
-                res = GatewayResultCode.GW_RES_INVALID_MAX_HOP_COUNT
+                res = wmm.GatewayResultCode.GW_RES_INVALID_MAX_HOP_COUNT
             else:
                 res = sink.send_data(
                     request.destination_address,
@@ -464,12 +459,10 @@ class TransportService(BusClient):
         else:
             self.logger.warning("No sink with id: %s", sink_id)
             # No sink with  this id
-            res = GatewayResultCode.GW_RES_INVALID_SINK_ID
+            res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
 
         # Answer to backend
-        response = wirepas_messaging.gateway.api.SendDataResponse(
-            request.req_id, self.gw_id, res, sink_id
-        )
+        response = wmm.SendDataResponse(request.req_id, self.gw_id, res, sink_id)
         topic = TopicGenerator.make_send_data_response_topic(self.gw_id, sink_id)
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
@@ -479,10 +472,8 @@ class TransportService(BusClient):
         # pylint: disable=unused-argument
         self.logger.info("Config request received")
         try:
-            request = wirepas_messaging.gateway.api.GetConfigsRequest.from_payload(
-                message.payload
-            )
-        except GatewayAPIParsingException as e:
+            request = wmm.GetConfigsRequest.from_payload(message.payload)
+        except wmm.GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return
 
@@ -493,8 +484,8 @@ class TransportService(BusClient):
             if config is not None:
                 configs.append(config)
 
-        response = wirepas_messaging.gateway.api.GetConfigsResponse(
-            request.req_id, self.gw_id, GatewayResultCode.GW_RES_OK, configs
+        response = wmm.GetConfigsResponse(
+            request.req_id, self.gw_id, wmm.GatewayResultCode.GW_RES_OK, configs
         )
         topic = TopicGenerator.make_get_configs_response_topic(self.gw_id)
 
@@ -508,17 +499,15 @@ class TransportService(BusClient):
         """
         self.logger.info("Gateway info request received")
         try:
-            request = wirepas_messaging.gateway.api.GetGatewayInfoRequest.from_payload(
-                message.payload
-            )
-        except GatewayAPIParsingException as e:
+            request = wmm.GetGatewayInfoRequest.from_payload(message.payload)
+        except wmm.GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return
 
-        response = wirepas_messaging.gateway.api.GetGatewayInfoResponse(
+        response = wmm.GetGatewayInfoResponse(
             request.req_id,
             self.gw_id,
-            GatewayResultCode.GW_RES_OK,
+            wmm.GatewayResultCode.GW_RES_OK,
             current_time_s_epoch=int(time()),
             gateway_model=self.gw_model,
             gateway_version=self.gw_version,
@@ -533,10 +522,8 @@ class TransportService(BusClient):
         # pylint: disable=unused-argument
         self.logger.info("Set config request received")
         try:
-            request = wirepas_messaging.gateway.api.SetConfigRequest.from_payload(
-                message.payload
-            )
-        except GatewayAPIParsingException as e:
+            request = wmm.SetConfigRequest.from_payload(message.payload)
+        except wmm.GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return
 
@@ -546,10 +533,10 @@ class TransportService(BusClient):
             res = sink.write_config(request.new_config)
             new_config = sink.read_config()
         else:
-            res = GatewayResultCode.GW_RES_INVALID_SINK_ID
+            res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
             new_config = None
 
-        response = wirepas_messaging.gateway.api.SetConfigResponse(
+        response = wmm.SetConfigResponse(
             request.req_id, self.gw_id, res, request.sink_id, new_config
         )
         topic = TopicGenerator.make_set_config_response_topic(
@@ -563,10 +550,8 @@ class TransportService(BusClient):
         # pylint: disable=unused-argument
         self.logger.info("OTAP status request received")
         try:
-            request = wirepas_messaging.gateway.api.GetScratchpadStatusRequest.from_payload(
-                message.payload
-            )
-        except GatewayAPIParsingException as e:
+            request = wmm.GetScratchpadStatusRequest.from_payload(message.payload)
+        except wmm.GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return
 
@@ -574,10 +559,10 @@ class TransportService(BusClient):
         if sink is not None:
             d = sink.get_scratchpad_status()
 
-            response = wirepas_messaging.gateway.api.GetScratchpadStatusResponse(
+            response = wmm.GetScratchpadStatusResponse(
                 request.req_id,
                 self.gw_id,
-                GatewayResultCode.GW_RES_OK,
+                wmm.GatewayResultCode.GW_RES_OK,
                 request.sink_id,
                 d["stored_scartchpad"],
                 d["stored_status"],
@@ -586,10 +571,10 @@ class TransportService(BusClient):
                 d["firmware_area_id"],
             )
         else:
-            response = wirepas_messaging.gateway.api.GetScratchpadStatusResponse(
+            response = wmm.GetScratchpadStatusResponse(
                 request.req_id,
                 self.gw_id,
-                GatewayResultCode.GW_RES_INVALID_SINK_ID,
+                wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID,
                 request.sink_id,
             )
 
@@ -604,10 +589,8 @@ class TransportService(BusClient):
         # pylint: disable=unused-argument
         self.logger.info("OTAP upload request received")
         try:
-            request = wirepas_messaging.gateway.api.UploadScratchpadRequest.from_payload(
-                message.payload
-            )
-        except GatewayAPIParsingException as e:
+            request = wmm.UploadScratchpadRequest.from_payload(message.payload)
+        except wmm.GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return
 
@@ -617,9 +600,9 @@ class TransportService(BusClient):
         if sink is not None:
             res = sink.upload_scratchpad(request.seq, request.scratchpad)
         else:
-            res = GatewayResultCode.GW_RES_INVALID_SINK_ID
+            res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
 
-        response = wirepas_messaging.gateway.api.UploadScratchpadResponse(
+        response = wmm.UploadScratchpadResponse(
             request.req_id, self.gw_id, res, request.sink_id
         )
 
@@ -634,10 +617,8 @@ class TransportService(BusClient):
         # pylint: disable=unused-argument
         self.logger.info("OTAP process request received")
         try:
-            request = wirepas_messaging.gateway.api.ProcessScratchpadRequest.from_payload(
-                message.payload
-            )
-        except GatewayAPIParsingException as e:
+            request = wmm.ProcessScratchpadRequest.from_payload(message.payload)
+        except wmm.GatewayAPIParsingException as e:
             self.logger.error(str(e))
             return
 
@@ -645,9 +626,9 @@ class TransportService(BusClient):
         if sink is not None:
             res = sink.process_scratchpad()
         else:
-            res = GatewayResultCode.GW_RES_INVALID_SINK_ID
+            res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
 
-        response = wirepas_messaging.gateway.api.ProcessScratchpadResponse(
+        response = wmm.ProcessScratchpadResponse(
             request.req_id, self.gw_id, res, request.sink_id
         )
 

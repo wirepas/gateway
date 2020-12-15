@@ -3,11 +3,8 @@
 # See file LICENSE for full license details.
 
 import logging
-from wirepas_messaging.gateway.api import (
-    GatewayResultCode,
-    ScratchpadStatus,
-    ScratchpadType,
-)
+import wirepas_mesh_messaging as wmm
+
 from gi.repository import GLib
 from .return_code import ReturnCode
 
@@ -83,9 +80,9 @@ class Sink:
         except OverflowError:
             # It may happens as protobuf has bigger container value
             self.logger.error("Invalid range value")
-            return GatewayResultCode.GW_RES_INVALID_PARAM
+            return wmm.GatewayResultCode.GW_RES_INVALID_PARAM
 
-        return GatewayResultCode.GW_RES_OK
+        return wmm.GatewayResultCode.GW_RES_OK
 
     def _on_stack_started(self, sender, object, iface, signal, params):
         # pylint: disable=unused-argument
@@ -191,9 +188,9 @@ class Sink:
             self.logger.error(
                 "Invalid range value for param %s with value %s", key, value
             )
-            return GatewayResultCode.GW_RES_INVALID_PARAM
+            return wmm.GatewayResultCode.GW_RES_INVALID_PARAM
 
-        return GatewayResultCode.GW_RES_OK
+        return wmm.GatewayResultCode.GW_RES_OK
 
     def write_config(self, config):
         # Should always be available
@@ -209,7 +206,7 @@ class Sink:
 
         # The write config has only one return code possible
         # so the last error code will be returned
-        res = GatewayResultCode.GW_RES_OK
+        res = wmm.GatewayResultCode.GW_RES_OK
 
         config_to_dbus_param = dict(
             [
@@ -226,7 +223,7 @@ class Sink:
         # Any following call will stop the stack
         for param in config_to_dbus_param:
             tmp = self._set_param(config, param, config_to_dbus_param[param])
-            if tmp != GatewayResultCode.GW_RES_OK:
+            if tmp != wmm.GatewayResultCode.GW_RES_OK:
                 # Update result code only if not success to avoid erasing
                 # previous error (only one return code)
                 res = tmp
@@ -247,7 +244,7 @@ class Sink:
             self.logger.error("Cannot set App Config: %s", res.name)
         except OverflowError:
             # It may happens as protobuf has bigger container value
-            res = GatewayResultCode.GW_RES_INVALID_PARAM
+            res = wmm.GatewayResultCode.GW_RES_INVALID_PARAM
             self.logger.error("Invalid range value")
 
         # Set stack in state defined by new config or set it as it was
@@ -304,8 +301,8 @@ class Sink:
 
         dbus_to_gateway_satus = dict(
             [
-                (0, ScratchpadStatus.SCRATCHPAD_STATUS_SUCCESS),
-                (255, ScratchpadStatus.SCRATCHPAD_STATUS_NEW)
+                (0, wmm.ScratchpadStatus.SCRATCHPAD_STATUS_SUCCESS),
+                (255, wmm.ScratchpadStatus.SCRATCHPAD_STATUS_NEW)
                 # Anything else is ERROR
             ]
         )
@@ -318,13 +315,13 @@ class Sink:
         except KeyError:
             # Between 1 and 254 => Error
             self.logger.error("Scratchpad stored status has error: %s", status)
-            d["stored_status"] = ScratchpadStatus.SCRATCHPAD_STATUS_ERROR
+            d["stored_status"] = wmm.ScratchpadStatus.SCRATCHPAD_STATUS_ERROR
 
         dbus_to_gateway_type = dict(
             [
-                (0, ScratchpadType.SCRATCHPAD_TYPE_BLANK),
-                (1, ScratchpadType.SCRATCHPAD_TYPE_PRESENT),
-                (2, ScratchpadType.SCRATCHPAD_TYPE_PROCESS),
+                (0, wmm.ScratchpadType.SCRATCHPAD_TYPE_BLANK),
+                (1, wmm.ScratchpadType.SCRATCHPAD_TYPE_PRESENT),
+                (2, wmm.ScratchpadType.SCRATCHPAD_TYPE_PROCESS),
             ]
         )
         try:
@@ -351,7 +348,7 @@ class Sink:
         return d
 
     def process_scratchpad(self):
-        ret = GatewayResultCode.GW_RES_OK
+        ret = wmm.GatewayResultCode.GW_RES_OK
         restart = False
         try:
             # Stop the stack if not already stopped
@@ -360,7 +357,7 @@ class Sink:
                 restart = True
         except GLib.Error:
             self.logger.error("Sink in invalid state")
-            return GatewayResultCode.GW_RES_INVALID_SINK_STATE
+            return wmm.GatewayResultCode.GW_RES_INVALID_SINK_STATE
 
         try:
             self.proxy.ProcessScratchpad()
@@ -378,7 +375,7 @@ class Sink:
         return ret
 
     def upload_scratchpad(self, seq, file):
-        ret = GatewayResultCode.GW_RES_OK
+        ret = wmm.GatewayResultCode.GW_RES_OK
         restart = False
         try:
             # Stop the stack if not already stopped
@@ -387,7 +384,7 @@ class Sink:
                 restart = True
         except GLib.Error:
             self.logger.error("Sink in invalid state")
-            return GatewayResultCode.GW_RES_INVALID_SINK_STATE
+            return wmm.GatewayResultCode.GW_RES_INVALID_SINK_STATE
 
         try:
             self.proxy.UploadScratchpad(seq, file)
@@ -399,7 +396,7 @@ class Sink:
             self.logger.error("Cannot upload local scratchpad: %s", ret.name)
         except OverflowError:
             # It may happens as protobuf has bigger container value
-            ret = GatewayResultCode.GW_RES_INVALID_PARAM
+            ret = wmm.GatewayResultCode.GW_RES_INVALID_PARAM
             self.logger.error("Invalid range value")
 
         if restart:
