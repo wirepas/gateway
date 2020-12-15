@@ -3,7 +3,7 @@
 # See file LICENSE for full license details.
 
 import re
-from wirepas_messaging.gateway.api import GatewayResultCode
+from wirepas_mesh_messaging import GatewayResultCode
 
 
 class ReturnCode:
