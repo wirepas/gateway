@@ -143,6 +143,82 @@ static int process_scratchpad(sd_bus_message * m, void * userdata, sd_bus_error 
     return sd_bus_reply_method_return(m, "");
 }
 
+/**
+ * \brief   Get target scratchpad and action handler
+ * \param   ... (from sd_bus function signature)
+ */
+static int get_target_scratchpad(sd_bus_message * m, void * userdata, sd_bus_error * error)
+{
+    int r;
+    app_res_e res;
+    uint8_t target_seq;
+    uint16_t target_crc;
+    uint8_t action;
+    uint8_t param;
+
+    sd_bus_message * reply = NULL;
+
+    res = WPC_read_target_scratchpad(&target_seq, &target_crc, &action, &param);
+    if (res != APP_RES_OK)
+    {
+        LOGE("Cannot read target scratchpad\n");
+        SET_WPC_ERROR(error, "WPC_read_target_scratchpad", res);
+        return -EINVAL;
+    }
+
+    /* Create the answer */
+    r = sd_bus_message_new_method_return(m, &reply);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot create new message return %s\n", strerror(-r));
+        return r;
+    }
+
+    r = sd_bus_message_append(reply, "yqyy", target_seq, target_crc, action, param);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot append parameters: %s\n", strerror(-r));
+        return r;
+    }
+
+    return sd_bus_send(NULL, reply, NULL);
+}
+
+/**
+ * \brief   Set target scratchpad and action handler
+ * \param   ... (from sd_bus function signature)
+ */
+static int set_target_scratchpad(sd_bus_message * m, void * userdata, sd_bus_error * error)
+{
+    uint8_t target_seq;
+    uint16_t target_crc;
+    uint8_t action;
+    uint8_t param;
+    int r;
+    app_res_e res;
+
+    /* Read the parameters */
+    r = sd_bus_message_read(m, "yqyy", &target_seq, &target_crc, &action, &param);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Fail to parse parameters: %s\n", strerror(-r));
+        return r;
+    }
+
+    res = WPC_write_target_scratchpad(target_seq, target_crc, action, param);
+    if (res != APP_RES_OK)
+    {
+        SET_WPC_ERROR(error, "WPC_write_target_scratchpad", res);
+        return -EINVAL;
+    }
+
+    /* Reply with the response */
+    return sd_bus_reply_method_return(m, "b", true);
+}
+
 /**********************************************************************
  *                   VTABLE for otap module                         *
  **********************************************************************/
@@ -169,6 +245,8 @@ static const sd_bus_vtable otap_vtable[] =
      *  ay -> byte array containing the scratchpad to upload
      */
     SD_BUS_METHOD("UploadScratchpad","yay", "", upload_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("SetTargetScratchpad","yqyy", "b", set_target_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("GetTargetScratchpad", "", "yqyy", get_target_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
 
     SD_BUS_VTABLE_END
 };
