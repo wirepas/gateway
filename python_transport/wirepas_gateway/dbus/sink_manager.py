@@ -345,6 +345,17 @@ class Sink:
 
         self._get_param(d, "firmware_area_id", "FirmwareAreaId")
 
+        try:
+            seq, crc, action, param = self.proxy.GetTargetScratchpad()
+            d["target_action"] = wmm.ScratchpadAction(
+                action + 1
+            )  # Plus one as dualmcu version starts at 0, and we start at 1
+            d["target_seq"] = seq
+            d["target_crc"] = crc
+            d["target_param"] = param
+        except GLib.Error:
+            self.logger.warning("Cannot get Target Scratchpad")
+
         return d
 
     def process_scratchpad(self):
@@ -406,6 +417,62 @@ class Sink:
             except GLib.Error as e:
                 ret = ReturnCode.error_from_dbus_exception(e.message)
                 self.logger.error("Could not restore sink's state: %s", ret.name)
+
+        return ret
+
+    def set_target_scratchpad(self, action, target_seq, target_crc, param):
+        ret = wmm.GatewayResultCode.GW_RES_OK
+
+        if (
+            action == wmm.ScratchpadAction.ACTION_NO_OTAP
+            or action == wmm.ScratchpadAction.ACTION_LEGACY_OTAP
+        ):
+            # There is no target with those actions, default to 0
+            target_seq = 0
+            target_crc = 0
+            param = 0
+        else:
+            # check params in case there is an action with valid target
+            try:
+                if target_seq is None:
+                    # Target seq not specified, take local one
+                    target_seq = self.proxy.StoredSeq
+
+                if target_crc is None:
+                    # Target crc not specified, take local one
+                    target_crc = self.proxy.StoredCrc
+            except GLib.Error as e:
+                ret = ReturnCode.error_from_dbus_exception(e.message)
+                self.logger.error(
+                    "Cannot get local scratchpad info for set_target: %s", ret.name
+                )
+
+            if target_seq == 0:
+                self.logger.error("Seq 0 is not a valid target")
+                return wmm.GatewayResultCode.GW_RES_INVALID_PARAM
+
+        try:
+            # If there is no param for the action, default it to 0 before
+            # calling sink service through DBUS
+            if param is None:
+                param = 0
+
+            # Do a minus 1 as action are shifted by one with dual mcu
+            res = self.proxy.SetTargetScratchpad(
+                target_seq, target_crc, action.value - 1, param
+            )
+            self.logger.info(
+                "Scratchpad target set to Action %s (%d) with seq %d and crc %d on sink %s (res=%s)",
+                action,
+                param,
+                target_seq,
+                target_crc,
+                self.sink_id,
+                res,
+            )
+        except GLib.Error as e:
+            ret = ReturnCode.error_from_dbus_exception(e.message)
+            self.logger.error("Cannot set target scratchpad: %s", ret.name)
 
         return ret
 
