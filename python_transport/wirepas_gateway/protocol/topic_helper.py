@@ -65,6 +65,12 @@ class TopicGenerator:
         )
 
     @staticmethod
+    def make_otap_set_target_scratchpad_request_topic(gw_id="+", sink_id="+"):
+        return TopicGenerator._make_request_topic(
+            "otap_set_target_scratchpad", [str(gw_id), str(sink_id)]
+        )
+
+    @staticmethod
     def make_get_gateway_info_request_topic(gw_id):
         return TopicGenerator._make_request_topic("get_gw_info", [str(gw_id)])
 
@@ -107,6 +113,12 @@ class TopicGenerator:
     def make_otap_process_scratchpad_response_topic(gw_id="+", sink_id="+"):
         return TopicGenerator._make_response_topic(
             "otap_process_scratchpad", [str(gw_id), str(sink_id)]
+        )
+
+    @staticmethod
+    def make_otap_set_target_scratchpad_response_topic(gw_id="+", sink_id="+"):
+        return TopicGenerator._make_response_topic(
+            "otap_set_target_scratchpad", [str(gw_id), str(sink_id)]
         )
 
     @staticmethod

@@ -19,7 +19,7 @@ from wirepas_gateway import __version__ as transport_version
 from wirepas_gateway import __pkg_name__
 
 # This constant is the actual API level implemented by this transport module (cf WP-RM-128)
-IMPLEMENTED_API_VERSION = 1
+IMPLEMENTED_API_VERSION = 2
 
 
 class ConnectionToBackendMonitorThread(Thread):
@@ -287,6 +287,11 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_otap_process_scratchpad_request_topic(self.gw_id)
         self.mqtt_wrapper.subscribe(
             topic, self._on_otap_process_scratchpad_request_received
+        )
+
+        topic = TopicGenerator.make_otap_set_target_scratchpad_request_topic(self.gw_id)
+        self.mqtt_wrapper.subscribe(
+            topic, self._on_otap_set_target_scratchpad_request_received
         )
 
         self._set_status()
@@ -559,6 +564,16 @@ class TransportService(BusClient):
         if sink is not None:
             d = sink.get_scratchpad_status()
 
+            target_and_action = {}
+            try:
+                target_and_action["action"] = d["target_action"]
+                target_and_action["target_sequence"] = d["target_seq"]
+                target_and_action["target_crc"] = d["target_crc"]
+                target_and_action["param"] = d["target_param"]
+            except KeyError:
+                # If not present, just an old node
+                target_and_action = None
+
             response = wmm.GetScratchpadStatusResponse(
                 request.req_id,
                 self.gw_id,
@@ -569,6 +584,7 @@ class TransportService(BusClient):
                 d["stored_type"],
                 d["processed_scartchpad"],
                 d["firmware_area_id"],
+                target_and_action,
             )
         else:
             response = wmm.GetScratchpadStatusResponse(
@@ -633,6 +649,71 @@ class TransportService(BusClient):
         )
 
         topic = TopicGenerator.make_otap_process_scratchpad_response_topic(
+            self.gw_id, request.sink_id
+        )
+
+        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
+    @deferred_thread
+    def _on_otap_set_target_scratchpad_request_received(
+        self, client, userdata, message
+    ):
+        # pylint: disable=unused-argument
+        res = wmm.GatewayResultCode.GW_RES_OK
+        self.logger.info("OTAP set target request received")
+        try:
+            request = wmm.SetScratchpadTargetAndActionRequest.from_payload(
+                message.payload
+            )
+            action = request.target["action"]
+        except wmm.GatewayAPIParsingException as e:
+            self.logger.error(str(e))
+            return
+        except KeyError:
+            self.logger.error("Action is mandatory")
+            res = wmm.GatewayResultCode.GW_RES_INVALID_PARAM
+
+        if res == wmm.GatewayResultCode.GW_RES_OK:
+            # Get optional params (None if not present)
+            seq = request.target.get("target_sequence")
+            crc = request.target.get("target_crc")
+            delay = request.target.get("delay")
+            if delay is not None:
+                # Convert predefined delay to right format
+                if delay is wmm.ProcessingDelay.DELAY_TEN_MINUTES:
+                    param = 0x4A
+                elif delay is wmm.ProcessingDelay.DELAY_THIRTY_MINUTES:
+                    param = 0x5E
+                elif delay is wmm.ProcessingDelay.DELAY_ONE_HOUR:
+                    param = 0x81
+                elif delay is wmm.ProcessingDelay.DELAY_SIX_HOURS:
+                    param = 0x86
+                elif delay is wmm.ProcessingDelay.DELAY_ONE_DAY:
+                    param = 0xC1
+                elif delay is wmm.ProcessingDelay.DELAY_TWO_DAYS:
+                    param = 0xC2
+                elif delay is wmm.ProcessingDelay.DELAY_FIVE_DAYS:
+                    param = 0xC5
+                else:
+                    # Unknown value, set to 0, will generate an error later
+                    param = 0
+            else:
+                param = request.target.get("param")
+
+            # no error so far
+            sink = self.sink_manager.get_sink(request.sink_id)
+            if sink is not None:
+                res = sink.set_target_scratchpad(
+                    action=action, target_seq=seq, target_crc=crc, param=param
+                )
+            else:
+                res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
+
+        response = wmm.SetScratchpadTargetAndActionResponse(
+            request.req_id, self.gw_id, res, request.sink_id
+        )
+
+        topic = TopicGenerator.make_otap_set_target_scratchpad_response_topic(
             self.gw_id, request.sink_id
         )
 

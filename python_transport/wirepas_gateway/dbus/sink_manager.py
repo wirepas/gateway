@@ -75,8 +75,8 @@ class Sink:
                 self.logger.error("Cannot send message err=%s", res)
                 return ReturnCode.error_from_dbus_return_code(res)
         except GLib.Error as e:
-            self.logger.exception("Fail to send message: %s", e.message)
-            return ReturnCode.error_from_dbus_exception(e.message)
+            self.logger.exception("Fail to send message: %s", str(e))
+            return ReturnCode.error_from_dbus_exception(str(e))
         except OverflowError:
             # It may happens as protobuf has bigger container value
             self.logger.error("Invalid range value")
@@ -122,7 +122,7 @@ class Sink:
         try:
             config["started"] = (self.proxy.StackStatus & 0x01) == 0
         except GLib.Error as e:
-            error = ReturnCode.error_from_dbus_exception(e.message)
+            error = ReturnCode.error_from_dbus_exception(str(e))
             self.logger.exception("Cannot get Stack state: %s", error)
             return None
 
@@ -180,9 +180,9 @@ class Sink:
                 value,
                 key,
                 self.sink_id,
-                e.message,
+                str(e),
             )
-            return ReturnCode.error_from_dbus_exception(e.message)
+            return ReturnCode.error_from_dbus_exception(str(e))
         except OverflowError:
             # It may happens as protobuf has bigger container value
             self.logger.error(
@@ -197,7 +197,7 @@ class Sink:
         try:
             stack_started = (self.proxy.StackStatus & 0x01) == 0
         except GLib.Error as e:
-            res = ReturnCode.error_from_dbus_exception(e.message)
+            res = ReturnCode.error_from_dbus_exception(str(e))
             self.logger.error(
                 "Cannot get Stack state. Problem in communication probably: %s",
                 res.name,
@@ -240,7 +240,7 @@ class Sink:
             # App config not defined in new config
             self.logger.debug("Missing key app_config key in config: %s", config)
         except GLib.Error as e:
-            res = ReturnCode.error_from_dbus_exception(e.message)
+            res = ReturnCode.error_from_dbus_exception(str(e))
             self.logger.error("Cannot set App Config: %s", res.name)
         except OverflowError:
             # It may happens as protobuf has bigger container value
@@ -345,6 +345,17 @@ class Sink:
 
         self._get_param(d, "firmware_area_id", "FirmwareAreaId")
 
+        try:
+            seq, crc, action, param = self.proxy.GetTargetScratchpad()
+            d["target_action"] = wmm.ScratchpadAction(
+                action + 1
+            )  # Plus one as dualmcu version starts at 0, and we start at 1
+            d["target_seq"] = seq
+            d["target_crc"] = crc
+            d["target_param"] = param
+        except GLib.Error:
+            self.logger.warning("Cannot get Target Scratchpad")
+
         return d
 
     def process_scratchpad(self):
@@ -362,14 +373,14 @@ class Sink:
         try:
             self.proxy.ProcessScratchpad()
         except GLib.Error as e:
-            ret = ReturnCode.error_from_dbus_exception(e.message)
+            ret = ReturnCode.error_from_dbus_exception(str(e))
             self.logger.error("Could not restore sink's state: %s", ret.name)
 
         if restart:
             try:
                 self.proxy.SetStackState(True)
             except GLib.Error as e:
-                ret = ReturnCode.error_from_dbus_exception(e.message)
+                ret = ReturnCode.error_from_dbus_exception(str(e))
                 self.logger.debug("Sink in invalid state: %s", ret.name)
 
         return ret
@@ -392,7 +403,7 @@ class Sink:
                 "Scratchpad loaded with seq %d on sink %s", seq, self.sink_id
             )
         except GLib.Error as e:
-            ret = ReturnCode.error_from_dbus_exception(e.message)
+            ret = ReturnCode.error_from_dbus_exception(str(e))
             self.logger.error("Cannot upload local scratchpad: %s", ret.name)
         except OverflowError:
             # It may happens as protobuf has bigger container value
@@ -404,8 +415,65 @@ class Sink:
                 # Restart sink if we stopped it for this request
                 self.proxy.SetStackState(True)
             except GLib.Error as e:
-                ret = ReturnCode.error_from_dbus_exception(e.message)
+                ret = ReturnCode.error_from_dbus_exception(str(e))
                 self.logger.error("Could not restore sink's state: %s", ret.name)
+
+        return ret
+
+    def set_target_scratchpad(self, action, target_seq, target_crc, param):
+        ret = wmm.GatewayResultCode.GW_RES_OK
+
+        if (
+            action == wmm.ScratchpadAction.ACTION_NO_OTAP
+            or action == wmm.ScratchpadAction.ACTION_LEGACY_OTAP
+        ):
+            # There is no target with those actions, default to 0
+            target_seq = 0
+            target_crc = 0
+            param = 0
+        else:
+            # check params in case there is an action with valid target
+            try:
+                if target_seq is None:
+                    # Target seq not specified, take local one
+                    target_seq = self.proxy.StoredSeq
+
+                if target_crc is None:
+                    # Target crc not specified, take local one
+                    target_crc = self.proxy.StoredCrc
+            except GLib.Error as e:
+                ret = ReturnCode.error_from_dbus_exception(str(e))
+                self.logger.error(
+                    "Cannot get local scratchpad info for set_target: %s", ret.name
+                )
+
+            if target_seq == 0:
+                self.logger.error("Seq 0 is not a valid target")
+                return wmm.GatewayResultCode.GW_RES_INVALID_PARAM
+
+        try:
+            # If there is no param for the action, default it to 0 before
+            # calling sink service through DBUS
+            if param is None:
+                param = 0
+
+            # Do a minus 1 as action are shifted by one with dual mcu
+            res = self.proxy.SetTargetScratchpad(
+                target_seq, target_crc, action.value - 1, param
+            )
+            self.logger.info(
+                "Scratchpad target set to Action %s (%d) with seq"
+                " %d and crc %d on sink %s (res=%s)",
+                action,
+                param,
+                target_seq,
+                target_crc,
+                self.sink_id,
+                res,
+            )
+        except GLib.Error as e:
+            ret = ReturnCode.error_from_dbus_exception(str(e))
+            self.logger.error("Cannot set target scratchpad: %s", ret.name)
 
         return ret
 

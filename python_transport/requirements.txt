@@ -1,5 +1,5 @@
 # wirepas
-wirepas_mesh_messaging==0.1b
+wirepas_mesh_messaging==1.1rc1
 
 # dbus bindings
 pydbus==0.6.0
