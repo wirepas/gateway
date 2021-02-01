@@ -9,9 +9,9 @@ PYTHON_PKG_PATH=${PYTHON_PKG_PATH:-"python_transport"}
 
 # clang-format
 # shellcheck disable=SC1091
-source ./.ci/manifest/tools/clangformat.sh
-clangformat_version "${TARGET_CLANG_FORMAT}"
-clangformat_check "${TARGET_CLANG_FORMAT}"
+#source ./.ci/manifest/tools/clangformat.sh
+#clangformat_version "${TARGET_CLANG_FORMAT}"
+#clangformat_check "${TARGET_CLANG_FORMAT}"
 
 # python style check
 cd "${TARGET_DIR}"
