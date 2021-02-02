@@ -39,7 +39,7 @@ function _build
         CROSS_BUILD_START_CMD=cross-build-start
         CROSS_BUILD_END_CMD=cross-build-end
     else
-        DOCKER_BASE=ubuntu:19.10
+        DOCKER_BASE=ubuntu:20.04
         CROSS_BUILD_START_CMD=:
         CROSS_BUILD_END_CMD=:
     fi
