@@ -44,9 +44,15 @@ class MQTTWrapper(Thread):
         # Variable to keep track of latest published packet
         self._timestamp_last_publish = datetime.now()
 
+        if settings.mqtt_use_websocket:
+            transport = "websockets"
+        else:
+            transport = "tcp"
+
         self._client = mqtt.Client(
             client_id=settings.gateway_id,
             clean_session=not settings.mqtt_persist_session,
+            transport=transport,
         )
 
         if not settings.mqtt_force_unsecure:
@@ -87,8 +93,9 @@ class MQTTWrapper(Thread):
 
         self.timeout = settings.mqtt_reconnect_delay
 
-        # Set options to initial socket
-        self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
+        # Set options to initial socket if tcp transport only
+        if not settings.mqtt_use_websocket:
+            self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
 
         self._publish_queue = SelectableQueue()
 
