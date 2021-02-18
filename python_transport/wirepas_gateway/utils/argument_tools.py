@@ -352,6 +352,17 @@ class ParserHelper:
             help=("Max inflight messages for messages with qos > 0"),
         )
 
+        self.mqtt.add_argument(
+            "--mqtt_use_websocket",
+            default=os.environ.get("WM_SERVICES_MQTT_USE_WEBSOCKET", False),
+            type=self.str2bool,
+            nargs="?",
+            const=True,
+            help=(
+                "When true the mqtt client will use websocket instead of TCP for transport"
+            ),
+        )
+
     def add_buffering_settings(self):
         """ Parameters used to avoid black hole case """
         self.buffering.add_argument(
