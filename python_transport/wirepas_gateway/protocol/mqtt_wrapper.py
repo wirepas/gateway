@@ -46,8 +46,10 @@ class MQTTWrapper(Thread):
 
         if settings.mqtt_use_websocket:
             transport = "websockets"
+            self._use_websockets = True
         else:
             transport = "tcp"
+            self._use_websockets = False
 
         self._client = mqtt.Client(
             client_id=settings.gateway_id,
@@ -94,7 +96,7 @@ class MQTTWrapper(Thread):
         self.timeout = settings.mqtt_reconnect_delay
 
         # Set options to initial socket if tcp transport only
-        if not settings.mqtt_use_websocket:
+        if not self._use_websockets:
             self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
 
         self._publish_queue = SelectableQueue()
@@ -203,7 +205,8 @@ class MQTTWrapper(Thread):
             return None
 
         # Set options to new reopened socket
-        self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
+        if not self._use_websockets:
+            self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
         return self._client.socket()
 
     def _set_last_will(self, topic, data):
