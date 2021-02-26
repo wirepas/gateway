@@ -320,6 +320,17 @@ class TransportService(BusClient):
         else:
             data_size = None
 
+        sink = self.sink_manager.get_sink(sink_id)
+        if sink is None:
+            # It can happen at sink connection as messages can be received
+            # before sinks are identified
+            self.logger.info(
+                "Message received from unknown sink at the moment %s", sink_id
+            )
+            return
+
+        network_address = sink.get_network_address()
+
         event = wmm.ReceivedDataEvent(
             event_id=self.data_event_id,
             gw_id=self.gw_id,
@@ -334,18 +345,8 @@ class TransportService(BusClient):
             data=data,
             data_size=data_size,
             hop_count=hop_count,
+            network_address=network_address,
         )
-
-        sink = self.sink_manager.get_sink(sink_id)
-        if sink is None:
-            # It can happen at sink connection as messages can be received
-            # before sinks are identified
-            self.logger.info(
-                "Message received from unknown sink at the moment %s", sink_id
-            )
-            return
-
-        network_address = sink.get_network_address()
 
         topic = TopicGenerator.make_received_data_topic(
             self.gw_id, sink_id, network_address, src_ep, dst_ep
