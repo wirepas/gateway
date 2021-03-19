@@ -74,7 +74,8 @@ setup(
         Extension(
             "dbusCExtension",
             sources=["wirepas_gateway/dbus/c-extension/dbus_c.c"],
-            libraries=["systemd"],
+            libraries=["elogind"],
+            include_dirs=["/usr/include/elogind"],
         )
     ],
     include_package_data=True,

@@ -1,26 +1,33 @@
-FROM wirepas/gateway_base_builder:v1.0 AS builder
+FROM alpine:3.13 AS builder
+
+# Variable set from CI
+ARG GATEWAY_BUILD_SHA1=unset
+
+RUN adduser --disabled-password wirepas
+
+RUN apk add --no-cache gcc make musl-dev elogind-dev python3-dev py3-gobject3 py3-pip
+
+RUN python3 -m pip install wheel setuptools
+
+RUN apk add --no-cache bash
 
 COPY --chown=wirepas ./python_transport /home/wirepas/python_transport
 WORKDIR /home/wirepas/python_transport
 
 RUN ./utils/generate_wheel.sh
 
+USER wirepas
+
 RUN pip3 install dist/wirepas_gateway*.whl --user
 
-FROM debian:buster-slim
+FROM alpine:3.13
 
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
 
-RUN useradd -ms /bin/bash wirepas
+RUN adduser --disabled-password wirepas
 
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y \
-       ca-certificates \
-       python3-gi \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN c_rehash -v /etc/ssl/certs/
+RUN apk add --no-cache libelogind python3 py3-gobject3 py3-six
 
 USER wirepas
 
