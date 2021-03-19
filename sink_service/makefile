@@ -15,7 +15,7 @@ MESH_LIB_FOLDER := c-mesh-api/lib/
 MESH_LIB := $(MESH_LIB_FOLDER)build/mesh_api_lib.a
 
 # General compiler flags
-CFLAGS  := -std=gnu99 -Wall -Werror
+CFLAGS  := -std=gnu99 -Wall -Werror `pkg-config --cflags libsystemd`
 
 # Targets definition
 MAIN_APP := sinkService
@@ -30,7 +30,7 @@ LDFLAGS += -pthread
 CFLAGS  += -D_REENTRANT
 
 # Add systemd lib as needed for sd-bus
-LDFLAGS += -lsystemd
+LDFLAGS += `pkg-config --libs libsystemd`
 
 # Add current directory for headers
 CFLAGS  += -I$(SOURCEPREFIX)
