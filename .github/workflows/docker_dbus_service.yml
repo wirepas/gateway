@@ -61,7 +61,7 @@ jobs:
         with:
           context: .
           file: docker/dbus_service/Dockerfile
-          platforms: linux/amd64,linux/arm
+          platforms: linux/amd64,linux/arm,linux/arm64
           push: true
           build-args: GATEWAY_BUILD_SHA1= ${{ github.sha }}
           tags: |
