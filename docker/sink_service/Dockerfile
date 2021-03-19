@@ -1,4 +1,4 @@
-FROM alpine:3.13 AS builder
+FROM alpine:3.12 AS builder
 
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
@@ -19,7 +19,7 @@ WORKDIR /home/wirepas/sink_service
 
 RUN make
 
-FROM alpine:3.13
+FROM alpine:3.12
 
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
