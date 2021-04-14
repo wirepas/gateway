@@ -7,6 +7,9 @@ RUN ./utils/generate_wheel.sh
 
 RUN pip3 install dist/wirepas_gateway*.whl --user
 
+FROM scratch AS export
+COPY --from=builder /home/wirepas/python_transport/dist/*.tar.gz .
+
 FROM debian:buster-slim
 
 # Variable set from CI
