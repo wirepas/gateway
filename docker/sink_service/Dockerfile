@@ -8,6 +8,9 @@ WORKDIR /home/wirepas/sink_service
 
 RUN make
 
+FROM scratch AS export
+COPY --from=builder /home/wirepas/sink_service/build/sinkService .
+
 FROM debian:buster-slim
 
 # Variable set from CI
