@@ -14,6 +14,7 @@ import os
 import re
 
 from setuptools import setup, find_packages, Extension
+import pkgconfig
 
 here = os.path.abspath(os.path.dirname(__file__))
 readme_file = "README.md"
@@ -51,6 +52,20 @@ def get_requirements(*args):
     return sorted(requirements)
 
 
+def get_systemd_lib(key):
+    try:
+        return pkgconfig.parse("libsystemd")[key]
+    except KeyError:
+        return None
+    except Exception:
+        # Package config is not installed or system pkg-config
+        # Default to systemd
+        if key == "libraries":
+            return ["systemd"]
+        else:
+            return None
+
+
 about = {}
 with open(get_absolute_path("./wirepas_gateway/__about__.py")) as f:
     exec(f.read(), about)
@@ -74,7 +89,9 @@ setup(
         Extension(
             "dbusCExtension",
             sources=["wirepas_gateway/dbus/c-extension/dbus_c.c"],
-            libraries=["systemd"],
+            libraries=get_systemd_lib("libraries"),
+            include_dirs=get_systemd_lib("include_dirs"),
+            library_dirs=get_systemd_lib("library_dirs"),
         )
     ],
     include_package_data=True,
