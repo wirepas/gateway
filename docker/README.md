@@ -59,6 +59,6 @@ All the dockerfiles are available in this directory and can be built directly fr
 
 Example to build a custom sink service tagged local/my_sink_service:tag1 in your PC:
 ```bash
-docker build -f docker/dbus-service/Dockerfile -t local/my_sink_service:tag1
+docker build -f docker/sink-service/Dockerfile -t local/my_sink_service:tag1
 ```
 You can then use this image in the docker-compose template instead of the Wirepas Docker Hub ones.
