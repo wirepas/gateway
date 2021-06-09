@@ -41,8 +41,8 @@ class MQTTWrapper(Thread):
         self.on_connect_cb = on_connect_cb
         # Set to track the unpublished packets
         self._unpublished_mid_set = set()
-        # Variable to keep track of latest published packet
-        self._timestamp_last_publish = datetime.now()
+        # Keep track of latest published packet
+        self._publish_monitor = PublishMonitor()
 
         if settings.mqtt_use_websocket:
             transport = "websockets"
@@ -137,7 +137,7 @@ class MQTTWrapper(Thread):
 
     def _on_publish(self, client, userdata, mid):
         self._unpublished_mid_set.remove(mid)
-        self._timestamp_last_publish = datetime.now()
+        self._publish_monitor.on_publish_done()
         return
 
     def _do_select(self, sock):
@@ -280,9 +280,6 @@ class MQTTWrapper(Thread):
 
         """
         mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
-        if self.publish_queue_size == 0:
-            # Reset last published packet
-            self._timestamp_last_publish = datetime.now()
         self._unpublished_mid_set.add(mid)
 
     def publish(self, topic, payload, qos=1, retain=False) -> None:
@@ -297,6 +294,7 @@ class MQTTWrapper(Thread):
         """
         # Send it to the queue to be published from Mqtt thread
         self._publish_queue.put((topic, payload, qos, retain))
+        self._publish_monitor.on_publish_request()
 
     def subscribe(self, topic, cb, qos=2) -> None:
         self.logger.debug("Subscribing to: {}".format(topic))
@@ -305,12 +303,11 @@ class MQTTWrapper(Thread):
 
     @property
     def publish_queue_size(self):
-        return len(self._unpublished_mid_set) + self._publish_queue.get_size()
+        return self._publish_monitor.get_publish_queue_size()
 
     @property
-    def last_published_packet_s(self):
-        delta = datetime.now() - self._timestamp_last_publish
-        return delta.total_seconds()
+    def publish_waiting_time_s(self):
+        return self._publish_monitor.get_publish_waiting_time_s()
 
 
 class SelectableQueue(queue.Queue):
@@ -331,10 +328,6 @@ class SelectableQueue(queue.Queue):
         :return: the reception socket fileno
         """
         return self._getsocket.fileno()
-
-    def get_size(self):
-        with self._lock:
-            return self._size
 
     def put(self, item, block=True, timeout=None):
         with self._lock:
@@ -357,3 +350,38 @@ class SelectableQueue(queue.Queue):
                 # Consume 1 byte from socket
                 self._getsocket.recv(1)
             return item
+
+
+class PublishMonitor:
+    """
+        Object dedicated to MQTT publish monitoring, in a simple
+        and "Thread-safe" way.
+    """
+
+    def __init__(self):
+        self._lock = Lock()
+        self._size = 0
+        self._last_publish_event_timestamp = 0  # valid if size != 0
+
+    def get_publish_queue_size(self):
+        with self._lock:
+            return self._size
+
+    def get_publish_waiting_time_s(self):
+        with self._lock:
+            if self._size == 0:
+                return 0
+            else:
+                delta = datetime.now() - self._last_publish_event_timestamp
+                return delta.total_seconds()
+
+    def on_publish_request(self):
+        with self._lock:
+            if self._size == 0:
+                self._last_publish_event_timestamp = datetime.now()
+            self._size = self._size + 1
+
+    def on_publish_done(self):
+        with self._lock:
+            self._size = self._size - 1
+            self._last_publish_event_timestamp = datetime.now()
