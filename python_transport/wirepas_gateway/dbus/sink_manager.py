@@ -56,7 +56,7 @@ class Sink:
             try:
                 self.network_address = self.proxy.NetworkAddress
             except GLib.Error:
-                self.logger.exception("Could not get network address")
+                self.logger.error("Could not get network address")
 
         return self.network_address
 
@@ -109,12 +109,13 @@ class Sink:
     def _get_param(self, dic, key, attribute):
         try:
             dic[key] = getattr(self.proxy, attribute)
-        except (GLib.Error, AttributeError):
-            # Exception raised when getting attribute (probably not set)
-            # Discard channel_map as parameter present only for old stacks
+        except  GLib.Error:
             if key != "channel_map":
                 # Warning and not an error as normal behavior if not set
                 self.logger.warning("Cannot get %s in config (is it set?)", key)
+
+        except AttributeError :
+            self.logger.warning("Attribute %s doesn't exist", key)
 
     def _get_pair_params(self, dic, key1, att1, key2, att2):
         # Some settings are only relevant if the both can be retrieved
@@ -278,7 +279,7 @@ class Sink:
                 )
                 self.proxy.SetStackState(new_state)
         except GLib.Error as err:
-            res = ReturnCode.error_from_dbus_exception(err.message)
+            res = ReturnCode.error_from_dbus_exception(str(err))
             self.logger.exception(
                 "Cannot set Stack state. Problem in communication probably: %s",
                 res.name,
@@ -307,8 +308,13 @@ class Sink:
 
         try:
             self.proxy.SinkCost = new_cost
-        except GLib.Error:
-            self.logger.error("Cannot set sink cost for sink {}".format(self.sink_id))
+        except GLib.Error as err:
+            res = ReturnCode.error_from_dbus_exception(err.message)
+            if res == wmm.GatewayResultCode.GW_RES_INVALID_ROLE:
+                self.logger.warning("Node role is not a sink, sink cost cannot be modified")
+                raise ValueError("Wrong role to set cost value {}".format(new_cost))
+            else:
+                self.logger.error("Cannot set sink cost for sink {} ({})".format(self.sink_id, res))
 
     def get_scratchpad_status(self):
         d = {}
