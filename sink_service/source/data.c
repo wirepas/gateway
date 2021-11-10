@@ -211,11 +211,8 @@ int Data_Init(sd_bus * bus, char * object, char * interface)
     m_object = object;
     m_interface = interface;
 
-    /* Register for data on all EP (EP 0 to 255) */
-    for (uint16_t i = 0; i <= 255; i++)
-    {
-        WPC_register_for_data(i, onDataReceived);
-    }
+    /* Register for all data */
+    WPC_register_for_data(onDataReceived);
 
     /* Install the data vtable */
     ret = sd_bus_add_object_vtable(bus, &m_slot, object, interface, data_vtable, NULL);

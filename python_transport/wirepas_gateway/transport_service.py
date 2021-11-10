@@ -429,7 +429,10 @@ class TransportService(BusClient):
                         name, self.minimum_sink_cost
                     )
                 )
-                sink.cost = self.minimum_sink_cost
+                try:
+                    sink.cost = self.minimum_sink_cost
+                except ValueError:
+                    self.logger.debug("Cannot set cost, probably not a sink")
 
         self._send_asynchronous_get_configs_response()
 

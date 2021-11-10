@@ -14,7 +14,7 @@
 #include "wpc.h"
 
 #define LOG_MODULE_NAME "Config"
-#define MAX_LOG_LEVEL DEBUG_LOG_LEVEL
+#define MAX_LOG_LEVEL INFO_LOG_LEVEL
 #include "logger.h"
 
 /** Structure to hold unmodifiable configs from node */
@@ -193,7 +193,7 @@ static int read_key(sd_bus * bus,
     return 0;
 }
 
-typedef app_res_e (*set_key_f)(uint8_t key[16]);
+typedef app_res_e (*set_key_f)(const uint8_t key[16]);
 
 /**
  * \brief   Global function to set a key (cipher or authen)
@@ -330,7 +330,7 @@ static int set_stack_state(sd_bus_message * m, void * userdata, sd_bus_error * e
         WPC_set_autostart(1);
         if (res == APP_RES_OK)
         {
-            LOGD("Stack started manually\n");
+            LOGI("Stack started manually\n");
             send_dbus_signal("StackStarted");
         }
     }
@@ -340,7 +340,7 @@ static int set_stack_state(sd_bus_message * m, void * userdata, sd_bus_error * e
         res = WPC_stop_stack();
         if (res == APP_RES_OK)
         {
-            LOGD("Stack stopped manually\n");
+            LOGI("Stack stopped manually\n");
             send_dbus_signal("StackStopped");
         }
     }
@@ -423,7 +423,10 @@ static int get_app_config(sd_bus_message * m, void * userdata, sd_bus_error * er
     res = WPC_get_app_config_data(&seq, &interval, app_config, size);
     if (res != APP_RES_OK)
     {
-        LOGE("Cannot get app config\n");
+        if (res != APP_RES_NO_CONFIG)
+        {
+            LOGE("Cannot get app config %d\n", res);
+        }
         SET_WPC_ERROR(error, "WPC_get_app_config_data", res);
         return -EINVAL;
     }
@@ -666,8 +669,12 @@ static void on_stack_boot_status(uint8_t status)
 
     if (status == 0)
     {
-        LOGD("Stack restarted\n");
+        LOGI("Stack restarted\n");
         send_dbus_signal("StackStarted");
+    }
+    else
+    {
+        send_dbus_signal("StackStopped");
     }
 }
 

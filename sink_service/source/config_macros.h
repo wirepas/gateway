@@ -39,7 +39,11 @@ static char error_message[100];
         if (res != APP_RES_OK)                             \
         {                                                  \
             SET_WPC_ERROR(error, #func, res);              \
-            LOGE("Cannot get %s (ret=%d)\n", #name, res);  \
+            if (res != APP_RES_ATTRIBUTE_NOT_SET)          \
+            {                                              \
+                LOGE("Cannot get %s (ret=%d)\n",           \
+                      #name, res);                         \
+            }                                              \
             return -EINVAL;                                \
         }                                                  \
         else                                               \
