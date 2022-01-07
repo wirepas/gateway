@@ -3,7 +3,7 @@
 docker-compose is a tool for defining and running multi-container Docker applications.
 With the provided docker-compose.yml file, you can start a Wirepas gateway.
 
-## Customize [the template file](docker-compose.yml)
+## Customize the template file
 
 [The template file](docker-compose.yml) requires some configuration to fit your environement.
 
