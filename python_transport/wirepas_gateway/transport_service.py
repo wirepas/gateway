@@ -360,9 +360,28 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, event.payload, qos=1)
 
     def on_stack_started(self, name):
+        self.logger.debug("Sink started: %s", name)
         sink = self.sink_manager.get_sink(name)
         if sink is None:
             self.logger.error("Sink started %s error: unknown sink", name)
+            return
+
+        # Generate a setconfig answer with req_id of 0
+        response = wmm.SetConfigResponse(
+            0,
+            self.gw_id,
+            wmm.GatewayResultCode.GW_RES_OK,
+            sink.sink_id,
+            sink.read_config(),
+        )
+        topic = TopicGenerator.make_set_config_response_topic(self.gw_id, sink.sink_id)
+        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
+    def on_stack_stopped(self, name):
+        self.logger.debug("Sink stopped: %s", name)
+        sink = self.sink_manager.get_sink(name)
+        if sink is None:
+            self.logger.error("Sink stopped %s error: unknown sink", name)
             return
 
         # Generate a setconfig answer with req_id of 0

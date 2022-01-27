@@ -199,6 +199,9 @@ class BusClient:
     def on_stack_started(self, name):
         pass
 
+    def on_stack_stopped(self, name):
+        pass
+
     def on_start_client(self):
         pass
 

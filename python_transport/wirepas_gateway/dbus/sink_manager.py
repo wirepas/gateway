@@ -39,6 +39,16 @@ class Sink:
         if self.on_started_handle is not None:
             self.on_started_handle.unsubscribe()
 
+    def register_for_stack_stopped(self):
+        # Use the subscribe directly to be able to specify the sender
+        self.on_started_handle = self.bus.subscribe(
+            signal="StackStopped",
+            object="/com/wirepas/sink",
+            iface="com.wirepas.sink.config1",
+            sender=self.unique_name,
+            signal_fired=self._on_stack_stopped,
+        )
+
     def get_network_address(self, force=False):
         if self.network_address is None or force:
             # Network address is not known or must be updated
@@ -85,6 +95,14 @@ class Sink:
         return wmm.GatewayResultCode.GW_RES_OK
 
     def _on_stack_started(self, sender, object, iface, signal, params):
+        # pylint: disable=unused-argument
+        # pylint: disable=redefined-builtin
+        # Force update of network address in case remote api modify it
+        self.get_network_address(True)
+
+        self.on_stack_started(self.sink_id)
+
+    def _on_stack_stopped(self, sender, object, iface, signal, params):
         # pylint: disable=unused-argument
         # pylint: disable=redefined-builtin
         # Force update of network address in case remote api modify it
@@ -535,6 +553,7 @@ class SinkManager:
         )
 
         sink.register_for_stack_started()
+        sink.register_for_stack_stopped()
 
         self.sinks[short_name] = sink
 

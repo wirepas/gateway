@@ -338,6 +338,11 @@ static int set_stack_state(sd_bus_message * m, void * userdata, sd_bus_error * e
     {
         WPC_set_autostart(0);
         res = WPC_stop_stack();
+        if (res == APP_RES_OK)
+        {
+            LOGD("Stack stopped manually\n");
+            send_dbus_signal("StackStopped");
+        }
     }
 
     if (res != APP_RES_OK)
