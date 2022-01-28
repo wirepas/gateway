@@ -103,11 +103,6 @@ class Sink:
         self.on_stack_started(self.sink_id)
 
     def _on_stack_stopped(self, sender, object, iface, signal, params):
-        # pylint: disable=unused-argument
-        # pylint: disable=redefined-builtin
-        # Force update of network address in case remote api modify it
-        self.get_network_address(True)
-
         self.on_stack_started(self.sink_id)
 
     def _get_param(self, dic, key, attribute):

@@ -367,15 +367,7 @@ class TransportService(BusClient):
             return
 
         # Generate a setconfig answer with req_id of 0
-        response = wmm.SetConfigResponse(
-            0,
-            self.gw_id,
-            wmm.GatewayResultCode.GW_RES_OK,
-            sink.sink_id,
-            sink.read_config(),
-        )
-        topic = TopicGenerator.make_set_config_response_topic(self.gw_id, sink.sink_id)
-        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+        self._generate_config_changed_answer(name)
 
     def on_stack_stopped(self, name):
         self.logger.debug("Sink stopped: %s", name)
@@ -385,6 +377,10 @@ class TransportService(BusClient):
             return
 
         # Generate a setconfig answer with req_id of 0
+        self._generate_config_changed_answer(name)
+
+    def _generate_config_changed_answer(self, name):
+        sink = self.sink_manager.get_sink(name)
         response = wmm.SetConfigResponse(
             0,
             self.gw_id,
