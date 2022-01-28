@@ -13,12 +13,13 @@ DBUS_SINK_PREFIX = "com.wirepas.sink."
 
 
 class Sink:
-    def __init__(self, bus, proxy, sink_id, unique_name, on_stack_started, logger=None):
+    def __init__(self, bus, proxy, sink_id, unique_name, on_stack_started, on_stack_stopped, logger=None):
 
         self.proxy = proxy
         self.sink_id = sink_id
         self.network_address = None
         self.on_stack_started = on_stack_started
+        self.on_stack_stopped = on_stack_stopped
         self.bus = bus
         self.unique_name = unique_name
         self.on_started_handle = None
@@ -103,7 +104,7 @@ class Sink:
         self.on_stack_started(self.sink_id)
 
     def _on_stack_stopped(self, sender, object, iface, signal, params):
-        self.on_stack_started(self.sink_id)
+        self.on_stack_stopped(self.sink_id)
 
     def _get_param(self, dic, key, attribute):
         try:
@@ -495,7 +496,7 @@ class SinkManager:
     "Helper class to manage the Sink list"
 
     def __init__(
-        self, bus, on_new_sink_cb, on_sink_removal_cb, on_stack_started, logger=None
+        self, bus, on_new_sink_cb, on_sink_removal_cb, on_stack_started, on_stack_stopped, logger=None
     ):
 
         self.logger = logger or logging.getLogger(__name__)
@@ -507,6 +508,7 @@ class SinkManager:
         self.add_cb = None
         self.rm_cb = None
         self.stack_started_cb = on_stack_started
+        self.stack_stopped_cb = on_stack_stopped
 
         bus_monitor = self.bus.get("org.freedesktop.DBus")
 
@@ -544,6 +546,7 @@ class SinkManager:
             sink_id=short_name,
             unique_name=unique_name,
             on_stack_started=self.stack_started_cb,
+            on_stack_stopped=self.stack_stopped_cb,
             logger=self.logger,
         )
 
