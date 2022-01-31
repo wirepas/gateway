@@ -13,12 +13,13 @@ DBUS_SINK_PREFIX = "com.wirepas.sink."
 
 
 class Sink:
-    def __init__(self, bus, proxy, sink_id, unique_name, on_stack_started, logger=None):
+    def __init__(self, bus, proxy, sink_id, unique_name, on_stack_started, on_stack_stopped, logger=None):
 
         self.proxy = proxy
         self.sink_id = sink_id
         self.network_address = None
         self.on_stack_started = on_stack_started
+        self.on_stack_stopped = on_stack_stopped
         self.bus = bus
         self.unique_name = unique_name
         self.on_started_handle = None
@@ -38,6 +39,16 @@ class Sink:
     def unregister_from_stack_started(self):
         if self.on_started_handle is not None:
             self.on_started_handle.unsubscribe()
+
+    def register_for_stack_stopped(self):
+        # Use the subscribe directly to be able to specify the sender
+        self.on_started_handle = self.bus.subscribe(
+            signal="StackStopped",
+            object="/com/wirepas/sink",
+            iface="com.wirepas.sink.config1",
+            sender=self.unique_name,
+            signal_fired=self._on_stack_stopped,
+        )
 
     def get_network_address(self, force=False):
         if self.network_address is None or force:
@@ -91,6 +102,9 @@ class Sink:
         self.get_network_address(True)
 
         self.on_stack_started(self.sink_id)
+
+    def _on_stack_stopped(self, sender, object, iface, signal, params):
+        self.on_stack_stopped(self.sink_id)
 
     def _get_param(self, dic, key, attribute):
         try:
@@ -482,7 +496,7 @@ class SinkManager:
     "Helper class to manage the Sink list"
 
     def __init__(
-        self, bus, on_new_sink_cb, on_sink_removal_cb, on_stack_started, logger=None
+        self, bus, on_new_sink_cb, on_sink_removal_cb, on_stack_started, on_stack_stopped, logger=None
     ):
 
         self.logger = logger or logging.getLogger(__name__)
@@ -494,6 +508,7 @@ class SinkManager:
         self.add_cb = None
         self.rm_cb = None
         self.stack_started_cb = on_stack_started
+        self.stack_stopped_cb = on_stack_stopped
 
         bus_monitor = self.bus.get("org.freedesktop.DBus")
 
@@ -531,10 +546,12 @@ class SinkManager:
             sink_id=short_name,
             unique_name=unique_name,
             on_stack_started=self.stack_started_cb,
+            on_stack_stopped=self.stack_stopped_cb,
             logger=self.logger,
         )
 
         sink.register_for_stack_started()
+        sink.register_for_stack_stopped()
 
         self.sinks[short_name] = sink
 
