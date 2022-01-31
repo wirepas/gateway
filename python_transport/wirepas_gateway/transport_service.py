@@ -362,12 +362,12 @@ class TransportService(BusClient):
     def on_stack_started(self, name):
         self.logger.debug("Sink started: %s", name)
         # Generate a setconfig answer with req_id of 0
-        self._generate_config_changed_answer(name)
+        self. _send_asynchronous_set_config_response(name)
 
     def on_stack_stopped(self, name):
         self.logger.debug("Sink stopped: %s", name)
         # Generate a setconfig answer with req_id of 0
-        self._generate_config_changed_answer(name)
+        self. _send_asynchronous_set_config_response(name)
 
     def _send_asynchronous_set_config_response(self, name):
         sink = self.sink_manager.get_sink(name)
