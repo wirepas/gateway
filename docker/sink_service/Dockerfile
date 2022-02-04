@@ -30,7 +30,7 @@ ARG GATEWAY_BUILD_SHA1=unset
 RUN adduser --disabled-password wirepas
 RUN addgroup wirepas dialout
 
-RUN apk add --no-cache libelogind coreutils
+RUN apk add --no-cache libelogind coreutils tzdata
 
 # Copy the built service and its dependencies from builder
 COPY --from=builder /home/wirepas/sink_service/build/sinkService /home/wirepas/
