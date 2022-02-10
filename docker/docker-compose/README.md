@@ -3,7 +3,7 @@
 docker-compose is a tool for defining and running multi-container Docker applications.
 With the provided docker-compose.yml file, you can start a Wirepas gateway.
 
-## Customize [the template file](docker-compose.yml)
+## Customize the template file
 
 [The template file](docker-compose.yml) requires some configuration to fit your environement.
 
@@ -49,7 +49,7 @@ environment:
 ### Multiple sinks
 
 If your gateway has multiple sinks attached, please duplicate the sink-service block and rename it.
-The container_name must be renamed too and it must be customized as explained in [preicous_chapter](#sink_service).
+The container_name must be renamed too and it must be customized as explained in [previous_chapter](#sink_service).
 Each sink must have a different sink id (WM_GW_SINK_ID).
 
 ### Multiple transports

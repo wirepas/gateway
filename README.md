@@ -231,7 +231,7 @@ wm-node-config --help
 ## Option 2: Docker installation
 
 In order to ease the installation in a Docker environment, please see the instruction in [docker folder](docker).
-The Docker files under [container folder](conainer) are still used for our internal CI but must no be used for other purposes.
+The Docker files under [container folder](container) are still used for our internal CI but must no be used for other purposes.
 They will be removed at some point.
 
 ## Contributing
