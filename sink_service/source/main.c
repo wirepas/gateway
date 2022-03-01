@@ -31,6 +31,8 @@ static char * port_name = "/dev/ttyACM0";
 #define BASE_SERVICE_NAME "com.wirepas.sink.sink0"
 /* max poll fail duration undefined */
 #define UNDEFINED_MAX_POLL_FAIL_DURATION 0xffffffff
+/* max default delay to keep incomplete fragmented packet inside our buffers */
+#define DEFAULT_FRAGMENT_MAX_DURATION_S    900
 
 /* Dbus bus instance*/
 static sd_bus * m_bus = NULL;
@@ -70,11 +72,14 @@ static bool get_service_name(char service_name[MAX_SIZE_SERVICE_NAME], unsigned 
  *          Pointer where to store sink_id value (if any)
  * \param   max_poll_fail_duration
  *          Pointer where to store max_poll_fail_duration value (if any)
+ * \param   fragment_max_duration_s
+ *          Pointer where to store fragment_max_duration_s value (if any)
  */
 static void get_env_parameters(unsigned long * baudrate,
                                char ** port_name,
                                unsigned int * sink_id,
-                               unsigned int * max_poll_fail_duration)
+                               unsigned int * max_poll_fail_duration,
+                               unsigned int * fragment_max_duration_s)
 {
     char * ptr;
 
@@ -99,6 +104,11 @@ static void get_env_parameters(unsigned long * baudrate,
     {
         *max_poll_fail_duration = strtoul(ptr, NULL, 0);
         LOGI("WM_GW_SINK_MAX_POLL_FAIL_DURATION: %lu\n", *max_poll_fail_duration);
+    }
+    if ((ptr = getenv("WM_GW_SINK_MAX_FRAGMENT_DURATION_S")) != NULL)
+    {
+        *fragment_max_duration_s = strtoul(ptr, NULL, 0);
+        LOGI("WM_GW_SINK_MAX_FRAGMENT_DURATION_S: %lu\n", *fragment_max_duration_s);
     }
 }
 
@@ -136,12 +146,14 @@ int main(int argc, char * argv[])
     int c;
     unsigned int sink_id = 0;
     unsigned int max_poll_fail_duration = UNDEFINED_MAX_POLL_FAIL_DURATION;
+    unsigned int fragment_max_duration_s = DEFAULT_FRAGMENT_MAX_DURATION_S;
 
     /* Acquires environment parameters */
-    get_env_parameters(&baudrate, &port_name, &sink_id, &max_poll_fail_duration);
+    get_env_parameters(&baudrate, &port_name, &sink_id, &max_poll_fail_duration,
+                       &fragment_max_duration_s);
 
     /* Parse command line arguments - take precedence over environmental ones */
-    while ((c = getopt(argc, argv, "b:p:i:d:")) != -1)
+    while ((c = getopt(argc, argv, "b:p:i:d:f:")) != -1)
     {
         switch (c)
         {
@@ -161,10 +173,13 @@ int main(int argc, char * argv[])
             case 'd':
                 max_poll_fail_duration = strtoul(optarg, NULL, 0);
                 break;
+            case 'f':
+                fragment_max_duration_s = strtoul(optarg, NULL, 0);
+                break;
             case '?':
             default:
                 LOGE("Error in argument parsing\n");
-                LOGE("Parameters are: -b <baudrate> -p <port> -i <sink_id>\n");
+                LOGE("Parameters are: -b <baudrate> -p <port> -i <sink_id> -f <fragment max duration>\n");
                 return EXIT_FAILURE;
         }
     }
@@ -225,6 +240,12 @@ int main(int argc, char * argv[])
             LOGE("Cannot set max poll fail duration (%d)\n", max_poll_fail_duration);
             return EXIT_FAILURE;
         }
+    }
+
+    if (WPC_set_max_fragment_duration(fragment_max_duration_s))
+    {
+        LOGE("Cannot set max fragment duration (%d)\n", fragment_max_duration_s);
+        return EXIT_FAILURE;
     }
 
     /* Connect to the user bus */
