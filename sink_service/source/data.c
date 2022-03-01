@@ -104,7 +104,7 @@ static int send_message(sd_bus_message * m, void * userdata, sd_bus_error * erro
  * \param   ... (from c-mesh api headers)
  */
 static bool onDataReceived(const uint8_t * bytes,
-                           uint8_t num_bytes,
+                           size_t num_bytes,
                            app_addr_t src_addr,
                            app_addr_t dst_addr,
                            app_qos_e qos,
