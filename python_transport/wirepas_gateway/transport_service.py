@@ -290,6 +290,15 @@ class TransportService(BusClient):
             topic, self._on_otap_set_target_scratchpad_request_received
         )
 
+        # Register ourself to our status in case someone else (by mistake)
+        # update our status.
+        # It will work only if we are allowed to register for event topic
+        # at broker level
+        topic = TopicGenerator.make_status_topic(self.gw_id)
+        self.mqtt_wrapper.subscribe(
+            topic, self._on_own_status_received
+        )
+
         self._set_status()
 
         self.logger.info("MQTT connected!")
@@ -503,6 +512,23 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_get_configs_response_topic(self.gw_id)
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
+    @deferred_thread
+    def _on_own_status_received(self, client, userdata, message):
+        try:
+            if message.payload.__len__() > 0:
+                request = wmm.StatusEvent.from_payload(message.payload)
+                if request.state == wmm.GatewayState.ONLINE:
+                    # Everything is fine, this is our state
+                    return
+        except wmm.GatewayAPIParsingException:
+            pass
+
+        # If we are here, something happened to our status.
+        # Either not online or malformed or empty
+        self.logger.error("Gateway info request is wrong or updated")
+        # Set our status back
+        self._set_status()
 
     def _on_get_gateway_info_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
