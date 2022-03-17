@@ -1,3 +1,0 @@
-#!/bin/bash
-
-echo "The purpose of the build is to sync the README on dockerhub, hence the push is disabled"
