@@ -1,0 +1,102 @@
+version: '3.7'
+
+volumes:
+    dbus-volume:
+
+services:
+  dbus-service:
+    image: wirepas/gateway_dbus_service:${GATEWAY_TAG:-latest}
+    container_name: dbus
+    restart: always
+    volumes:
+      - type: volume
+        source: dbus-volume
+        target: /var/run/dbus
+    logging:
+      driver: journald
+
+
+  transport-service:
+    image: wirepas/gateway_transport_service:${GATEWAY_TAG:-latest}
+    container_name: transport-service
+    # Network mode is host for transport to communicate with local brocker
+    # if setup with localhost address
+    network_mode: host
+    environment:
+      PYTHONUNBUFFERED: 1
+      # To be modified
+      WM_GW_ID: ${WM_GW_ID}
+      WM_GW_MODEL: WirepasRpiGwDocker
+      WM_GW_VERSION: ${GATEWAY_TAG}
+      WM_SERVICES_MQTT_HOSTNAME: ${WM_SERVICES_MQTT_HOSTNAME}
+      WM_SERVICES_MQTT_PORT: ${WM_SERVICES_MQTT_PORT}
+      WM_SERVICES_MQTT_USERNAME: ${WM_SERVICES_MQTT_USERNAME}
+      WM_SERVICES_MQTT_PASSWORD: ${WM_SERVICES_MQTT_PASSWORD}
+      WM_SERVICES_MQTT_FORCE_UNSECURE: ${WM_SERVICES_MQTT_FORCE_UNSECURE}
+    restart: always
+    depends_on:
+      - dbus-service
+    volumes:
+      - type: volume
+        source: dbus-volume
+        target: /var/run/dbus
+    logging:
+      driver: journald
+
+
+  sink-service:
+    image: wirepas/gateway_sink_service:${GATEWAY_TAG:-latest}
+    container_name: sink-service
+    restart: always
+    depends_on:
+      - dbus-service
+    devices:
+      - ${WM_GW_SINK_UART_PORT}:/dev/mysink
+    environment:
+      WM_GW_SINK_BAUDRATE: ${WM_GW_SINK_BITRATE}
+      WM_GW_SINK_ID: 1
+      WM_GW_SINK_UART_PORT: /dev/mysink
+    volumes:
+      - type: volume
+        source: dbus-volume
+        target: /var/run/dbus
+    logging:
+      driver: journald
+
+  vpn-service:
+    image: wirepas/gateway_openvpn_service:${GATEWAY_TAG:-latest}
+    container_name: vpn-service
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+      - net.ipv6.conf.all.forwarding=1
+      - net.ipv6.conf.all.proxy_ndp=1
+      - net.ipv6.conf.all.accept_ra=2
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - ${WM_GW_OPENVPN_CONFIG}:/home/wirepas/openvpn_config
+    working_dir: /home/wirepas/openvpn_config
+    logging:
+      driver: journald
+
+  ipv6-service:
+    image: 'wirepas/gateway_ipv6_service:${GATEWAY_TAG:-latest}'
+    container_name: ipv6-service
+    restart: always
+    environment:
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - dbus-service
+      - vpn-service
+    cap_add:
+      - NET_ADMIN
+    network_mode: 'service:vpn-service'
+    devices:
+       - '/dev/net/tun:/dev/net/tun'
+    volumes:
+      - type: volume
+        source: dbus-volume
+        target: /var/run/dbus

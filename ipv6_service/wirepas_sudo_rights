@@ -1,0 +1,3 @@
+# Give sudo access to ip command to wirepas user without password
+# This file must be copied to /etc/sudoers.d/
+wirepas ALL = (ALL) NOPASSWD: /sbin/ip,/usr/sbin/rdisc6,/bin/ping
