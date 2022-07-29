@@ -1,0 +1,69 @@
+name: build openvpn service docker
+
+on:
+  push:
+    branches:
+      # To be changed to master later
+      - ipv6
+    paths:
+      - 'docker/ipv6_service/Dockerfile-openVPN'
+      - '.github/workflows/docker_openvpn_service.yml'
+
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to push on docker hub'
+        required: true
+
+  release:
+    types: [created]
+
+env:
+  IMAGE_NAME: 'wirepas/gateway_openvpn_service'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Set tag for push
+        if: github.event_name == 'push'
+        run: echo "TAG1=$IMAGE_NAME:edge" >> $GITHUB_ENV
+
+      - name: Set tag for manually triggered
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "TAG1=$IMAGE_NAME:${{ github.event.inputs.tag }}" >> $GITHUB_ENV
+
+      - name: Set tag for release version
+        if: github.event_name == 'release'
+        run: echo "TAG1=$IMAGE_NAME:${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+
+      - name: Set additionnal latest tag also for official release
+        if: github.event_name == 'release' && !contains(github.event.release.tag_name, 'rc')
+        run: echo "TAG2=$IMAGE_NAME:latest" >> $GITHUB_ENV
+
+      - name: Login to docker hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: docker/ipv6_service/Dockerfile-openVPN
+          platforms: linux/amd64, linux/arm64, linux/arm/v7, linux/arm/v6
+          push: true
+          build-args: GATEWAY_BUILD_SHA1= ${{ github.sha }}
+          tags: |
+            ${{ env.TAG1 }}
+            ${{ env.TAG2 }}
