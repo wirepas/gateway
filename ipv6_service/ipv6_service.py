@@ -250,14 +250,6 @@ class IPV6Transport(BusClient):
                 len(data))
             )
 
-            try:
-                src_addr = Ipv6Add(packet[8:24])
-                dst_addr = Ipv6Add(packet[24:40])
-            except ValueError:
-                print("Cannot parse ipv6 address")
-
-            print("ICMPV6: " + str(src_addr) + " => " + str(dst_addr))
-
             # Inject it as is to tun interface
             os.write(self.tun.fileno(), data)
         else:
