@@ -100,3 +100,5 @@ services:
       - type: volume
         source: dbus-volume
         target: /var/run/dbus
+    logging:
+      driver: journald

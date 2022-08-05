@@ -3,5 +3,5 @@ FROM alpine:3.16
 
 RUN apk add --no-cache openvpn
 
-CMD ["openvpn client.conf"]
+CMD ["openvpn", "client.conf"]
 
