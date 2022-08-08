@@ -56,7 +56,7 @@ ENV PATH="/home/wirepas/.local/bin:${PATH}"
 # Copy the built wheel and its dependencies from builder
 COPY --from=builder /home/wirepas/.local /home/wirepas/.local
 
-COPY ./ipv6_service/ipv6_service.py /home/wirepas/ipv6/
+COPY ./ipv6_service/*.py /home/wirepas/ipv6/
 
 CMD ["python3", "/home/wirepas/ipv6/ipv6_service.py"]
 
