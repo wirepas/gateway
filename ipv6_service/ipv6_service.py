@@ -10,6 +10,7 @@ from datetime import datetime
 from threading import Thread
 
 from wirepas_gateway.dbus.dbus_client import BusClient
+from wirepas_tlv_app_config import WirepasTLVAppConfig
 
 WIREPAS_IPV6_EP = 66
 
@@ -42,6 +43,14 @@ class Ipv6Add:
             raise ValueError("Prefix len is smaller than 96 to determine sink address")
 
         return struct.unpack(">I", self._add[8:12])[0]
+
+    @property
+    def prefix(self):
+        if self._prefix_len & 7 != 0:
+            raise ValueError("Prefix len is not a multiple of 8")
+
+        return self._add[0:self._prefix_len>>3]
+
 
     @property
     def add(self):
@@ -193,6 +202,26 @@ class IPV6Transport(BusClient):
 
         # Add a route for this sink
         self.add_route_to_tun_interface(sink_add)
+
+        # Add network prefix to app_config tlv with id 66
+        try:
+            current_app_config = sink_config["app_config_data"]
+            app_config = WirepasTLVAppConfig.from_value(current_app_config)
+        except KeyError:
+            app_config = WirepasTLVAppConfig()
+        except ValueError:
+            #  Not tlv format, errase it
+            print("Current app config is not with TLV format, erase it!")
+            app_config = WirepasTLVAppConfig()
+
+        app_config.add_entry(66, self.nw_prefix.prefix)
+
+        new_config = {}
+        new_config["app_config_data"] = app_config.value
+        new_config["app_config_seq"] = 0
+        new_config["app_config_diag"] = sink_config["app_config_diag"]
+
+        sink.write_config(new_config)
 
         self.sink_dic[name] = (sink_add, network_add, neigh_proxy)
 
