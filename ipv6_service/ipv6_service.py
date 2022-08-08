@@ -162,6 +162,10 @@ class IPV6Transport(BusClient):
 
         print("Network prefix is: %s " % self.nw_prefix)
 
+        # Add a default route for network to tap interface
+        IPV6Transport._execute_cmd("sudo ip -6 route add %s dev %s" % (self.nw_prefix, self.ext_interface),
+                                    True)
+
         # Initialize super class
         super().__init__()
         self.busThread = Thread(target=self.run)
