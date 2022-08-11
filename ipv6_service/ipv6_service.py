@@ -7,8 +7,9 @@ import subprocess
 import socket
 import select
 import logging
+import struct
+import time
 
-from datetime import datetime
 from threading import Thread
 
 from wirepas_gateway.dbus.dbus_client import BusClient
@@ -154,6 +155,8 @@ class IPV6Transport(BusClient):
     class IPV6Sink(Thread):
 
         UDP_INTERFACE_PORT = 666
+
+        APP_CONFIG_TLV_TYPE_PREFIX = 66
 
         """Inner class to represent a sink at ipv6 level"""
         def __init__(self, sink, nw_prefix, ext_interface_name):
@@ -307,7 +310,16 @@ class IPV6Transport(BusClient):
                 logging.info("Current app config is not with TLV format, erase it!")
                 app_config = WirepasTLVAppConfig()
 
-            app_config.add_entry(66, self.nw_prefix.prefix)
+            sequence = 0
+            try:
+                current = app_config.entries[self.APP_CONFIG_TLV_TYPE_PREFIX]
+                sequence = (current[0] + 1) % 256
+            except KeyError:
+                # Not set already, no need to update sequence
+                pass
+
+            app_config.add_entry(self.APP_CONFIG_TLV_TYPE_PREFIX,
+                                 struct.pack("!B", sequence) + self.nw_prefix.prefix)
 
             new_config = {}
             new_config["app_config_data"] = app_config.value
@@ -453,9 +465,19 @@ class IPV6Transport(BusClient):
     def _get_external_prefix(self):
         # For now only get the first prefix from the given interface and consider
         # it as our network prefix
-        # TODO add retry waiting for tap0 to be created by VPN and also for route to be propagated
-        out = IPV6Transport._execute_cmd(
-            "sudo rdisc6 -q -1 %s" % self.ext_interface, True)
+
+        # Try it 5 time with 1 second delay until interface is ready
+        attempts = 5
+        while attempts:
+            try:
+                out = IPV6Transport._execute_cmd(
+                    "sudo rdisc6 -q -1 %s" % self.ext_interface, True)
+                break
+            except RuntimeError as e:
+                time.sleep(1)
+                attempts = attempts - 1
+                if attempts == 0:
+                    raise e
 
         return Ipv6Add.from_srting(out)
 
