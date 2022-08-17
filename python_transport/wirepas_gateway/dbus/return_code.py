@@ -58,8 +58,7 @@ class ReturnCode:
             # APP_RES_NOT_A_SINK, Stack is not a sink
             (20, GatewayResultCode.GW_RES_INTERNAL_ERROR),
             # APP_RES_OUT_OF_MEMORY, Out of memory
-            # TODO Change error code to GW_RES_SINK_OUT_OF_MEMORY in next release
-            (21, GatewayResultCode.GW_RES_INTERNAL_ERROR),
+            (21, GatewayResultCode.GW_RES_SINK_OUT_OF_MEMORY),
             # APP_RES_INVALID_DIAG_INTERVAL, Invalid diag interval
             (22, GatewayResultCode.GW_RES_INVALID_DIAG_INTERVAL),
             # APP_RES_INVALID_SEQ,  Invalid sequence number
