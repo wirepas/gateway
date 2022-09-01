@@ -352,8 +352,9 @@ class IPV6Transport(BusClient):
 
         logging.info("Network prefix is: %s " % self.nw_prefix)
 
-        # Add a default route for network to tap interface
-        IPV6Transport._execute_cmd("sudo ip -6 route add %s dev %s" % (self.nw_prefix, self.ext_interface),
+        # Add a default route for network to external interface
+        # Use replace instead of add in case it still exist
+        IPV6Transport._execute_cmd("sudo ip -6 route replace %s dev %s" % (self.nw_prefix, self.ext_interface),
                                     True)
 
         # Initialize super class
