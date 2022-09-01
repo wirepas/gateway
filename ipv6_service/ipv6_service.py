@@ -193,6 +193,9 @@ class IPV6Transport(BusClient):
 
             self._ipv6_sink_prefix = Ipv6Add.from_prefix_and_sink_add(self.nw_prefix, self.wp_address)
 
+            # Add broadcast address to list of neighbor proxy
+            self.add_ndp_entry(0xffffffff)
+
             # Create socket pair to wakeup the thread waiting on data
             self._sp_w, self._sp_r = socket.socketpair()
 
