@@ -279,7 +279,7 @@ class IPV6Transport(BusClient):
                 return
 
             add = Ipv6Add.from_prefix_sink_add_and_sink_node(self.nw_prefix, self.wp_address, node_address)
-            IPV6Transport._execute_cmd("sudo ip neigh add proxy %s dev %s extern_learn" % (add, self._ext_interface),
+            IPV6Transport._execute_cmd("sudo ip neigh add nud permanent proxy %s dev %s extern_learn" % (add, self._ext_interface),
                                         True)
 
             self._neigh_proxy.add(node_address)
