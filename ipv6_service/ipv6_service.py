@@ -444,13 +444,12 @@ class IPV6Transport(BusClient):
                 len(data))
             )
             #logging.info(data.hex(" ", 2))
+            # Update ndproxy based on traffic
+            self._add_ndp_entry(sink_id, src)
 
             # Inject it as is to tun interface
             os.write(self.tun.fileno(), data)
 
-        # Update ndproxy based on traffic
-        # Maybe should be done only for ipv6 traffic, to not add non ipv6 node
-        # self._add_ndp_entry(sink_id, src)
 
     @classmethod
     def _execute_cmd(cls, cmd, raise_exception=False):
