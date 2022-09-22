@@ -235,7 +235,7 @@ class ParserHelper:
             action="store",
             type=self.str2none,
             help=(
-                "A string path to the Certificate "
+                "Path to the Certificate "
                 "Authority certificate files that "
                 "are to be treated as trusted by "
                 "this client."
@@ -247,7 +247,7 @@ class ParserHelper:
             default=os.environ.get("WM_SERVICES_MQTT_CLIENT_CRT", None),
             action="store",
             type=self.str2none,
-            help=("Strings pointing to the PEM encoded client certificate."),
+            help=("Path to the PEM encoded client certificate."),
         )
 
         self.mqtt.add_argument(
@@ -256,7 +256,7 @@ class ParserHelper:
             action="store",
             type=self.str2none,
             help=(
-                "Strings pointing to the PEM "
+                "Path to the PEM "
                 "encoded client private keys "
                 "respectively."
             ),
