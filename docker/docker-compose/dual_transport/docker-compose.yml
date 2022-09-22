@@ -31,7 +31,6 @@ services:
       WM_SERVICES_MQTT_USERNAME: 
       WM_SERVICES_MQTT_PASSWORD: 
       WM_SERVICES_MQTT_FORCE_UNSECURE: 
-      WM_DEBUG_LEVEL: debug
     restart: always
     depends_on:
       - dbus-service
@@ -57,7 +56,6 @@ services:
       WM_SERVICES_MQTT_USERNAME:
       WM_SERVICES_MQTT_PASSWORD:
       WM_SERVICES_MQTT_FORCE_UNSECURE:
-      WM_DEBUG_LEVEL: debug
     restart: always
     depends_on:
       - dbus-service

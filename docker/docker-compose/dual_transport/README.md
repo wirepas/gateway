@@ -2,7 +2,7 @@
 
 The goal of this example is to setup a gateway which has a single sink and two transport services. 
 
-This configuration covers the use case whereby a customer would wish to fork its application payload to a dedicated backend for processing whilst still routing the diagnostic packets to a Wirepas backend. 
+This configuration covers the use case whereby you would wish to fork its application payload to a dedicated backend for processing whilst still routing the diagnostic packets to a Wirepas backend. 
 
 The gateway has the following functionality: 
 - Route data application endpoint range to a broker

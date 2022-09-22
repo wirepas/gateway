@@ -69,12 +69,12 @@ The list of all possible parameters to configure the transport service are given
 | WM_GW_BUFFERING_MAX_BUFFERED_PACKETS | Maximum number of messages to buffer before rising sink cost (0 will disable feature) | 0 | Any integer |
 | WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH | Maximum time to wait in seconds without any successful publish with packet queued before rising sink cost (0 will disable feature) | 0 | Any integer |
 | WM_GW_BUFFERING_MINIMAL_SINK_COST | Minimal sink cost for a sink on this gateway. Can be used to minimize traffic on a gateway, but it will reduce maximum number of hops for this gateway | 0 | Any integer |
-| WM_SERVICES_DEBUG_INCR_EVENT_ID | When true the data received event id will be incremental starting at 0 when service starts. Otherwise it will be a random 64 bits id | false | "yes", "true", "t", "y",  "1","no", "false", "f", "n", "0", "" |
 | WM_GW_ID | Id of the gateway. It must be unique on same broker | None | Any string |
 | WM_GW_MODEL | Model name of the gateway | None | Any string | 
 | WM_GW_VERSION | Version of the gateway | None | Any string |
 | WM_GW_IGNORED_ENDPOINTS_FILTER | Destination endpoints list to ignore (not published) | None | List of endpoints (i.e. [1,2,3]), a range of endpoints (i.e. [1-3]), or a combination of both |
 | WM_GW_WHITENED_ENDPOINTS_FILTER | Destination endpoints list to whiten (no payload content, only size) | None | List of endpoints (i.e. [1,2,3]), a range of endpoints (i.e. [1-3]), or a combination of both |
+| WM_DEBUG_LEVEL | Configure log level for the transport service. Please be aware that levels such as debug should not be used in a production system | info | debug, info, critical, fatal, error, warning |
 
 
 Any of the parameters above can be added in the template file. For example: 
