@@ -16,28 +16,7 @@ example on how to validate your change.
 
 ## Submitting changes
 
-Before preparing your commit, be sure to install the developers tools.
-The developers tools consist of a set of style configuration files and a
-[pre-commit](https://pre-commit.com/) configuration file
-([.pre-commit-config.yaml](https://github.com/wirepas/manifest/blob/master/.pre-commit-config.yaml)).
 
-Files are stored in the [manifest repository](https://github.com/wirepas/manifest).
-For your convenience, execute
-
-```bash
-    .ci/install-devtools.sh
-```
-
-to pull down all the necessary style and configuration files.
-The script won't touch your environment, thus you will still need to
-install other host and language requirements.
-
-Python dependencies are specified in [dev-requirements.txt](https://github.com/wirepas/manifest/blob/master/dev-requirements.txt)
-and installable with pip
-
-```bash
-    pip install dev-requirements.txt
-```
 
 On your pull request, we would like you to use atomic commits with a clear
 log message such as:
