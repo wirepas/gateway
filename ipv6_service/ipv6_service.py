@@ -7,8 +7,8 @@ import subprocess
 import socket
 import select
 import logging
-import struct
 import time
+import argparse
 
 from threading import Thread
 
@@ -26,7 +26,7 @@ class Ipv6Add:
         - 32 bits for node address 
     """
     def __init__(self, add_bytes, prefix_len=128):
-        if add_bytes.__len__() != 16:
+        if add_bytes.__len__() < (prefix_len / 8):
             raise ValueError("Not a valid IPV6 address")
         self._add = add_bytes
         self._prefix_len = prefix_len
@@ -147,197 +147,299 @@ class Ipv6Add:
             return self._add.hex()
 
 
+class IPV6NetworkConfig():
+
+    VERSION = 0
+    """Class to represent network ipv6 config
+       Not all flags supported yet"""
+    def __init__(self, nonce=0, nw_prefix=None, off_mesh_service=None):
+        self.nonce = nonce
+        self.nw_prefix = nw_prefix
+        self.off_mesh_service = off_mesh_service
+
+    @classmethod
+    def from_bytes(cls, bytes):
+        version = (bytes[0] & 0xf0) >> 4
+        nonce = bytes[0] & 0xf
+        nw_prefix = None
+        off_mesh_service = None
+
+        config_size = len(bytes)
+
+        if version != IPV6NetworkConfig.VERSION:
+            logging.error("Unknown version for IPV6 Network config")
+            raise ValueError("Unknown version for IPV6 config")
+
+        index = 1
+        # Iterate on entries
+        while index < config_size:
+            entry = bytes[index]
+            s = (entry & 0x80) >> 7
+            # No need to parse more for now
+
+            if s == 0:
+                # It is a context and at least 9 bytes are required
+                if (index + 9) > config_size:
+                    logging.error("IPV6 config, entry too small for prefix")
+                    raise ValueError("entry too small for prefix")
+
+                if nw_prefix != None:
+                    logging.error("Multiple prefix defined, not supported yet")
+                else:
+                    # It is a context (no need to check more) of 8 bytes
+                    nw_prefix = Ipv6Add(bytes[index + 1:index + 1 + 8 ], prefix_len=64)
+
+                index += 9
+            else:
+                # It is a target address and at least 17 bytes are required (No SID yet)
+                if (index + 17) > config_size:
+                    logging.error("IPV6 config, entry too small for off-mesh service")
+                    raise ValueError("entry too small for for off-mesh service")
+
+                if off_mesh_service != None:
+                    logging.error("Multiple off-mesh addresses, not supported yet")
+                else:
+                    # SID shouldn't be set for now
+                    off_mesh_service = Ipv6Add(bytes[index + 1:index + 1 + 16 ])
+
+                index += 17
+
+        return IPV6NetworkConfig(nonce, nw_prefix, off_mesh_service)
+
+
+    def to_bytes(self):
+        config = bytearray()
+        # Create header
+        header = (self.VERSION << 4) + (self.nonce)
+        config.append(header)
+
+        # Add prefix first if set
+        if self.nw_prefix is not None:
+            # S = 0, C = 0, CC = 0
+            config.append(0)
+            config.extend(self.nw_prefix.prefix)
+
+        # Add off-mesh service if set
+        if self.off_mesh_service is not None:
+            # S = 1, C = 0, CC = 0
+            config.append(0x80)
+            config.extend(self.off_mesh_service.add)
+        
+        return config
+
+    def increment_nonce(self):
+        self.nonce = (self.nonce + 1) % 16
+        return self
+
+
+class IPV6Sink(Thread):
+
+    UDP_INTERFACE_PORT = 6666
+
+    APP_CONFIG_TLV_TYPE_PREFIX = 66
+
+    """Class to represent a sink at ipv6 level"""
+    def __init__(self, sink, nw_prefix, ext_interface_name, off_mesh_service = None):
+
+        Thread.__init__(self)
+        # Daemonize thread to exit with full process
+        self.daemon = True
+        self.running = False
+
+        self._sink = sink
+
+        self.nw_prefix = nw_prefix
+
+        self._ext_interface = ext_interface_name
+
+        self.off_mesh_service = off_mesh_service
+
+        sink_config = self._sink.read_config()
+        if not sink_config["started"]:
+            # Do not add sink that are not started, will be done later
+            logging.warning("Sink not started, do not add it yet")
+            raise RuntimeError("Stack not started yet")
+
+        # Create a set to store already added neighbor proxy entry
+        # to avoid too many call to "ip"
+        self._neigh_proxy = set()
+
+        self._wp_address = sink_config["node_address"]
+
+        # Network address not needed at the moment
+        #self.network_add = sink.get_network_address()
+
+        self._update_ipv6_config_to_app_config(sink_config)
+
+        self._ipv6_interface_address = Ipv6Add.from_prefix_sink_add_and_sink_node(self.nw_prefix, self.wp_address, 0)
+
+        self._ipv6_sink_prefix = Ipv6Add.from_prefix_and_sink_add(self.nw_prefix, self.wp_address)
+
+        # Add broadcast address to list of neighbor proxy
+        self.add_ndp_entry(0xffffffff)
+
+        # Create socket pair to wakeup the thread waiting on data
+        self._sp_w, self._sp_r = socket.socketpair()
+
+
+    @property
+    def wp_address(self):
+        return self._wp_address
+
+    @property
+    def ipv6_interface_address(self):
+        return self._ipv6_interface_address
+
+    @property
+    def ipv6_sink_prefix(self):
+        return self._ipv6_sink_prefix
+
+    def send_data(self, node_address, data):
+        self._sink.send_data(
+                    node_address,
+                    WIREPAS_IPV6_EP,
+                    WIREPAS_IPV6_EP,
+                    1,
+                    0,
+                    data,
+                    False,
+                    0)
+
+    def run(self):
+        # Open UDP socket
+        sock = socket.socket(socket.AF_INET6,
+                        socket.SOCK_DGRAM)
+
+        # Set socket to non blocking as we are using select
+        sock.setblocking(0)
+
+        # Bind it to ourself
+        sock.bind(("%s" % self._ipv6_interface_address, self.UDP_INTERFACE_PORT))
+
+        logging.debug("Waiting for packet")
+        self.running = True
+        while self.running:
+            try:
+                r, _, _ = select.select([sock, self._sp_r], [], [])
+            except socket.error:
+                continue
+
+            if self._sp_r in r:
+                # We were wakeuped from other thread, iterate again to check running state
+                _ = self._sp_r.recv(1)
+                continue
+
+            if sock in r:
+                try:
+                    data, addr = sock.recvfrom(2048)
+                    self.add_ndp_entry(Ipv6Add.from_srting(addr[0]).wirepas_node_add)
+                    logging.debug(data)
+                except socket.error:
+                    logging.error("Cannot read socket even if select said that it was ready")
+
+        sock.close()
+        logging.info("Thread exited")
+
+
+    def stop(self):
+        """
+        Stoping the thread witing on own socket
+        """
+        self.running = False
+
+        logging.info("Stopping Thread")
+
+        # Waking up the thread w
+        self._sp_w.send(b"x")
+
+        self.join()
+
+        # make it a list to avoid size change while iteration
+        for neigh in list(self._neigh_proxy):
+            self.remove_ndp_entry(neigh)
+
+    def add_ndp_entry(self, node_address):
+        if node_address in self._neigh_proxy:
+            # Already in neighbor proxy cache
+            return
+
+        add = Ipv6Add.from_prefix_sink_add_and_sink_node(self.nw_prefix, self.wp_address, node_address)
+        IPV6Transport._execute_cmd("sudo ip neigh add nud permanent proxy %s dev %s extern_learn" % (add, self._ext_interface),
+                                    True)
+
+        self._neigh_proxy.add(node_address)
+
+
+    def remove_ndp_entry(self, node_address):
+        if node_address not in self._neigh_proxy:
+            logging.error("Cannot remove proxy neighbor that was not previously added %x" % node_address)
+            return
+
+        add = Ipv6Add.from_prefix_sink_add_and_sink_node(self.nw_prefix, self.wp_address, node_address)
+        IPV6Transport._execute_cmd("sudo ip neigh del proxy %s dev %s" % (add, self._ext_interface),
+                                    True)
+
+        self._neigh_proxy.discard(node_address)
+
+
+    def _update_ipv6_config_to_app_config(self, sink_config=None):
+        if sink_config is None:
+            sink_config = self._sink.read_config()
+
+        new_config = None
+        # Add network prefix to app_config tlv with id 66
+        try:
+            current_app_config = sink_config["app_config_data"]
+            app_config = WirepasTLVAppConfig.from_value(current_app_config)
+        except KeyError:
+            app_config = WirepasTLVAppConfig()
+        except ValueError:
+            #  Not tlv format, errase it
+            logging.info("Current app config is not with TLV format, erase it!")
+            app_config = WirepasTLVAppConfig()
+
+        try:
+            ipv6_config = IPV6NetworkConfig.from_bytes(app_config.entries[self.APP_CONFIG_TLV_TYPE_PREFIX])
+            # Modify nw_prefix with latest info we have
+            ipv6_config.nw_prefix = self.nw_prefix
+            # Update off_mesh service if set (keep previous one if already set)
+            if self.off_mesh_service is not None:
+                ipv6_config.off_mesh_service = self.off_mesh_service
+            # Increment nonce
+            ipv6_config.increment_nonce()
+        except (KeyError, ValueError) as e:
+            logging.info(e)
+            logging.info("Creating new ipv6 config")
+            # Not set already or with wrong fromat
+            # Create a new one
+            ipv6_config = IPV6NetworkConfig(nw_prefix=self.nw_prefix, off_mesh_service=self.off_mesh_service)
+
+        # Add back the config with modified info
+        app_config.add_entry(self.APP_CONFIG_TLV_TYPE_PREFIX,
+                             ipv6_config.to_bytes())
+
+        new_config = {}
+        new_config["app_config_data"] = app_config.value
+        # Not used anymore, can be anything
+        new_config["app_config_seq"] = 0
+        # Keep old diag value
+        new_config["app_config_diag"] = sink_config["app_config_diag"]
+
+        logging.info("Setting new app config with network prefix %s", self.nw_prefix)
+        self._sink.write_config(new_config)
+
+
 class IPV6Transport(BusClient):
     """
     IPV6 transport:
     """
 
-    class IPV6Sink(Thread):
-
-        UDP_INTERFACE_PORT = 666
-
-        APP_CONFIG_TLV_TYPE_PREFIX = 66
-
-        """Inner class to represent a sink at ipv6 level"""
-        def __init__(self, sink, nw_prefix, ext_interface_name):
-
-            Thread.__init__(self)
-            # Daemonize thread to exit with full process
-            self.daemon = True
-            self.running = False
-
-            self._sink = sink
-
-            self.nw_prefix = nw_prefix
-
-            self._ext_interface = ext_interface_name
-
-            sink_config = self._sink.read_config()
-            if not sink_config["started"]:
-                # Do not add sink that are not started, will be done later
-                logging.warning("Sink not started, do not add it yet")
-                raise RuntimeError("Stack not started yet")
-
-            # Create a set to store already added neighbor proxy entry
-            # to avoid too many call to "ip"
-            self._neigh_proxy = set()
-
-            self._wp_address = sink_config["node_address"]
-
-            # Network address not needed at the moment
-            #self.network_add = sink.get_network_address()
-
-            self._add_prefix_to_app_config(sink_config)
-
-            self._ipv6_interface_address = Ipv6Add.from_prefix_sink_add_and_sink_node(self.nw_prefix, self.wp_address, 0)
-
-            self._ipv6_sink_prefix = Ipv6Add.from_prefix_and_sink_add(self.nw_prefix, self.wp_address)
-
-            # Add broadcast address to list of neighbor proxy
-            self.add_ndp_entry(0xffffffff)
-
-            # Create socket pair to wakeup the thread waiting on data
-            self._sp_w, self._sp_r = socket.socketpair()
-
-
-        @property
-        def wp_address(self):
-            return self._wp_address
-
-        @property
-        def ipv6_interface_address(self):
-            return self._ipv6_interface_address
-
-        @property
-        def ipv6_sink_prefix(self):
-            return self._ipv6_sink_prefix
-
-        def send_data(self, node_address, data):
-            self._sink.send_data(
-                        node_address,
-                        WIREPAS_IPV6_EP,
-                        WIREPAS_IPV6_EP,
-                        1,
-                        0,
-                        data,
-                        False,
-                        0)
-
-        def run(self):
-            # Open UDP socket
-            sock = socket.socket(socket.AF_INET6,
-                            socket.SOCK_DGRAM)
-
-            # Set socket to non blocking as we are using select
-            sock.setblocking(0)
-
-            # Bind it to ourself
-            sock.bind(("%s" % self._ipv6_interface_address, self.UDP_INTERFACE_PORT))
-
-            logging.debug("Waiting for packet")
-            self.running = True
-            while self.running:
-                try:
-                    r, _, _ = select.select([sock, self._sp_r], [], [])
-                except socket.error:
-                    continue
-
-                if self._sp_r in r:
-                    # We were wakeuped from other thread, iterate again to check running state
-                    _ = self._sp_r.recv(1)
-                    continue
-
-                if sock in r:
-                    try:
-                        data, addr = sock.recvfrom(2048)
-                        self.add_ndp_entry(Ipv6Add.from_srting(addr[0]).wirepas_node_add)
-                        logging.debug(data)
-                    except socket.error:
-                        logging.error("Cannot read socket even if select said that it was ready")
-
-            sock.close()
-            logging.info("Thread exited")
-
-
-        def stop(self):
-            """
-            Stoping the thread witing on own socket
-            """
-            self.running = False
-
-            logging.info("Stopping Thread")
-
-            # Waking up the thread w
-            self._sp_w.send(b"x")
-
-            self.join()
-
-            # make it a list to avoid size change while iteration
-            for neigh in list(self._neigh_proxy):
-                self.remove_ndp_entry(neigh)
-
-        def add_ndp_entry(self, node_address):
-            if node_address in self._neigh_proxy:
-                # Already in neighbor proxy cache
-                return
-
-            add = Ipv6Add.from_prefix_sink_add_and_sink_node(self.nw_prefix, self.wp_address, node_address)
-            IPV6Transport._execute_cmd("sudo ip neigh add nud permanent proxy %s dev %s extern_learn" % (add, self._ext_interface),
-                                        True)
-
-            self._neigh_proxy.add(node_address)
-
-
-        def remove_ndp_entry(self, node_address):
-            if node_address not in self._neigh_proxy:
-                logging.error("Cannot remove proxy neighbor that was not previously added %x" % node_address)
-                return
-
-            add = Ipv6Add.from_prefix_sink_add_and_sink_node(self.nw_prefix, self.wp_address, node_address)
-            IPV6Transport._execute_cmd("sudo ip neigh del proxy %s dev %s" % (add, self._ext_interface),
-                                        True)
-
-            self._neigh_proxy.discard(node_address)
-
-
-        def _add_prefix_to_app_config(self, sink_config):
-            new_config = None
-            # Add network prefix to app_config tlv with id 66
-            try:
-                current_app_config = sink_config["app_config_data"]
-                app_config = WirepasTLVAppConfig.from_value(current_app_config)
-            except KeyError:
-                app_config = WirepasTLVAppConfig()
-            except ValueError:
-                #  Not tlv format, errase it
-                logging.info("Current app config is not with TLV format, erase it!")
-                app_config = WirepasTLVAppConfig()
-
-            sequence = 0
-            try:
-                current = app_config.entries[self.APP_CONFIG_TLV_TYPE_PREFIX]
-                sequence = (current[0] + 1) % 256
-            except KeyError:
-                # Not set already, no need to update sequence
-                pass
-
-            app_config.add_entry(self.APP_CONFIG_TLV_TYPE_PREFIX,
-                                 struct.pack("!B", sequence) + self.nw_prefix.prefix)
-
-            new_config = {}
-            new_config["app_config_data"] = app_config.value
-            new_config["app_config_seq"] = 0
-            new_config["app_config_diag"] = sink_config["app_config_diag"]
-
-            logging.info("Setting new app config with network prefix %s", self.nw_prefix)
-            self._sink.write_config(new_config)
-
-
-    def __init__(self, external_interface="tap0", wp_interface="tun_wirepas") -> None:
+    def __init__(self, external_interface="tap0", off_mesh_service=None) -> None:
 
         # Initialize local variable
         self.ext_interface = external_interface
-        self.wp_interface = wp_interface
+        self.wp_interface = "tun_wirepas"
+        self.off_mesh_service = off_mesh_service
 
         # Keep track of sink and their wirepas config
         # IPV6 routing is based on sink address and not its logical id (sink0, sink1,...)
@@ -375,7 +477,7 @@ class IPV6Transport(BusClient):
         sink = self.sink_manager.get_sink(name)
 
         try:
-            ipv6_sink = IPV6Transport.IPV6Sink(sink, self.nw_prefix, self.ext_interface)
+            ipv6_sink = IPV6Sink(sink, self.nw_prefix, self.ext_interface, self.off_mesh_service)
         except RuntimeError:
             # Not an issue, it will be added when stack is started
             return
@@ -443,7 +545,7 @@ class IPV6Transport(BusClient):
                 dst,
                 len(data))
             )
-            #logging.info(data.hex(" ", 2))
+
             # Update ndproxy based on traffic
             self._add_ndp_entry(sink_id, src)
 
@@ -469,7 +571,7 @@ class IPV6Transport(BusClient):
         # For now only get the first prefix from the given interface and consider
         # it as our network prefix
 
-        # Try it 5 time with 1 second delay until interface is ready
+        # Try it 5 times with 1 second delay until interface is ready
         attempts = 5
         while attempts:
             try:
@@ -571,11 +673,15 @@ class IPV6Transport(BusClient):
             logging.info("[%s]: %s => %s" % (next_header, src_addr, dst_addr))
             logging.debug("Sink: 0x%x Node: 0x%x" % (dst_addr.wirepas_sink_add, dst_addr.wirepas_node_add))
 
-
             # Check if destination address is for our network
             # if not dst_addr.start_with_prefix(self.network_prefix.add[0:8]):
             #    print("Not for us")
             #    continue
+
+            # Do not send multicast packet inside the network
+            if dst_addr.start_with_prefix(b'\xff\x02'):
+                logging.info("Discard multicast addresses")
+                continue
 
             # Send IPV6 packet from correct sink
             sent = False
@@ -591,10 +697,45 @@ class IPV6Transport(BusClient):
                 logging.error("No sink with id: %s", dst_addr.wirepas_sink_add)
 
 
+def str2none(value):
+    """ Ensures string to bool conversion """
+    if value == "":
+        return None
+    return value
+
 def main():
+
+    parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
+
+    parser.add_argument(
+        "--external_interface",
+        default=os.environ.get("WM_IPV6_EXTERNAL_INTERFACE", "tap0"),
+        action="store",
+        type=str2none,
+        help="Ipv6 external interface (where ipv6 prefix is advertized)",
+    )
+
+    parser.add_argument(
+        "--off_mesh_service",
+        default=os.environ.get("WM_IPV6_OFF_MESH_SERVICE", None),
+        action="store",
+        type=str2none,
+        help="Ipv6 off mesh service",
+    )
+
+    args = parser.parse_args()
     
     logging.basicConfig(format='%(levelname)s %(asctime)s %(message)s', level=logging.INFO)
-    ipv6_transport = IPV6Transport()
+
+    off_mesh_service = None
+    if args.off_mesh_service is not None:
+        try:
+            off_mesh_service = Ipv6Add.from_srting(args.off_mesh_service)
+        except ValueError:
+            logging.error("Wrong format for ipv6 off mesh service (%s)" % args.off_mesh_service)
+            exit(1)
+
+    ipv6_transport = IPV6Transport(external_interface=args.external_interface, off_mesh_service=off_mesh_service)
     # Start transport
     ipv6_transport.start()
 
