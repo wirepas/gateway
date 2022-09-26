@@ -64,7 +64,6 @@ class BusClient:
             on_new_sink_cb=self.on_sink_connected,
             on_sink_removal_cb=self.on_sink_disconnected,
             on_stack_started=self.on_stack_started,
-            on_stack_stopped=self.on_stack_stopped,
             logger=self.logger,
         )
 
@@ -198,9 +197,6 @@ class BusClient:
         pass
 
     def on_stack_started(self, name):
-        pass
-
-    def on_stack_stopped(self, name):
         pass
 
     def on_start_client(self):
