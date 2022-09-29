@@ -238,6 +238,10 @@ class IPV6Sink(Thread):
 
     APP_CONFIG_TLV_TYPE_PREFIX = 66
 
+    # Minimum time in S before adding again the same node to neighbor proxy in kernel
+    # It is an optimization to avoid executing system call too often in case of heavy traffic
+    MIN_DELAY_UPDATE_NDPROXY_S = 600
+
     """Class to represent a sink at ipv6 level"""
     def __init__(self, sink, nw_prefix, ext_interface_name, off_mesh_service = None):
 
@@ -260,9 +264,9 @@ class IPV6Sink(Thread):
             logging.warning("Sink not started, do not add it yet")
             raise RuntimeError("Stack not started yet")
 
-        # Create a set to store already added neighbor proxy entry
+        # Create a dic to store already added neighbor proxy entry
         # to avoid too many call to "ip"
-        self._neigh_proxy = set()
+        self._neigh_proxy = dict()
 
         self._wp_address = sink_config["node_address"]
 
@@ -359,15 +363,24 @@ class IPV6Sink(Thread):
             self.remove_ndp_entry(neigh)
 
     def add_ndp_entry(self, node_address):
-        if node_address in self._neigh_proxy:
-            # Already in neighbor proxy cache
-            return
+        now = time.time()
+        try:
+            neigh_age = self._neigh_proxy[node_address]
+            # Check when we added it in our own cache and add it again in kernel cache
+            # to avoid loosing sync
+            if ((now - neigh_age) < self.MIN_DELAY_UPDATE_NDPROXY_S):
+                # Entry is recent enough, no need to update kernel cache again
+                return
+        except KeyError:
+            # Node not in cache yet
+            pass
 
         add = Ipv6Add.from_prefix_sink_add_and_sink_node(self.nw_prefix, self.wp_address, node_address)
         IPV6Transport._execute_cmd("sudo ip neigh add nud permanent proxy %s dev %s extern_learn" % (add, self._ext_interface),
                                     True)
 
-        self._neigh_proxy.add(node_address)
+        # Add node to our own cache (or update ts)
+        self._neigh_proxy[node_address] = now
 
 
     def remove_ndp_entry(self, node_address):
@@ -379,7 +392,7 @@ class IPV6Sink(Thread):
         IPV6Transport._execute_cmd("sudo ip neigh del proxy %s dev %s" % (add, self._ext_interface),
                                     True)
 
-        self._neigh_proxy.discard(node_address)
+        del self._neigh_proxy[node_address]
 
 
     def _update_ipv6_config_to_app_config(self, sink_config=None):
