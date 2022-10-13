@@ -4,6 +4,7 @@
 #
 import logging
 import os
+import sys
 import wirepas_mesh_messaging as wmm
 from time import time, sleep
 from uuid import getnode
@@ -13,7 +14,6 @@ from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
 from wirepas_gateway.utils import ParserHelper
-from wirepas_gateway.utils import LoggerHelper
 
 from wirepas_gateway import __version__ as transport_version
 from wirepas_gateway import __pkg_name__
@@ -29,7 +29,6 @@ class ConnectionToBackendMonitorThread(Thread):
 
     def __init__(
         self,
-        logger,
         period,
         mqtt_wrapper,
         sink_manager,
@@ -46,7 +45,6 @@ class ConnectionToBackendMonitorThread(Thread):
         the sink cost with an unstable connection that would be counterproductive.
 
         Args:
-            logger: logger used to log messages
             period: the period to check the buffer status
             mqtt_wrapper: the mqtt wrapper to get access to queue level
             sink_manager: the sink manager to modify sink cost of all sinks
@@ -58,7 +56,6 @@ class ConnectionToBackendMonitorThread(Thread):
         """
         Thread.__init__(self)
 
-        self.logger = logger
         # Daemonize thread to exit with full process
         self.daemon = True
 
@@ -116,8 +113,8 @@ class ConnectionToBackendMonitorThread(Thread):
             if not self.disconnected:
                 # Check if a condition to declare "back hole" is met
                 if self._is_publish_delay_over() or self._is_buffer_threshold_reached():
-                    self.logger.info("Increasing sink cost of all sinks")
-                    self.logger.debug(
+                    logging.info("Increasing sink cost of all sinks")
+                    logging.debug(
                         "Last publish: %s Queue Size %s",
                         self.mqtt_wrapper.publish_waiting_time_s,
                         self.mqtt_wrapper.publish_queue_size,
@@ -128,7 +125,7 @@ class ConnectionToBackendMonitorThread(Thread):
             else:
                 if self.mqtt_wrapper.publish_queue_size == 0:
                     # Network is back, put the connection back
-                    self.logger.info(
+                    logging.info(
                         "Connection is back, decreasing sink cost of all sinks"
                     )
                     self._set_sinks_cost_low()
@@ -151,7 +148,7 @@ class ConnectionToBackendMonitorThread(Thread):
         """
         sink = self.sink_manager.get_sink(name)
 
-        self.logger.info("Initialize sinkCost of sink %s", name)
+        logging.info("Initialize sinkCost of sink %s", name)
         if sink is not None:
             if self.disconnected:
                 sink.cost = self.SINK_COST_HIGH
@@ -173,12 +170,10 @@ class TransportService(BusClient):
     # Period in s to check for black hole issue
     MONITORING_BUFFERING_PERIOD_S = 1
 
-    def __init__(self, settings, logger=None, **kwargs):
-        self.logger = logger or logging.getLogger(__name__)
-        self.logger.info("Version is: %s", transport_version)
+    def __init__(self, settings, **kwargs):
+        logging.info("Version is: %s", transport_version)
 
         super(TransportService, self).__init__(
-            logger=logger,
             c_extension=(settings.full_python is False),
             ignored_ep_filter=settings.ignored_endpoints_filter,
             **kwargs
@@ -197,7 +192,6 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper = MQTTWrapper(
             settings,
-            self.logger,
             self._on_mqtt_wrapper_termination_cb,
             self._on_connect,
             last_will_topic,
@@ -206,20 +200,19 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.start()
 
-        self.logger.info("Gateway started with id: %s", self.gw_id)
+        logging.info("Gateway started with id: %s", self.gw_id)
 
         self.monitoring_thread = None
         self.minimum_sink_cost = settings.buffering_minimal_sink_cost
 
         if settings.buffering_max_buffered_packets > 0:
-            self.logger.info(
+            logging.info(
                 " Black hole detection enabled: max_packets=%s packets, max_delay=%s",
                 settings.buffering_max_buffered_packets,
                 settings.buffering_max_delay_without_publish,
             )
             # Create and start a monitoring thread for black hole issue
             self.monitoring_thread = ConnectionToBackendMonitorThread(
-                self.logger,
                 self.MONITORING_BUFFERING_PERIOD_S,
                 self.mqtt_wrapper,
                 self.sink_manager,
@@ -240,7 +233,7 @@ class TransportService(BusClient):
         It is not a normal situation and better to exit the program
         to have a change to restart from a clean session
         """
-        self.logger.error("MQTT wrapper ends. Terminate the program")
+        logging.error("MQTT wrapper ends. Terminate the program")
         self.stop_dbus_client()
 
     def _set_status(self):
@@ -265,7 +258,7 @@ class TransportService(BusClient):
 
         # Register for send data request for any sink on the gateway
         topic = TopicGenerator.make_send_data_request_topic(self.gw_id)
-        self.logger.debug("Subscribing to: %s", topic)
+        logging.debug("Subscribing to: %s", topic)
         # It is important to have a qos of 2 and also from the publisher as 1 could generate
         # duplicated packets and we don't know the consequences on end
         # application
@@ -301,7 +294,7 @@ class TransportService(BusClient):
 
         self._set_status()
 
-        self.logger.info("MQTT connected!")
+        logging.info("MQTT connected!")
 
     def on_data_received(
         self,
@@ -319,7 +312,7 @@ class TransportService(BusClient):
 
         if self.whitened_ep_filter is not None and dst_ep in self.whitened_ep_filter:
             # Only publish payload size but not the payload
-            self.logger.debug("Filtering payload data")
+            logging.debug("Filtering payload data")
             data_size = data.__len__()
             data = None
         else:
@@ -329,7 +322,7 @@ class TransportService(BusClient):
         if sink is None:
             # It can happen at sink connection as messages can be received
             # before sinks are identified
-            self.logger.info(
+            logging.info(
                 "Message received from unknown sink at the moment %s", sink_id
             )
             return
@@ -356,7 +349,7 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_received_data_topic(
             self.gw_id, sink_id, network_address, src_ep, dst_ep
         )
-        self.logger.debug("Uplink traffic: %s | %s", topic, event.event_id)
+        logging.debug("Uplink traffic: %s | %s", topic, event.event_id)
 
         # No need to protect data_event_id as on_data_received is always
         # called from same thread
@@ -369,19 +362,19 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, event.payload, qos=1)
 
     def on_stack_started(self, name):
-        self.logger.debug("Sink started: %s", name)
+        logging.debug("Sink started: %s", name)
         # Generate a setconfig answer with req_id of 0
         self. _send_asynchronous_set_config_response(name)
 
     def on_stack_stopped(self, name):
-        self.logger.debug("Sink stopped: %s", name)
+        logging.debug("Sink stopped: %s", name)
         # Generate a setconfig answer with req_id of 0
         self. _send_asynchronous_set_config_response(name)
 
     def _send_asynchronous_set_config_response(self, name):
         sink = self.sink_manager.get_sink(name)
         if sink is None:
-            self.logger.error("Sink %s error: unknown sink", name)
+            logging.error("Sink %s error: unknown sink", name)
             return
         response = wmm.SetConfigResponse(
             0,
@@ -426,14 +419,14 @@ class TransportService(BusClient):
         return wrapper
 
     def on_sink_connected(self, name):
-        self.logger.info("Sink connected, sending new configs")
+        logging.info("Sink connected, sending new configs")
         if self.monitoring_thread is not None:
             # Black hole algorithm in place do not initialize here the cost
             self.monitoring_thread.initialize_sink(name)
         else:
             sink = self.sink_manager.get_sink(name)
             if sink is not None:
-                self.logger.info(
+                logging.info(
                     "Initialize sinkCost of sink {} to minimum {}".format(
                         name, self.minimum_sink_cost
                     )
@@ -441,12 +434,12 @@ class TransportService(BusClient):
                 try:
                     sink.cost = self.minimum_sink_cost
                 except ValueError:
-                    self.logger.debug("Cannot set cost, probably not a sink")
+                    logging.debug("Cannot set cost, probably not a sink")
 
         self._send_asynchronous_get_configs_response()
 
     def on_sink_disconnected(self, name):
-        self.logger.info("Sink disconnected, sending new configs")
+        logging.info("Sink disconnected, sending new configs")
         self._send_asynchronous_get_configs_response()
 
     @deferred_thread
@@ -455,13 +448,13 @@ class TransportService(BusClient):
         try:
             request = wmm.SendDataRequest.from_payload(message.payload)
         except wmm.GatewayAPIParsingException as e:
-            self.logger.error(str(e))
+            logging.error(str(e))
             return
 
         # Get the sink-id from topic
         _, sink_id = TopicParser.parse_send_data_topic(message.topic)
 
-        self.logger.debug("Downlink traffic: %s | %s", sink_id, request.req_id)
+        logging.debug("Downlink traffic: %s | %s", sink_id, request.req_id)
 
         sink = self.sink_manager.get_sink(sink_id)
         if sink is not None:
@@ -479,7 +472,7 @@ class TransportService(BusClient):
                     request.hop_limit,
                 )
         else:
-            self.logger.warning("No sink with id: %s", sink_id)
+            logging.warning("No sink with id: %s", sink_id)
             # No sink with  this id
             res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
 
@@ -492,11 +485,11 @@ class TransportService(BusClient):
     @deferred_thread
     def _on_get_configs_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("Config request received")
+        logging.info("Config request received")
         try:
             request = wmm.GetConfigsRequest.from_payload(message.payload)
         except wmm.GatewayAPIParsingException as e:
-            self.logger.error(str(e))
+            logging.error(str(e))
             return
 
         # Create a list of different sink configs
@@ -526,7 +519,7 @@ class TransportService(BusClient):
 
         # If we are here, something happened to our status.
         # Either not online or malformed or empty
-        self.logger.error("Gateway info request is wrong or updated")
+        logging.error("Gateway info request is wrong or updated")
         # Set our status back
         self._set_status()
 
@@ -536,11 +529,11 @@ class TransportService(BusClient):
         This function doesn't need the decorator @deferred_thread as request is handled
         without I/O
         """
-        self.logger.info("Gateway info request received")
+        logging.info("Gateway info request received")
         try:
             request = wmm.GetGatewayInfoRequest.from_payload(message.payload)
         except wmm.GatewayAPIParsingException as e:
-            self.logger.error(str(e))
+            logging.error(str(e))
             return
 
         response = wmm.GetGatewayInfoResponse(
@@ -559,14 +552,14 @@ class TransportService(BusClient):
     @deferred_thread
     def _on_set_config_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("Set config request received")
+        logging.info("Set config request received")
         try:
             request = wmm.SetConfigRequest.from_payload(message.payload)
         except wmm.GatewayAPIParsingException as e:
-            self.logger.error(str(e))
+            logging.error(str(e))
             return
 
-        self.logger.debug("Set sink config: %s", request)
+        logging.debug("Set sink config: %s", request)
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
             res = sink.write_config(request.new_config)
@@ -587,11 +580,11 @@ class TransportService(BusClient):
     @deferred_thread
     def _on_otap_status_request_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("OTAP status request received")
+        logging.info("OTAP status request received")
         try:
             request = wmm.GetScratchpadStatusRequest.from_payload(message.payload)
         except wmm.GatewayAPIParsingException as e:
-            self.logger.error(str(e))
+            logging.error(str(e))
             return
 
         sink = self.sink_manager.get_sink(request.sink_id)
@@ -637,14 +630,14 @@ class TransportService(BusClient):
     @deferred_thread
     def _on_otap_upload_scratchpad_request_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("OTAP upload request received")
+        logging.info("OTAP upload request received")
         try:
             request = wmm.UploadScratchpadRequest.from_payload(message.payload)
         except wmm.GatewayAPIParsingException as e:
-            self.logger.error(str(e))
+            logging.error(str(e))
             return
 
-        self.logger.info("OTAP upload request received for %s", request.sink_id)
+        logging.info("OTAP upload request received for %s", request.sink_id)
 
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
@@ -665,11 +658,11 @@ class TransportService(BusClient):
     @deferred_thread
     def _on_otap_process_scratchpad_request_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        self.logger.info("OTAP process request received")
+        logging.info("OTAP process request received")
         try:
             request = wmm.ProcessScratchpadRequest.from_payload(message.payload)
         except wmm.GatewayAPIParsingException as e:
-            self.logger.error(str(e))
+            logging.error(str(e))
             return
 
         sink = self.sink_manager.get_sink(request.sink_id)
@@ -694,17 +687,17 @@ class TransportService(BusClient):
     ):
         # pylint: disable=unused-argument
         res = wmm.GatewayResultCode.GW_RES_OK
-        self.logger.info("OTAP set target request received")
+        logging.info("OTAP set target request received")
         try:
             request = wmm.SetScratchpadTargetAndActionRequest.from_payload(
                 message.payload
             )
             action = request.target["action"]
         except wmm.GatewayAPIParsingException as e:
-            self.logger.error(str(e))
+            logging.error(str(e))
             return
         except KeyError:
-            self.logger.error("Action is mandatory")
+            logging.error("Action is mandatory")
             res = wmm.GatewayResultCode.GW_RES_INVALID_PARAM
 
         if res == wmm.GatewayResultCode.GW_RES_OK:
@@ -807,7 +800,7 @@ def parse_setting_list(list_setting):
     return single_list
 
 
-def _check_duplicate(args, old_param, new_param, default, logger):
+def _check_duplicate(args, old_param, new_param, default):
     old_param_val = getattr(args, old_param, default)
     new_param_val = getattr(args, new_param, default)
     if new_param_val == old_param_val:
@@ -818,17 +811,17 @@ def _check_duplicate(args, old_param, new_param, default, logger):
         # Old param is set, check if new_param is also set
         if new_param_val == default:
             setattr(args, new_param, old_param_val)
-            logger.warning(
+            logging.warning(
                 "Param %s is deprecated, please use %s instead", old_param, new_param
             )
         else:
-            logger.error(
+            logging.error(
                 "Param %s and %s cannot be set at the same time", old_param, new_param
             )
             exit()
 
 
-def _update_parameters(settings, logger):
+def _update_parameters(settings):
     """
     Function to handle the backward compatibility with old parameters name
     Args:
@@ -837,15 +830,15 @@ def _update_parameters(settings, logger):
     Returns: None
     """
 
-    _check_duplicate(settings, "host", "mqtt_hostname", None, logger)
-    _check_duplicate(settings, "port", "mqtt_port", 8883, logger)
-    _check_duplicate(settings, "username", "mqtt_username", None, logger)
-    _check_duplicate(settings, "password", "mqtt_password", None, logger)
-    _check_duplicate(settings, "tlsfile", "mqtt_certfile", None, logger)
+    _check_duplicate(settings, "host", "mqtt_hostname", None)
+    _check_duplicate(settings, "port", "mqtt_port", 8883)
+    _check_duplicate(settings, "username", "mqtt_username", None)
+    _check_duplicate(settings, "password", "mqtt_password", None)
+    _check_duplicate(settings, "tlsfile", "mqtt_certfile", None)
     _check_duplicate(
-        settings, "unsecure_authentication", "mqtt_force_unsecure", False, logger
+        settings, "unsecure_authentication", "mqtt_force_unsecure", False
     )
-    _check_duplicate(settings, "gwid", "gateway_id", None, logger)
+    _check_duplicate(settings, "gwid", "gateway_id", None)
 
     if settings.gateway_id is None:
         settings.gateway_id = str(getnode())
@@ -856,9 +849,9 @@ def _update_parameters(settings, logger):
             settings.ignored_endpoints_filter = parse_setting_list(
                 settings.ignored_endpoints_filter
             )
-            logger.debug("Ignored endpoints are: %s", settings.ignored_endpoints_filter)
+            logging.debug("Ignored endpoints are: %s", settings.ignored_endpoints_filter)
         except SyntaxError as e:
-            logger.error("Wrong format for ignored_endpoints_filter EP list (%s)", e)
+            logging.error("Wrong format for ignored_endpoints_filter EP list (%s)", e)
             exit()
 
     if settings.whitened_endpoints_filter:
@@ -866,26 +859,26 @@ def _update_parameters(settings, logger):
             settings.whitened_endpoints_filter = parse_setting_list(
                 settings.whitened_endpoints_filter
             )
-            logger.debug(
+            logging.debug(
                 "Whitened endpoints are: {}".format(settings.whitened_endpoints_filter)
             )
         except SyntaxError as e:
-            logger.error("Wrong format for whitened_endpoints_filter EP list (%s)", e)
+            logging.error("Wrong format for whitened_endpoints_filter EP list (%s)", e)
             exit()
 
 
-def _check_parameters(settings, logger):
+def _check_parameters(settings):
     if settings.mqtt_force_unsecure and settings.mqtt_certfile:
         # If tls cert file is provided, unsecure authentication cannot
         # be set
-        logger.error("Cannot give certfile and disable secure authentication")
+        logging.error("Cannot give certfile and disable secure authentication")
         exit()
 
     try:
         if set(settings.ignored_endpoints_filter) & set(
             settings.whitened_endpoints_filter
         ):
-            logger.error("Some endpoints are both ignored and whitened")
+            logging.error("Some endpoints are both ignored and whitened")
             exit()
     except TypeError:
         # One of the filter list is None
@@ -929,15 +922,21 @@ def main():
     except KeyError:
         pass
 
-    log = LoggerHelper(module_name=__pkg_name__, level=debug_level)
-    logger = log.setup()
+    debug_level = "{0}".format(debug_level.upper())
 
-    _update_parameters(settings, logger)
+    # enable its logger
+    logging.basicConfig(
+        format='%(asctime)s | [%(levelname)s] %(name)s@%(filename)s:%(lineno)d:%(message)s',
+        level=debug_level,
+        stream=sys.stdout
+    )
+
+    _update_parameters(settings)
     # after this stage, mqtt deprecated argument cannot be used
 
-    _check_parameters(settings, logger)
+    _check_parameters(settings)
 
-    TransportService(settings=settings, logger=logger).run()
+    TransportService(settings=settings).run()
 
 
 if __name__ == "__main__":

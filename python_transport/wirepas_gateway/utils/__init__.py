@@ -3,6 +3,5 @@
 # See file LICENSE for full license details.
 # flake8: noqa
 
-from .log_tools import *
 from .serialization_tools import *
 from .argument_tools import *

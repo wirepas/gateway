@@ -2,6 +2,7 @@
 #
 # See file LICENSE for full license details.
 
+import logging
 import queue
 import socket
 import ssl
@@ -27,7 +28,6 @@ class MQTTWrapper(Thread):
     def __init__(
         self,
         settings,
-        logger,
         on_termination_cb=None,
         on_connect_cb=None,
         last_will_topic=None,
@@ -36,7 +36,6 @@ class MQTTWrapper(Thread):
         Thread.__init__(self)
         self.daemon = True
         self.running = False
-        self.logger = logger
         self.on_termination_cb = on_termination_cb
         self.on_connect_cb = on_connect_cb
         # Set to track the unpublished packets
@@ -68,10 +67,10 @@ class MQTTWrapper(Thread):
                     ciphers=settings.mqtt_ciphers,
                 )
             except Exception as e:
-                self.logger.error("Cannot use secure authentication %s", e)
+                logging.error("Cannot use secure authentication %s", e)
                 exit(-1)
 
-        self.logger.info(
+        logging.info(
             "Max inflight messages set to %s", settings.mqtt_max_inflight_messages
         )
         self._client.max_inflight_messages_set(settings.mqtt_max_inflight_messages)
@@ -91,13 +90,13 @@ class MQTTWrapper(Thread):
                 keepalive=MQTTWrapper.KEEP_ALIVE_S,
             )
         except (socket.gaierror, ValueError) as e:
-            self.logger.error(
+            logging.error(
                 "Error on MQTT address %s:%d => %s"
                 % (settings.mqtt_hostname, settings.mqtt_port, str(e))
             )
             exit(-1)
         except ConnectionRefusedError:
-            self.logger.error("Connection Refused by MQTT broker")
+            logging.error("Connection Refused by MQTT broker")
             exit(-1)
 
         self.timeout = settings.mqtt_reconnect_delay
@@ -116,7 +115,7 @@ class MQTTWrapper(Thread):
     def _on_connect(self, client, userdata, flags, rc):
         # pylint: disable=unused-argument
         if rc != 0:
-            self.logger.error("MQTT cannot connect: %s (%s)", connack_string(rc), rc)
+            logging.error("MQTT cannot connect: %s (%s)", connack_string(rc), rc)
             self.running = False
             return
 
@@ -127,7 +126,7 @@ class MQTTWrapper(Thread):
 
     def _on_disconnect(self, userdata, rc):
         if rc != 0:
-            self.logger.error(
+            logging.error(
                 "MQTT unexpected disconnection (network or broker originated):"
                 "%s (%s)",
                 connack_string(rc),
@@ -191,20 +190,20 @@ class MQTTWrapper(Thread):
             return sock
 
         if self.connected:
-            self.logger.error("MQTT Inner loop, unexpected disconnection")
+            logging.error("MQTT Inner loop, unexpected disconnection")
         elif not self.first_connection_done:
             # It's better to avoid retrying if the first connection was not successful
-            self.logger.error("Impossible to connect - authentication failure ?")
+            logging.error("Impossible to connect - authentication failure ?")
             return None
 
         # Socket is not opened anymore, try to reconnect for timeout if set
         loop_forever = self.timeout == 0
         delay = 0
-        self.logger.info("Starting reconnect loop with timeout %d" % self.timeout)
+        logging.info("Starting reconnect loop with timeout %d" % self.timeout)
         # Loop forever or until timeout is over
         while loop_forever or (delay <= self.timeout):
             try:
-                self.logger.debug("MQTT reconnect attempt delay=%d" % delay)
+                logging.debug("MQTT reconnect attempt delay=%d" % delay)
                 ret = self._client.reconnect()
                 if ret == mqtt.MQTT_ERR_SUCCESS:
                     break
@@ -212,20 +211,20 @@ class MQTTWrapper(Thread):
                 # Retry to connect in 1 sec up to timeout if set
                 sleep(1)
                 delay += 1
-                self.logger.debug("Retrying to connect in 1 sec")
+                logging.debug("Retrying to connect in 1 sec")
 
         if not loop_forever:
             # In case of timeout set, check if it exits because of timeout
             if delay > self.timeout:
-                self.logger.error("Unable to reconnect after %s seconds", delay)
+                logging.error("Unable to reconnect after %s seconds", delay)
                 return None
 
         # Socket must be available once reconnect is successful
         if self._client.socket() is None:
-            self.logger.error("Cannot get socket after reconnect")
+            logging.error("Cannot get socket after reconnect")
             return None
         else:
-            self.logger.info("Successfully acquired socket after reconnect")
+            logging.info("Successfully acquired socket after reconnect")
 
         # Set options to new reopened socket
         if not self._use_websockets:
@@ -249,18 +248,18 @@ class MQTTWrapper(Thread):
                 if sock is None:
                     # Cannot get the socket, probably an issue
                     # with connection. Exit the thread
-                    self.logger.error("Cannot get MQTT socket, exit...")
+                    logging.error("Cannot get MQTT socket, exit...")
                     self.running = False
                 else:
                     self._do_select(sock)
             except TimeoutError:
-                self.logger.error("Timeout in connection, force a reconnect")
+                logging.error("Timeout in connection, force a reconnect")
                 self._client.reconnect()
             except Exception:
                 # If an exception is not caught before this point
                 # All the transport module must be stopped in order to be fully
                 # restarted by the managing agent
-                self.logger.exception("Unexpected exception in MQTT wrapper Thread")
+                logging.exception("Unexpected exception in MQTT wrapper Thread")
                 self.running = False
 
         if self.on_termination_cb is not None:
@@ -297,7 +296,7 @@ class MQTTWrapper(Thread):
         self._publish_monitor.on_publish_request()
 
     def subscribe(self, topic, cb, qos=2) -> None:
-        self.logger.debug("Subscribing to: {}".format(topic))
+        logging.debug("Subscribing to: {}".format(topic))
         self._client.subscribe(topic, qos)
         self._client.message_callback_add(topic, cb)
 

@@ -2,11 +2,12 @@
 #
 # See file LICENSE for full license details.
 
+import logging
 import os
+import sys
 from datetime import datetime
 
 from wirepas_gateway.dbus.dbus_client import BusClient
-from wirepas_gateway.utils import LoggerHelper
 
 
 class PrintClient(BusClient):
@@ -28,7 +29,7 @@ class PrintClient(BusClient):
         data,
     ):
         """ logs incoming data from the WM network """
-        self.logger.info(
+        logging.info(
             "[%s] Sink %s FROM %d TO %d on EP %d Data Size is %d",
             datetime.utcfromtimestamp(int(timestamp / 1000)).strftime(
                 "%Y-%m-%d %H:%M:%S"
@@ -45,7 +46,7 @@ class PrintClient(BusClient):
 
         if sink is not None:
             # Read Stack status of sink on connection
-            self.logger.info("Sink connected with config: %s", sink.read_config())
+            logging.info("Sink connected with config: %s", sink.read_config())
 
 
 def main():
@@ -67,11 +68,15 @@ def main():
     except KeyError:
         pass
 
-    log = LoggerHelper(module_name=__name__, level=debug_level)
-    logger = log.setup()
+    debug_level = "{0}".format(debug_level.upper())
 
+    # Create a "Print Client" object and enable his logger
     obj = PrintClient()
-    obj.logger = logger
+    logging.basicConfig(
+        format='%(asctime)s | [%(levelname)s] %(name)s@%(filename)s:%(lineno)d:%(message)s',
+        level=debug_level,
+        stream=sys.stdout
+    )
     obj.run()
 
 
