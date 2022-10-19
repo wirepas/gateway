@@ -234,7 +234,7 @@ class MQTTWrapper(Thread):
 
     def _set_last_will(self, topic, data):
         # Set Last wil message
-        self._client.will_set(topic, data, qos=2, retain=True)
+        self._client.will_set(topic, data, qos=2)
 
     def run(self):
         self.running = True
