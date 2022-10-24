@@ -18,6 +18,7 @@ env_vars["WM_SERVICES_MQTT_CIPHERS"] = "path/mqtt_ciphers"
 env_vars["WM_SERVICES_MQTT_PERSIST_SESSION"] = True
 env_vars["WM_SERVICES_MQTT_FORCE_UNSECURE"] = True
 env_vars["WM_SERVICES_MQTT_ALLOW_UNTRUSTED"] = True
+env_vars["WM_SERVICES_MQTT_RETAIN_FLAG_SUPPORTED"] = True
 
 env_vars["WM_GW_BUFFERING_MAX_BUFFERED_PACKETS"] = 1000
 env_vars["WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH"] = 128
@@ -60,11 +61,13 @@ file_vars["gateway_model"] = env_vars["WM_GW_MODEL"]
 file_vars["gateway_version"] = env_vars["WM_GW_VERSION"]
 file_vars["ignored_endpoints_filter"] = env_vars["WM_GW_IGNORED_ENDPOINTS_FILTER"]
 file_vars["whitened_endpoints_filter"] = env_vars["WM_GW_WHITENED_ENDPOINTS_FILTER"]
+file_vars["mqtt_retain_flag_supported"] = env_vars["WM_SERVICES_MQTT_RETAIN_FLAG_SUPPORTED"]
 
 booleans = [
     "WM_SERVICES_MQTT_PERSIST_SESSION",
     "WM_SERVICES_MQTT_FORCE_UNSECURE",
     "WM_SERVICES_MQTT_ALLOW_UNTRUSTED",
+    "WM_SERVICES_MQTT_RETAIN_FLAG_SUPPORTED",
 ]
 
 
@@ -139,6 +142,14 @@ def content_tests(settings, vcopy):
             vcopy["WM_SERVICES_MQTT_ALLOW_UNTRUSTED"] == settings.mqtt_allow_untrusted
         )
 
+    if "WM_SERVICES_MQTT_RETAIN_FLAG_SUPPORTED" not in vcopy:
+        assert settings.mqtt_retain_flag_supported is False
+    else:
+        assert (
+            vcopy["WM_SERVICES_MQTT_RETAIN_FLAG_SUPPORTED"]
+            == settings.mqtt_retain_flag_supported
+        )
+
     assert vcopy["WM_SERVICES_MQTT_RECONNECT_DELAY"] == settings.mqtt_reconnect_delay
     assert (
         vcopy["WM_GW_BUFFERING_MAX_BUFFERED_PACKETS"]
@@ -199,6 +210,7 @@ def test_defaults():
     assert settings.mqtt_persist_session is False
     assert settings.mqtt_force_unsecure is False
     assert settings.mqtt_allow_untrusted is False
+    assert settings.mqtt_retain_flag_supported is False
     assert settings.mqtt_reconnect_delay == 0
     assert settings.buffering_max_buffered_packets == 0
     assert settings.buffering_max_delay_without_publish == 0

@@ -275,6 +275,8 @@ class TransportService(BusClient):
         self.mqtt_wrapper.start()
 
         self.logger.info("Gateway started with id: %s", self.gw_id)
+        self.logger.info(f"wmm version: {wmm.__version__}")
+        self.logger.info(f"mqtt_retain_flag_supported: {settings.mqtt_retain_flag_supported}")
 
         self.monitoring_thread = None
         self.minimum_sink_cost = settings.buffering_minimal_sink_cost
@@ -365,6 +367,11 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_otap_set_target_scratchpad_request_topic(self.gw_id)
         self.mqtt_wrapper.subscribe(
             topic, self._on_otap_set_target_scratchpad_request_received
+        )
+
+        topic = TopicGenerator.make_get_gw_status_request_topic()
+        self.mqtt_wrapper.subscribe(
+            topic, self._on_get_gw_status_request_received
         )
 
         # Register ourself to our status in case someone else (by mistake)
@@ -830,6 +837,29 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
+    def _on_get_gw_status_request_received(
+        self, client, userdata, message
+    ):
+        # pylint: disable=unused-argument
+        res = wmm.GatewayResultCode.GW_RES_OK
+        self.logger.info("Get gateway status request received")
+        try:
+            request = wmm.GetGatewayStatusRequest.from_payload(
+                message.payload
+            )
+        except wmm.GatewayAPIParsingException as e:
+            self.logger.error(str(e))
+            return
+
+        response = wmm.GetGatewayStatusResponse(
+            request.req_id, self.gw_id, res, wmm.GatewayState.ONLINE
+        )
+        topic = TopicGenerator.make_get_gw_status_response_topic(
+            self.gw_id
+        )
+
+        self.mqtt_wrapper.publish(topic, response.payload, qos=1)
 
 def parse_setting_list(list_setting):
     """ This function parse ep list specified from setting file or cmd line
