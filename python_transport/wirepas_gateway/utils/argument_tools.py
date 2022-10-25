@@ -365,11 +365,22 @@ class ParserHelper:
 
         self.mqtt.add_argument(
             "--mqtt_retain_flag_supported",
-            default=os.environ.get("WM_SERVICES_MQTT_RETAIN_FLAG_SUPPORTED", False),
+            default=os.environ.get("WM_SERVICES_MQTT_RETAIN_FLAG_SUPPORTED", True),
             type=self.str2bool,
             nargs="?",
             const=True,
             help=("Set to true if broker support retain flag"),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_max_qos_supported",
+            default=os.environ.get("WM_SERVICES_MQTT_MAX_QOS_SUPPORTED", 2),
+            action="store",
+            type=self.str2int,
+            help=(
+                "Max qos supported by broker in case it has limitation"
+                "compare to MQTT specification that is 2."
+            ),
         )
 
     def add_buffering_settings(self):

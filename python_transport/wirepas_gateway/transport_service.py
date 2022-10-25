@@ -275,8 +275,6 @@ class TransportService(BusClient):
         self.mqtt_wrapper.start()
 
         self.logger.info("Gateway started with id: %s", self.gw_id)
-        self.logger.info(f"wmm version: {wmm.__version__}")
-        self.logger.info(f"mqtt_retain_flag_supported: {settings.mqtt_retain_flag_supported}")
 
         self.monitoring_thread = None
         self.minimum_sink_cost = settings.buffering_minimal_sink_cost
@@ -843,7 +841,7 @@ class TransportService(BusClient):
     ):
         # pylint: disable=unused-argument
         res = wmm.GatewayResultCode.GW_RES_OK
-        self.logger.info("Get gateway status request received")
+        self.logger.info(f"Get gateway status request received : {message.payload}")
         try:
             request = wmm.GetGatewayStatusRequest.from_payload(
                 message.payload

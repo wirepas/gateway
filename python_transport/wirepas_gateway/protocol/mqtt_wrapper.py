@@ -44,6 +44,10 @@ class MQTTWrapper(Thread):
         # Keep track of latest published packet
         self._publish_monitor = PublishMonitor()
 
+        # load special settings for borker compatibility
+        self.max_qos = settings.mqtt_max_qos_supported
+        self.retain_supported = settings.mqtt_retain_flag_supported
+
         if settings.mqtt_use_websocket:
             transport = "websockets"
             self._use_websockets = True
@@ -234,7 +238,7 @@ class MQTTWrapper(Thread):
 
     def _set_last_will(self, topic, data):
         # Set Last wil message
-        self._client.will_set(topic, data, qos=2)
+        self._client.will_set(topic, data, qos=self.max_qos, retain=self.retain_supported)
 
     def run(self):
         self.running = True
@@ -279,6 +283,13 @@ class MQTTWrapper(Thread):
             retain: Is it a retain message
 
         """
+        # Limit qos in case broker has a limit
+        if qos > self.max_qos:
+            qos = self.max_qos
+
+        # Clear retain flag if not supported
+        retain = retain and self.retain_supported
+
         mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
         self._unpublished_mid_set.add(mid)
 
@@ -288,15 +299,33 @@ class MQTTWrapper(Thread):
         Args:
             topic: Topic to publish on
             payload: Payload
-            qos: Qos to use
-            retain: Is it a retain message
+            qos: Qos to use. Can be less than requested if broker does
+                not support it
+            retain: Is it a retain message. Can be discarded if broker
+                    does not support it
 
         """
+        # No need to check qos or retain at this stage as
+        # done later in real publish to broker
+
         # Send it to the queue to be published from Mqtt thread
         self._publish_queue.put((topic, payload, qos, retain))
         self._publish_monitor.on_publish_request()
 
     def subscribe(self, topic, cb, qos=2) -> None:
+        """ Method to subscribe to mqtt topic
+
+        Args:
+            topic: Topic to publish on
+            cb: Callback to call on message reception
+            qos: Qos to use. Can be less than requested if broker does
+                 not support it
+
+        """
+        # Limit qos in case broker has a limit
+        if qos > self.max_qos:
+            qos = self.max_qos
+
         self.logger.debug("Subscribing to: {}".format(topic))
         self._client.subscribe(topic, qos)
         self._client.message_callback_add(topic, cb)
