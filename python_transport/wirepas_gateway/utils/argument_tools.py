@@ -363,6 +363,15 @@ class ParserHelper:
             ),
         )
 
+        self.mqtt.add_argument(
+            "--mqtt_retain_flag_supported",
+            default=os.environ.get("WM_SERVICES_MQTT_RETAIN_FLAG_SUPPORTED", True),
+            type=self.str2bool,
+            nargs="?",
+            const=True,
+            help=("Set to true if broker support retain flag"),
+        )
+
     def add_buffering_settings(self):
         """ Parameters used to avoid black hole case """
         self.buffering.add_argument(
