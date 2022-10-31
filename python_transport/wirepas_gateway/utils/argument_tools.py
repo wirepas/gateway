@@ -402,6 +402,32 @@ class ParserHelper:
             ),
         )
 
+    def add_cache_settings(self):
+        """ Parameters used to avoid sending redundant messages in the mqtt broker """
+        cleaning_time_window_default = 20*60  # 20 minutes
+        cache_update_s_default = 20  # 20 secondes
+
+        self.cache.add_argument(
+            "--cache_time_window",
+            default=os.environ.get("WM_CACHE_TIME_WINDOW", cleaning_time_window_default),
+            action="store",
+            type=self.str2int,
+            help=(
+                "Time in seconds after which a message is clean from the cache."
+            ),
+        )
+
+        self.cache.add_argument(
+            "--cache_update_s",
+            default=os.environ.get("WM_CACHE_UPDATE_S", cache_update_s_default),
+            action="store",
+            type=self.str2int,
+            help=(
+                "Period to update the list of received messages in seconds."
+                "Must be smaller than time_window"
+            ),
+        )
+
     def add_debug_settings(self):
         self.debug.add_argument(
             "--debug_incr_data_event_id",
