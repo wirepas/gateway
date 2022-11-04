@@ -13,6 +13,7 @@ from threading import Thread, Lock
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
+from wirepas_gateway.protocol.cache_message import CacheMessage
 from wirepas_gateway.utils import ParserHelper
 
 from wirepas_gateway import __version__ as transport_version
@@ -156,83 +157,6 @@ class ConnectionToBackendMonitorThread(Thread):
                 sink.cost = self.minimum_sink_cost
 
 
-class MessageManager:
-    def __init__(
-        self,
-        time_window,
-        cache_update_s
-    ):
-        """
-        Manage and cache messages to avoid sending duplicate in MQTT with QoS=1.
-
-        Args:
-            time_window: time in seconds after which a message is clean from the cache.
-            cache_update_s: period in seconds to update the list of received messages.
-                            Must be shorter than time_window
-        """
-        self._lock = Lock()
-        self.msg_list = dict()  # Dictionary of received messages id mapped to their timestamps
-
-        self.time_window = time_window
-        self.cache_update_s = min(cache_update_s, time_window)
-
-        self.latest_timestamp = 0  # latest timestamp of a received message
-        self.last_update_time = 0  # last time an update of the list of received messages was done
-
-    def add_msg(self, msg_id):
-        """
-        Adds a received message to the cache.
-        If the message is a duplicate, it only updates its last timestamp to the current time.
-
-        Args:
-            msg_id: the id of a message to be added to the cache.
-        """
-        time_s_epoch = time()
-        with self._lock:
-            self._update_latest_timestamp(time_s_epoch)
-
-            if self.latest_timestamp - self.last_update_time >  self.cache_update_s:
-                self._update_msg_list()
-
-            is_duplicate = self._is_duplicate(msg_id)
-            self.msg_list[msg_id] = time_s_epoch
-            return not is_duplicate
-
-    def get_size(self):
-        """
-        Returns the number of messages in the cache.
-        """
-        with self._lock:
-            return len(self.msg_list)
-
-    def _update_msg_list(self):
-        """
-        Clean the old messages in the cache
-        based on cleaning time period time_window attribute.
-        """
-        self.msg_list = {
-            msg_id: msg_time for (msg_id, msg_time) in self.msg_list.items()
-            if self.latest_timestamp - msg_time <= self.time_window
-        }
-        self.last_update_time = self.latest_timestamp
-
-    def _update_latest_timestamp(self, timestamp):
-        """
-        Updates the latest timestamp of a received message.
-        """
-        self.latest_timestamp = max(self.latest_timestamp, timestamp)
-
-    def _is_duplicate(self, msg_id):
-        """
-        Returns True if the id of a message is already in the cache.
-        Return False otherwise.
-
-        Args:
-            msg_id: id of the message received
-        """
-        return msg_id in self.msg_list
-
-
 class TransportService(BusClient):
     """
     Implementation of gateway to backend protocol
@@ -304,7 +228,7 @@ class TransportService(BusClient):
         else:
             self.data_event_id = None
 
-        self.msg_manager = MessageManager(settings.cache_time_window, settings.cache_update_s)
+        self.msg_manager = CacheMessage(settings.cache_time_window, settings.cache_update_s)
 
     def _on_mqtt_wrapper_termination_cb(self):
         """

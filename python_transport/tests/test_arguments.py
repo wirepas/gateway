@@ -107,6 +107,7 @@ def get_args(delete_bools=False, set_env=True, set_file=False):
     parse.add_gateway_config()
     parse.add_filtering_config()
     parse.add_buffering_settings()
+    parse.add_cache_settings()
 
     settings = parse.settings()
 
@@ -196,6 +197,7 @@ def test_defaults():
     parse.add_gateway_config()
     parse.add_filtering_config()
     parse.add_buffering_settings()
+    parse.add_cache_settings()
 
     sys.argv = [sys.argv[0]]
     settings = parse.settings()
@@ -214,6 +216,7 @@ def test_defaults():
     assert settings.mqtt_reconnect_delay == 0
     assert settings.buffering_max_buffered_packets == 0
     assert settings.buffering_max_delay_without_publish == 0
+    assert settings.buffering_minimal_sink_cost == 0
     assert settings.cache_update_s == 20
     assert settings.cache_time_window == 1200
     assert settings.gateway_id is None
