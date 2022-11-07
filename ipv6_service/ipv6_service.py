@@ -15,7 +15,8 @@ from threading import Thread
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_tlv_app_config import WirepasTLVAppConfig
 
-WIREPAS_IPV6_EP = 66
+WIREPAS_IPV6_SRC_EP = 128
+WIREPAS_IPV6_DST_EP = 2
 
 class Ipv6Add:
     """
@@ -93,9 +94,14 @@ class Ipv6Add:
             prefix_len = 128
 
         # Split high part and lower part
-        part1, part2 = add_str.split("::")
-        groups1 = part1.split(":")
-        groups2 = part2.split(":")
+        try:
+            part1, part2 = add_str.split("::")
+            groups1 = part1.split(":")
+            groups2 = part2.split(":")
+        except ValueError:
+            # Raised in case address doesn't have ::
+            groups1 = add_str.split(":")
+            groups2 = []
 
         _append_groups(groups1)
 
@@ -234,9 +240,9 @@ class IPV6NetworkConfig():
 
 class IPV6Sink(Thread):
 
-    UDP_INTERFACE_PORT = 6666
+    UDP_INTERFACE_PORT = 0xF0FB
 
-    APP_CONFIG_TLV_TYPE_PREFIX = 66
+    APP_CONFIG_TLV_TYPE_PREFIX = 0xC5
 
     # Minimum time in S before adding again the same node to neighbor proxy in kernel
     # It is an optimization to avoid executing system call too often in case of heavy traffic
@@ -301,8 +307,8 @@ class IPV6Sink(Thread):
     def send_data(self, node_address, data):
         self._sink.send_data(
                     node_address,
-                    WIREPAS_IPV6_EP,
-                    WIREPAS_IPV6_EP,
+                    WIREPAS_IPV6_SRC_EP,
+                    WIREPAS_IPV6_DST_EP,
                     1,
                     0,
                     data,
@@ -550,7 +556,7 @@ class IPV6Transport(BusClient):
         hop_count,
         data,
     ):
-        if src_ep == WIREPAS_IPV6_EP and dst_ep == WIREPAS_IPV6_EP:
+        if src_ep == WIREPAS_IPV6_SRC_EP and dst_ep == WIREPAS_IPV6_DST_EP:
             logging.info(
                 "Ipv6 traffic from wp nw on sink %s FROM %d TO %d Data Size is %d" % (
                 sink_id,
