@@ -1,7 +1,5 @@
 # Wirepas Linux Gateway
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ebb45a6a13ec4f2c88131ddf51a9579a)](https://www.codacy.com/manual/wirepas/gateway?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=wirepas/gateway&amp;utm_campaign=Badge_Grade) [![Build Status](https://travis-ci.com/wirepas/gateway.svg?branch=master)](https://travis-ci.com/wirepas/gateway)
-
 <!-- MarkdownTOC levels="1,2" autolink="true"  -->
 
 - [Gateway overview](#gateway-overview)
@@ -231,8 +229,6 @@ wm-node-config --help
 ## Option 2: Docker installation
 
 In order to ease the installation in a Docker environment, please see the instruction in [docker folder](docker).
-The Docker files under [container folder](container) are still used for our internal CI but must no be used for other purposes.
-They will be removed at some point.
 
 ## Contributing
 
@@ -250,13 +246,8 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [here_code_of_conduct]: CODE_OF_CONDUCT.md
 [here_license]: LICENSE
 [here_img_overview]: img/wm-gateway-overview.png?raw=true
-[here_ci_docker_build]: .ci/build-images.sh
 [here_releases]: https://github.com/wirepas/gateway/releases
-[here_container]: container/
-[here_container_dockerfile]: container/Dockerfile
-[here_container_env]: container/wm_gateway.env
 [here_dbus_manifest]: sink_service/com.wirepas.sink.conf
-[here_container_entrypoint]: container/common/docker-entrypoint.sh
 [here_transport_readme]: python_transport/README.md
 [here wiki systemd]: https://github.com/wirepas/gateway/wiki/How-to-start-a-native-gateway-with-systemd
 
