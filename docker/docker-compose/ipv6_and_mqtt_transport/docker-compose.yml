@@ -61,8 +61,8 @@ services:
       driver: journald
 
   ipv6-service:
-    # For now only a beta version exists (tag will later be replaced by ${GATEWAY_TAG:-latest})
-    image: wirepas/gateway_ipv6_service:1.4.2_beta1
+    # For now only a edge tag exists (tag will later be replaced by ${GATEWAY_TAG:-latest})
+    image: wirepas/gateway_ipv6_service:edge
     container_name: ipv6-service
     restart: always
     network_mode: 'host'
