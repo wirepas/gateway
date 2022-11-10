@@ -231,8 +231,6 @@ wm-node-config --help
 ## Option 2: Docker installation
 
 In order to ease the installation in a Docker environment, please see the instruction in [docker folder](docker).
-The Docker files under [container folder](container) are still used for our internal CI but must no be used for other purposes.
-They will be removed at some point.
 
 ## Contributing
 
@@ -252,7 +250,6 @@ Copyright 2019 Wirepas Ltd licensed under Apache License, Version 2.0 See file
 [here_img_overview]: img/wm-gateway-overview.png?raw=true
 [here_ci_docker_build]: .ci/build-images.sh
 [here_releases]: https://github.com/wirepas/gateway/releases
-[here_container]: container/
 [here_container_dockerfile]: container/Dockerfile
 [here_container_env]: container/wm_gateway.env
 [here_dbus_manifest]: sink_service/com.wirepas.sink.conf
