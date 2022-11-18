@@ -223,7 +223,7 @@ There is a script installed along the Wirepas Transport wheel that allow the con
 Please see its help page for more information.
 
 ```shell
-wm-node-config --help
+wm-node-conf --help
 ```
 
 ## Option 2: Docker installation
