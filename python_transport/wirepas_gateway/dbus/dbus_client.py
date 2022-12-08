@@ -17,15 +17,13 @@ class DbusEventHandler(Thread):
     delegated to C through a Python C extension
     """
 
-    def __init__(self, cb, logger):
+    def __init__(self, cb):
         """
         Initialize the C module wrapper
         :param cb: Python Callback to call from C on packet reception
         """
         Thread.__init__(self)
 
-        # logger
-        self.logger = logger
 
         dbusCExtension.setCallback(cb)
         self.daemon = True  # Daemonize thread
@@ -37,7 +35,7 @@ class DbusEventHandler(Thread):
         """
         while True:
             dbusCExtension.infiniteEventLoop()
-            self.logger.error("C extension loop has exited")
+            logging.error("C extension loop has exited")
 
 
 class BusClient:
@@ -47,10 +45,7 @@ class BusClient:
     of dbus
     """
 
-    def __init__(self, logger=None, c_extension=True, ignored_ep_filter=None):
-
-        # logger
-        self.logger = logger or logging.getLogger(__name__)
+    def __init__(self, c_extension=True, ignored_ep_filter=None):
 
         # Main loop for events
         self.loop = GLib.MainLoop()
@@ -65,19 +60,16 @@ class BusClient:
             on_sink_removal_cb=self.on_sink_disconnected,
             on_stack_started=self.on_stack_started,
             on_stack_stopped=self.on_stack_stopped,
-            logger=self.logger,
         )
 
         self.ignore_ep_filter = ignored_ep_filter
 
         # Register for packet on Dbus
         if c_extension:
-            self.logger.info("Starting dbus client with c extension")
-            self.c_extension_thread = DbusEventHandler(
-                self._on_data_received_c, self.logger
-            )
+            logging.info("Starting dbus client with c extension")
+            self.c_extension_thread = DbusEventHandler(self._on_data_received_c)
         else:
-            self.logger.info("Starting dbus client without c extension")
+            logging.info("Starting dbus client without c extension")
             # Subscribe to all massages received from any sink (no need for
             # connected sink for that)
             self.bus.subscribe(
@@ -104,7 +96,7 @@ class BusClient:
 
         # Could be done in C extension if needed by providing list to extension
         if self.ignore_ep_filter is not None and dst_ep in self.ignore_ep_filter:
-            self.logger.debug("Message received on ep %s filtered out", dst_ep)
+            logging.debug("Message received on ep %s filtered out", dst_ep)
             return
 
         # Get sink name from sender unique name
@@ -127,7 +119,7 @@ class BusClient:
         # pylint: disable=redefined-builtin
         # filter out endpoint
         if self.ignore_ep_filter is not None and params[4] in self.ignore_ep_filter:
-            self.logger.debug("Message received on ep %s filtered out", params[4])
+            logging.debug("Message received on ep %s filtered out", params[4])
             return
 
         # Get sink name from sender unique name
