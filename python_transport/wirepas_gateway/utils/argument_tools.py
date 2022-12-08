@@ -541,6 +541,33 @@ class ParserHelper:
             ),
         )
 
+    def add_rtc_settings(self):
+        self.rtc_settings.add_argument(
+            "--rtc_synchronization_period_s",
+            default=os.environ.get("WM_RTC_SYNCHRONIZATION_PERIOD_S", 20*60),
+            action="store",
+            type=self.str2int,
+            help=("Period of the rtc synchronization in the network."),
+        )
+
+        self.rtc_settings.add_argument(
+            "--utc_to_local_conversion_s",
+            default=os.environ.get("WM_RTC_UTC_TO_LOCAL_CONVERSION_S", 0),
+            action="store",
+            type=self.str2int,
+            help=("Period of the rtc synchronization in the network."),
+        )
+
+        self.rtc_settings.add_argument(
+            "--timezone_from_gateway_clock",
+            default=os.environ.get("WM_RTC_TIMEZONE_FROM_GATEWAY_CLOCK", True),
+            action="store",
+            type=self.str2bool,
+            help=("True (default) if timezone conversion must be taken from gateway clock."
+                  "False means that the timezone conversion is"
+                  "given by utc_to_local_conversion_s argument"),
+        )
+
     def dump(self, path):
         """ dumps the arguments into a file """
         with open(path, "w") as f:
