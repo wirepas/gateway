@@ -29,8 +29,9 @@ USER wirepas
 RUN pip3 install dist/wirepas_gateway*.whl --no-deps --user
 # Dependencies are installed manually as runner image already have wmm
 # Todo: removing wmm from requirement list would be better
-RUN pip3 install paho-mqtt==1.4.0 pydbus==0.6.0 PyYAML==5.4 --user
+RUN pip3 install pydbus==0.6.0 PyYAML==5.4 --user
 RUN pip3 install gobject PyGObject --user
+RUN pip3 install ntplib --user
 
 
 # Special target to extract binaries
@@ -55,6 +56,8 @@ ENV PATH="/home/wirepas/.local/bin:${PATH}"
 # Copy the built wheel and its dependencies from builder
 COPY --from=builder /home/wirepas/.local /home/wirepas/.local
 
-CMD ["wm-rtc"]
+COPY ./rtc_service/*.py /home/wirepas/rtc_service/
+
+CMD ["python3", "/home/wirepas/rtc_service/rtc_service.py"]
 
 LABEL com.wirepas.gateway.build.sha1="${GATEWAY_BUILD_SHA1}"
