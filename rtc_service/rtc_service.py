@@ -135,10 +135,8 @@ class RtcService(BusClient):
         data,
     ):
         if (src_ep == RTC_SOURCE_EP and dst_ep == RTC_DEST_EP):
-            start = time()
             req = self.ntp_client.request('europe.pool.ntp.org', version=3)
-            delay = time() - start
-            timer = req.dest_time+req.offset-delay
+            timer = req.orig_time+req.offset
             logging.info(f"Difference between rtc and expected sink time to be {int((timer)*1000) - (int.from_bytes(data, 'little')+travel_time)}ms from node {src}")
             return  # rtc is not treated in the backend
 
