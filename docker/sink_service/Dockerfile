@@ -1,4 +1,4 @@
-FROM alpine:3.12 AS builder
+FROM alpine:3.17 AS builder
 
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
@@ -22,7 +22,7 @@ RUN make
 FROM scratch AS export
 COPY --from=builder /home/wirepas/sink_service/build/sinkService .
 
-FROM alpine:3.12
+FROM alpine:3.17
 
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset

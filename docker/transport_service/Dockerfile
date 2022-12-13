@@ -1,4 +1,4 @@
-FROM python:3.8.8-alpine3.12 AS builder
+FROM python:3.10.8-alpine3.17 AS builder
 
 RUN adduser --disabled-password wirepas
 
@@ -39,7 +39,7 @@ COPY --from=builder /home/wirepas/python_transport/dist/*.tar.gz .
 
 
 # Build the final image with prebuilt wmm image
-FROM wirepas/wmm_alpine_cpp:1.2
+FROM wirepas/wmm_alpine_cpp:1.2.3a0
 
 USER root
 
