@@ -43,8 +43,8 @@ RTC_ID_VERSION = 0
 RTC_ID_TIMER = 1
 RTC_ID_TIMEZONE_OFFSET = 2
 
-Then the length of the value is coded in hex.
-And finally the value itself is encoded in hex.
+Then the length of the value is coded in hexadecimal.
+And finally the value itself is encoded in hexadecimal.
 
 For example, a message containing :
 
@@ -71,17 +71,17 @@ RTC_ID_TIMEZONE_OFFSET = 2
 
 ## Time precision
 
-Due to the multiple steps, the rtc time might not be precize enough:
+Due to the multiple steps, the RTC time might not be precise enough:
 
-Time is taken from a distant ntp server. The estimated latency may be unaccurate as it is calculate from the round-trip of the assymetrical exchange.
+Time is taken from a distant ntp server. The estimated latency may be inaccurate as it is calculate from the round-trip of the asymmetrical exchange.
 
-RTC time is taken at rtc level while the travel time calculation starts at a sink service level. From RTC to sink service, we lose 10ms precision on rtc time.
+RTC time is taken at RTC level while the travel time calculation starts at a sink service level. From RTC to sink service, we lose 10ms precision on RTC time.
 
 As devices use their own clock to stay synchronous,
-a drift might happen between the expected rtc time and the real one from the ntp server. 
+a drift might happen between the expected RTC time and the real one from the ntp server.
 It is empirically estimated to be a 1ms shift at the node level every 40s in a Low Latency mode.
 
-A latency may also occur when transfering the messages between nodes.
+A latency may also occur when transferring the messages between nodes.
 
 ## Test the time difference
 
