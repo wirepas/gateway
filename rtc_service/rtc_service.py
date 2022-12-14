@@ -14,6 +14,7 @@ from threading import Thread
 
 from wirepas_gateway.dbus.dbus_client import BusClient
 
+RTC_VERSION = 0
 
 BROADCAST_ADDRESS = 0xFFFFFFFF  # Broadcast
 INITIAL_DELAY_MS = 0
@@ -22,6 +23,24 @@ INITIAL_DELAY_MS = 0
 RTC_SOURCE_EP = 78
 RTC_DEST_EP = 78
 
+RTC_ID_VERSION = 0
+RTC_ID_TIMER = 1
+RTC_ID_TIMEZONE_OFFSET = 2
+
+def add_tlv_item(elt_type, value, length, packing):
+    # assert (elt_type <= 0xFF), "A TLV type must be include between 0 and 255."
+    # assert (isinstance(length, int) & length >= len(hex(value))/2-1), "A TLV type must be include between 0 and 255."
+    return bytes(struct.pack("<bb"+packing, elt_type, length, value))
+
+def encode_tlv(version, timer_ms, timezone_offset_s=0):
+    buffer = b""
+    if timer_ms is not None:
+        buffer += add_tlv_item(RTC_ID_VERSION, version, 1, "b")
+    if timer_ms is not None:
+        buffer += add_tlv_item(RTC_ID_TIMER, timer_ms, 8, "Q")
+    if timezone_offset_s is not None:
+        buffer += add_tlv_item(RTC_ID_TIMEZONE_OFFSET, timezone_offset_s, 4, "l")
+    return buffer
 
 class SynchronizationThread(Thread):
 
@@ -65,10 +84,7 @@ class SynchronizationThread(Thread):
         timer = req.dest_time+req.offset
         # timer = time()
         timer_ms = int(timer*1000)
-        data_payload = bytes(struct.pack("<Ql",
-                    timer_ms, self.timezone_offset_s))
-        # TODO: cbor encoding to be backward compatible
-
+        data_payload = encode_tlv(RTC_VERSION, timer_ms, self.timezone_offset_s)
         logging.info(f"Send rtc={timer_ms} to the network")
         for sink in self.sink_manager.get_sinks():
             start = time()

@@ -28,7 +28,7 @@ It was therefore decided to use TLV encoding for the library to be backward comp
 
 The messages are composed of:
 
-| Parameter | type | number of bits | description |
+| Parameter | Type | Number of bytes | Description |
 | ------------- | ----    | ---  | ---  |
 | version | unsigned int | 1 | Version of the library |
 | rtc timestamp | unsigned long long | 8 | Timestamp of the current rtc time in the UTC timezone |
@@ -48,7 +48,7 @@ And finally the value itself is encoded in hexadecimal.
 
 For example, a message containing :
 
-| Parameter | type | number of bits | value |
+| Parameter | type | number of bytes | value |
 | ------------- | ----    | ---  | ---  |
 | version | 0 | 1 | 0x01 |
 | rtc timestamp | 1 | 8 | 0x000001850aeb3964 |
@@ -71,17 +71,17 @@ RTC_ID_TIMEZONE_OFFSET = 2
 
 ## Time precision
 
-Due to the multiple steps, the RTC time might not be precise enough:
+Due to the multiple steps, the RTC time might lose some precision:
 
-Time is taken from a distant ntp server. The estimated latency may be inaccurate as it is calculate from the round-trip of the asymmetrical exchange.
+Time is taken from a distant ntp server. The estimated latency may be inaccurate as it is calculate from the round-trip of the asymmetrical exchange. This is similar for all system relying on NTP but it must be acknowledged for better understanding of the time precision.
 
-RTC time is taken at RTC level while the travel time calculation starts at a sink service level. From RTC to sink service, we lose 10ms precision on RTC time.
+RTC time is taken at a gateway service level while the travel time calculation starts at a sink device level. From gateway to sink device, we lose about 10ms precision on RTC time to send the time data.
 
 As devices use their own clock to stay synchronous,
 a drift might happen between the expected RTC time and the real one from the ntp server.
-It is empirically estimated to be a 1ms shift at the node level every 40s in a Low Latency mode.
+It is empirically estimated to be a 1ms shift at the node level every 40s in a Low Latency mode. It was tested with a gateway sending RTC time every minute to a single node in a low latency. The node was displaying the time difference between the estimated value and the value. A simple graph shows the time difference shifting.
 
-A latency may also occur when transferring the messages between nodes.
+A latency may also occur when transferring the messages between nodes, but it hasn’t been tested yet.
 
 ## Test the time difference
 
@@ -95,4 +95,4 @@ Nodes need to send periodically their expected rtc time to the sinks.
 The time difference between the expectation and the real time are then stored in a local file. 
 
 
-[test_time_difference]: https://github.com/gateway/rtc_service/script/script_rtc_time_difference.py
+[test_time_difference]: https://github.com/gateway/rtc_service/script_analyse/script_rtc_time_difference.py
