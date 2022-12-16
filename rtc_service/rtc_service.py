@@ -14,33 +14,58 @@ from threading import Thread
 
 from wirepas_gateway.dbus.dbus_client import BusClient
 
-RTC_VERSION = 0
 
-BROADCAST_ADDRESS = 0xFFFFFFFF  # Broadcast
+RTC_VERSION = 1
+
+BROADCAST_ADDRESS = 0xFFFFFFFF
 INITIAL_DELAY_MS = 0
 
 # TODO, determine true Endpoints
 RTC_SOURCE_EP = 78
-RTC_DEST_EP = 78
+RTC_DEST_EP = 79
 
 RTC_ID_VERSION = 0
 RTC_ID_TIMER = 1
 RTC_ID_TIMEZONE_OFFSET = 2
 
-def add_tlv_item(elt_type, value, length, packing):
-    # assert (elt_type <= 0xFF), "A TLV type must be include between 0 and 255."
-    # assert (isinstance(length, int) & length >= len(hex(value))/2-1), "A TLV type must be include between 0 and 255."
+
+def encode_tlv_item(elt_type, length, value, packing):
+    """
+    Encode a new TLV item.
+
+    Args:
+        elt_type (int): Type of the element to encode.
+        length (int): Number of bytes of the value to be encoded.
+        value: Value to encode. Note: Value should have a specific type
+               corresponding to the packing parameter.
+        packing (str): Format characters allows the conversion between C
+                       and Python values when packing the value bytes.
+                       See https://docs.python.org/3/library/struct.html#format-characters.
+    """
+    assert (0 <= elt_type <= 0xFF), "A TLV type must be include between 0 and 255"
+    assert isinstance(length, int), "A TLV length must be an integer"
     return bytes(struct.pack("<bb"+packing, elt_type, length, value))
 
 def encode_tlv(version, timer_ms, timezone_offset_s=0):
+    """
+    Encode a RTC message with TLV.
+    Each of the RTC item are encoding as:
+    Type of the item - Length of the value to encode - value to encode.
+
+    Args:
+        version: Version of the RTC service.
+        timer_ms: Current global time of the network in ms.
+        timezone_offset_s: Offset of the timezone in seconds. (default: 0)
+    """
     buffer = b""
     if timer_ms is not None:
-        buffer += add_tlv_item(RTC_ID_VERSION, version, 1, "b")
+        buffer += encode_tlv_item(RTC_ID_VERSION, 1, version, "b")
     if timer_ms is not None:
-        buffer += add_tlv_item(RTC_ID_TIMER, timer_ms, 8, "Q")
+        buffer += encode_tlv_item(RTC_ID_TIMER, 8, timer_ms, "Q")
     if timezone_offset_s is not None:
-        buffer += add_tlv_item(RTC_ID_TIMEZONE_OFFSET, timezone_offset_s, 4, "l")
+        buffer += encode_tlv_item(RTC_ID_TIMEZONE_OFFSET, 4, timezone_offset_s, "l")
     return buffer
+
 
 class SynchronizationThread(Thread):
 
@@ -49,13 +74,15 @@ class SynchronizationThread(Thread):
         period,
         timezone_offset_s,
         timezone_from_gateway_clock,
+        get_time_from_local,
         sink_manager
     ):
         """
-            Thread sending periodically time to synchronize the mesh network.
+            Thread sending periodically time to synchronize the network.
+
         Args:
-            period: the period to send gateway time to the mesh network
-            sink_manager: the sink manager to send sink the rtc informations
+            period: The period to send gateway time to the network
+            sink_manager: The sink manager to send sink the rtc informations
         """
         Thread.__init__(self)
 
@@ -70,7 +97,9 @@ class SynchronizationThread(Thread):
         else:
             self.timezone_offset_s = timezone_offset_s
 
-        self.ntp_client = ntplib.NTPClient()
+        self.get_time_from_local = get_time_from_local
+        if not self.get_time_from_local:
+            self.ntp_client = ntplib.NTPClient()
         self.sink_manager = sink_manager
         logging.info(f"Expected RTC sending period is set to {self.period}s")
 
@@ -78,14 +107,21 @@ class SynchronizationThread(Thread):
 
     def publish_time(self):
         """
-        Publish the gateway time in the network.
+        Publish the rtc time in the network.
         """
-        req = self.ntp_client.request('europe.pool.ntp.org', version=3)
-        timer = req.dest_time+req.offset
-        # timer = time()
+        if not self.get_time_from_local:
+            try:
+                req = self.ntp_client.request('pool.ntp.org', version=3)
+                timer = req.dest_time+req.offset
+            except ntplib.NTPException as err:
+                logging.warning("Couldn't get time from NTP server. (%s)", err)
+                return
+        else:
+            timer = time()
+
         timer_ms = int(timer*1000)
         data_payload = encode_tlv(RTC_VERSION, timer_ms, self.timezone_offset_s)
-        logging.info(f"Send rtc={timer_ms} to the network")
+        logging.info("Send rtc message to the network")
         for sink in self.sink_manager.get_sinks():
             start = time()
             sink.send_data(
@@ -98,7 +134,8 @@ class SynchronizationThread(Thread):
                 is_unack_csma_ca=False,
                 hop_limit=0,
             )
-            logging.info(f"time elapsed to send ntp through the gateway: {int((time()-start)*1000)}ms")
+            logging.debug("time elapsed to send ntp through the gateway: "
+                          f"{int((time()-start)*1000)}ms")
 
     def run(self):
         """
@@ -126,35 +163,14 @@ class RtcService(BusClient):
     def __init__(self, settings, **kwargs):
 
         super(RtcService, self).__init__(**kwargs)
-
-        self.ntp_client = ntplib.NTPClient()
         self.synchronization_thread = SynchronizationThread(
             settings.rtc_synchronization_period_s,
             settings.timezone_offset_s,
             settings.timezone_from_gateway_clock,
+            settings.get_time_from_local,
             self.sink_manager,
         )
         self.synchronization_thread.start()
-
-
-    def on_data_received(
-        self,
-        sink_id,
-        timestamp,
-        src,
-        dst,
-        src_ep,
-        dst_ep,
-        travel_time,
-        qos,
-        hop_count,
-        data,
-    ):
-        if (src_ep == RTC_SOURCE_EP and dst_ep == RTC_DEST_EP):
-            req = self.ntp_client.request('europe.pool.ntp.org', version=3)
-            timer = req.orig_time+req.offset
-            logging.info(f"Difference between rtc and expected sink time to be {int((timer)*1000) - (int.from_bytes(data, 'little')+travel_time)}ms from node {src}")
-            return  # rtc is not treated in the backend
 
     def on_stack_started(self, name):
         logging.debug("Sink started: %s", name)
@@ -223,6 +239,17 @@ def main():
         action="store",
         type=str2int,
         help=("Timezone offset of the local time if WM_RTC_TIMEZONE_FROM_GATEWAY_CLOCK is False."),
+    )
+
+    parser.add_argument(
+        "--get_time_from_local",
+        default=os.environ.get("WM_RTC_GET_TIME_FROM_LOCAL", False),
+        action="store",
+        type=str2bool,
+        help=("False(default) will force the gateway to ask time from a ntp server"
+              "before sending it to the network"
+              "True means that the time is taken directly from gateway."
+              "Note: You must assure that gateway are synchronized if set to True"),
     )
 
     settings = parser.parse_args()

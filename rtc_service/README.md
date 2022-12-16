@@ -13,6 +13,7 @@ The RTC service has three parameters to be started.
 | WM_RTC_SYNCHRONIZATION_PERIOD_S | Period of time before sending a new rtc time in the network | The default value is 20 minutes (1200 seoncds). This value should take into account the existing congestion in the network. |
 | WM_RTC_TIMEZONE_FROM_GATEWAY_CLOCK | A boolean to assert whether the timezone offset should be taken directly from the gateway clock or from the the parameter WM_RTC_TIMEZONE_OFFSET_S | The default value is False |
 | WM_RTC_TIMEZONE_OFFSET_S | Timezone offset in seconds of the local time. | It is taken in account only if WM_RTC_TIMEZONE_FROM_GATEWAY_CLOCK is False. |
+| WM_RTC_GET_TIME_FROM_LOCAL | Asserts if the rtc time is send from local time or from a ntp server time | If set to True, it is assume that gateways are synchronize |
 
 RTC service is available as a docker image to ease the integration.
 
@@ -73,7 +74,7 @@ RTC_ID_TIMEZONE_OFFSET = 2
 
 Due to the multiple steps, the RTC time might lose some precision:
 
-Time is taken from a distant ntp server. The estimated latency may be inaccurate as it is calculate from the round-trip of the asymmetrical exchange. This is similar for all system relying on NTP but it must be acknowledged for better understanding of the time precision.
+Time is taken from a distant ntp server. The estimated latency may be inaccurate as it is calculate from the round-trip of the asymmetrical exchange. This is similar for all system relying on NTP but it must be acknowledged for better understanding of the time precision. (around 10ms of precision)
 
 RTC time is taken at a gateway service level while the travel time calculation starts at a sink device level. From gateway to sink device, we lose about 10ms precision on RTC time to send the time data.
 
@@ -81,18 +82,27 @@ As devices use their own clock to stay synchronous,
 a drift might happen between the expected RTC time and the real one from the ntp server.
 It is empirically estimated to be a 1ms shift at the node level every 40s in a Low Latency mode. It was tested with a gateway sending RTC time every minute to a single node in a low latency. The node was displaying the time difference between the estimated value and the value. A simple graph shows the time difference shifting.
 
+Therefore, 20 minutes getting time, precision is about 50ms (=10 + 10 + 20*60/40).
+
 A latency may also occur when transferring the messages between nodes, but it hasn’t been tested yet.
 
 ## Test the time difference
 
 As devices use their own clock to stay synchronous,
 a drift might happen between the expected rtc time and the real one from the ntp server.
-A python script [test_time_difference][test_time_difference] getting the expected rtc time from the nodes.
+The application rtc_app from sdk gives expected ntp time to the nearest gateway to test the time shift. 
+Python scripts [test_time_difference][test_time_difference] are getting the expected rtc time from the nodes
+on connecting to the mqtt broker thanks to the transport service. 
+And the second script [draw_time_diff][draw_time_diff] is drawing the data created by the first script.
+These scripts can be launched outside of the gateway as there are connecting to the MQTT brocker of the gateway to get the estimated rtc timestamps.
+The mqtt message are published on DataEvent topic with the following content :
+From each of them, it is possible to retrieve the node id, the timestamp of the rtc in ms and the time difference in ms.
 
 ### Use conditions
 
 Nodes need to send periodically their expected rtc time to the sinks.
-The time difference between the expectation and the real time are then stored in a local file. 
+The time difference between the expectation and the real time are then published to the MQTT. 
 
 
-[test_time_difference]: https://github.com/gateway/rtc_service/script_analyse/script_rtc_time_difference.py
+[test_time_difference]: https://github.com/wm-sdk/rtc_service/source/example_apps/rtc_app/backend_scripts/test_time_difference.py
+[draw_time_diff]: https://github.com/wm-sdk/rtc_service/source/example_apps/rtc_app/backend_scripts/draw_time_diff.py
