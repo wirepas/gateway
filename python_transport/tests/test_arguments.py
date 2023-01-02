@@ -22,7 +22,7 @@ env_vars["WM_SERVICES_MQTT_ALLOW_UNTRUSTED"] = True
 env_vars["WM_GW_BUFFERING_MAX_BUFFERED_PACKETS"] = 1000
 env_vars["WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH"] = 128
 env_vars["WM_GW_BUFFERING_MINIMAL_SINK_COST"] = 240
-env_vars["WM_CACHE_TIME_WINDOW"] = 1800
+env_vars["WM_CACHE_TIME_WINDOW_S"] = 1800
 env_vars["WM_CACHE_UPDATE_S"] = 60
 env_vars["WM_GW_ID"] = "1"
 env_vars["WM_GW_MODEL"] = "test"
@@ -56,7 +56,7 @@ file_vars["buffering_max_delay_without_publish"] = env_vars[
     "WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH"
 ]
 file_vars["buffering_minimal_sink_cost"] = env_vars["WM_GW_BUFFERING_MINIMAL_SINK_COST"]
-file_vars["cache_time_window"] = env_vars["WM_CACHE_TIME_WINDOW"]
+file_vars["cache_time_window_s"] = env_vars["WM_CACHE_TIME_WINDOW_S"]
 file_vars["cache_update_s"] = env_vars["WM_CACHE_UPDATE_S"]
 
 file_vars["gateway_id"] = env_vars["WM_GW_ID"]
@@ -159,8 +159,8 @@ def content_tests(settings, vcopy):
         == settings.buffering_minimal_sink_cost
     )
     assert (
-        vcopy["WM_CACHE_TIME_WINDOW"]
-        == settings.cache_time_window
+        vcopy["WM_CACHE_TIME_WINDOW_S"]
+        == settings.cache_time_window_s
     )
     assert (
         vcopy["WM_CACHE_UPDATE_S"]
@@ -218,7 +218,7 @@ def test_defaults():
     assert settings.buffering_max_delay_without_publish == 0
     assert settings.buffering_minimal_sink_cost == 0
     assert settings.cache_update_s == 20
-    assert settings.cache_time_window == 1200
+    assert settings.cache_time_window_s == 1200
     assert settings.gateway_id is None
     assert settings.gateway_model is None
     assert settings.gateway_version is None

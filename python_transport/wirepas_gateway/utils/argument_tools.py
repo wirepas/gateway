@@ -402,14 +402,28 @@ class ParserHelper:
             ),
         )
 
+    def add_debug_settings(self):
+        self.debug.add_argument(
+            "--debug_incr_data_event_id",
+            default=os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID", False),
+            type=self.str2bool,
+            nargs="?",
+            const=True,
+            help=(
+                "When true the data received event id will be incremental "
+                "starting at 0 when service starts. Otherwise it will be "
+                "random 64 bits id."
+            ),
+        )
+
     def add_cache_settings(self):
         """ Parameters used to avoid sending redundant messages in the mqtt broker """
-        cleaning_time_window_default = 20*60  # 20 minutes
+        cleaning_time_window_s_default = 1200  # 20 minutes
         cache_update_s_default = 20  # 20 secondes
 
         self.cache.add_argument(
-            "--cache_time_window",
-            default=os.environ.get("WM_CACHE_TIME_WINDOW", cleaning_time_window_default),
+            "--cache_time_window_s",
+            default=os.environ.get("WM_CACHE_TIME_WINDOW_S", cleaning_time_window_s_default),
             action="store",
             type=self.str2int,
             help=(
@@ -425,20 +439,6 @@ class ParserHelper:
             help=(
                 "Period to update the list of received messages in seconds."
                 "Must be smaller than time_window"
-            ),
-        )
-
-    def add_debug_settings(self):
-        self.debug.add_argument(
-            "--debug_incr_data_event_id",
-            default=os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID", False),
-            type=self.str2bool,
-            nargs="?",
-            const=True,
-            help=(
-                "When true the data received event id will be incremental "
-                "starting at 0 when service starts. Otherwise it will be "
-                "random 64 bits id."
             ),
         )
 
