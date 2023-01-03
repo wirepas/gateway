@@ -43,12 +43,8 @@ class MQTTWrapper(Thread):
         # Keep track of latest published packet
         self._publish_monitor = PublishMonitor()
 
-        # load special settings for broker compatibility
-        self.retain_supported = settings.mqtt_retain_flag_supported
-        logging.info(
-            "MQTT retain flag supported is set to %s",
-            self.retain_supported
-        )
+        # Load special settings for broker compatibility
+        self.retain_supported = not settings.mqtt_retain_flag_not_supported
 
         if settings.mqtt_use_websocket:
             transport = "websockets"
@@ -306,6 +302,12 @@ class MQTTWrapper(Thread):
         self._publish_monitor.on_publish_request()
 
     def subscribe(self, topic, cb, qos=2) -> None:
+        """ Method to subscribe to mqtt topic
+        Args:
+            topic: Topic to subscribe to
+            cb: Callback to call on message reception
+            qos: Qos to use.
+        """
         logging.debug("Subscribing to: {}".format(topic))
         self._client.subscribe(topic, qos)
         self._client.message_callback_add(topic, cb)
