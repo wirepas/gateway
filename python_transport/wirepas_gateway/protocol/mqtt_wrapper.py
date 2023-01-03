@@ -45,9 +45,9 @@ class MQTTWrapper(Thread):
 
         # load special settings for broker compatibility
         self.retain_supported = settings.mqtt_retain_flag_supported
-        self.logger.info(
+        logging.info(
             "MQTT retain flag supported is set to %s",
-            settings.mqtt_retain_flag_supported
+            self.retain_supported
         )
 
         if settings.mqtt_use_websocket:

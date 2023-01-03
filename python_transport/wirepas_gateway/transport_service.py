@@ -243,7 +243,10 @@ class TransportService(BusClient):
         event_online = wmm.StatusEvent(self.gw_id, wmm.GatewayState.ONLINE)
 
         self.mqtt_wrapper.publish(
-            self.status_topic, event_online.payload, qos=1, retain=self.retain_supported
+            self.status_topic,
+            event_online.payload,
+            qos=1,
+            retain=self.retain_supported
         )
 
     def _on_connect(self):
@@ -759,13 +762,13 @@ class TransportService(BusClient):
     ):
         # pylint: disable=unused-argument
         res = wmm.GatewayResultCode.GW_RES_OK
-        self.logger.info("Get gateway status request received")
+        logging.info("Get gateway status request received")
         try:
             request = wmm.GetGatewayStatusRequest.from_payload(
                 message.payload
             )
         except wmm.GatewayAPIParsingException as e:
-            self.logger.error(str(e))
+            logging.error(str(e))
             return
 
         response = wmm.GetGatewayStatusResponse(
