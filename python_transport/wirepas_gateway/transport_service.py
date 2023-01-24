@@ -926,7 +926,7 @@ def main():
 
     # enable its logger
     logging.basicConfig(
-        format='%(asctime)s | [%(levelname)s] %(name)s@%(filename)s:%(lineno)d:%(message)s',
+        format=f'%(asctime)s | [%(levelname)s] {__pkg_name__}@%(filename)s:%(lineno)d:%(message)s',
         level=debug_level,
         stream=sys.stdout
     )
