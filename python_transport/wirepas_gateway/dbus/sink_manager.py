@@ -71,7 +71,8 @@ class Sink:
     ):
         try:
             res = self.proxy.SendMessage(
-                dst,
+                # For some reason on some arch, uint32 are not correctly handled
+                dst & 0xFFFFFFFF,
                 src_ep,
                 dst_ep,
                 initial_time,
@@ -206,6 +207,13 @@ class Sink:
         return wmm.GatewayResultCode.GW_RES_OK
 
     def write_config(self, config):
+        # Force the node address if used
+        try:
+            # For some reason on some arch, uint32 are not correctly handled and result to an overflow
+            config["node_address"] = config["node_address"] & 0xFFFFFFFF
+        except KeyError:
+            # Node addess is not in the config
+            pass
         # Should always be available
         try:
             stack_started = (self.proxy.StackStatus & 0x01) == 0
