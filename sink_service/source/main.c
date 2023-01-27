@@ -19,7 +19,8 @@
 #include "otap.h"
 
 #define LOG_MODULE_NAME "Main"
-#define MAX_LOG_LEVEL INFO_LOG_LEVEL
+// Log level should be determine by the global maximum log level
+#define MAX_LOG_LEVEL DEBUG_LOG_LEVEL
 #include "logger.h"
 
 /* Default serial port */
@@ -148,6 +149,11 @@ int main(int argc, char * argv[])
     unsigned int max_poll_fail_duration = UNDEFINED_MAX_POLL_FAIL_DURATION;
     unsigned int fragment_max_duration_s = DEFAULT_FRAGMENT_MAX_DURATION_S;
 
+    /* Set the global value of the maximum log level */
+    char * tmp = getenv("WM_GW_SINK_MAX_LOG_LEVEL");
+    int8_t max_log_level = (tmp != NULL) ? strtoul(tmp, NULL, 0) : ERROR_LOG_LEVEL;
+    Logger_set_global_max_log_level(max_log_level);
+
     /* Acquires environment parameters */
     get_env_parameters(&baudrate, &port_name, &sink_id, &max_poll_fail_duration,
                        &fragment_max_duration_s);
@@ -216,7 +222,7 @@ int main(int argc, char * argv[])
             LOGI("Auto baudrate: testing %d bps\n", auto_baudrate_list[i]);
             if (open_and_check_connection(auto_baudrate_list[i], port_name) != 0)
             {
-                LOGD("Cannot establish communication with sink\n");
+                LOGV("Cannot establish communication with sink\n");
             }
             else
             {

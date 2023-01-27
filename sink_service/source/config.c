@@ -14,7 +14,8 @@
 #include "wpc.h"
 
 #define LOG_MODULE_NAME "Config"
-#define MAX_LOG_LEVEL INFO_LOG_LEVEL
+// Log level should be determine by the global maximum log level
+#define MAX_LOG_LEVEL DEBUG_LOG_LEVEL
 #include "logger.h"
 
 /** Structure to hold unmodifiable configs from node */
@@ -94,7 +95,7 @@ static int channel_map_read_handler_wrapper(sd_bus * bus,
 {
     if (m_sink_config.version[0] >= 4)
     {
-        LOGD("No need to ask channel map if stack >= 4\n");
+        LOGV("No need to ask channel map if stack >= 4\n");
         SET_WPC_ERROR(error, "WPC_get_channel_map", APP_RES_ATTRIBUTE_NOT_SET);
         return -EINVAL;
     }
@@ -121,7 +122,7 @@ static int get_firmware_version(sd_bus * bus,
                                     m_sink_config.version,
                                     sizeof(m_sink_config.version));
 
-    LOGD("Version Firmware is %d.%d.%d.%d\n",
+    LOGV("Version Firmware is %d.%d.%d.%d\n",
          m_sink_config.version[0],
          m_sink_config.version[1],
          m_sink_config.version[2],

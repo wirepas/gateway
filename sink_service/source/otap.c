@@ -15,6 +15,7 @@
 #include "wpc.h"
 
 #define LOG_MODULE_NAME "Otap"
+// Log level should be determine by the global maximum log level
 #define MAX_LOG_LEVEL DEBUG_LOG_LEVEL
 #include "logger.h"
 
@@ -82,7 +83,7 @@ static int upload_scratchpad(sd_bus_message * m, void * userdata, sd_bus_error *
         return r;
     }
 
-    LOGD("Upload scratchpad: with seq %d of size %d\n", seq, n);
+    LOGV("Upload scratchpad: with seq %d of size %d\n", seq, n);
 
     /* Send the file to the sink */
     res = WPC_upload_local_scratchpad(n, (uint8_t *) data, seq);

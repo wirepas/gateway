@@ -14,7 +14,8 @@
 #include "wpc.h"
 
 #define LOG_MODULE_NAME "Data"
-#define MAX_LOG_LEVEL INFO_LOG_LEVEL
+// Log level should be determine by the global maximum log level
+#define MAX_LOG_LEVEL DEBUG_LOG_LEVEL
 #include "logger.h"
 
 /** Bus instance received at init and needed to send signals */
