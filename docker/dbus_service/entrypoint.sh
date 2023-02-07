@@ -1,7 +1,7 @@
 #!/bin/sh
 
-if [ -f '/var/run/dbus.pid' ]; then
-    rm -f '/var/run/dbus.pid'
+if [ -f '/run/dbus/dbus.pid' ]; then
+    rm -f '/run/dbus/dbus.pid'
 fi
 
 exec dbus-daemon --system --nofork --print-address
