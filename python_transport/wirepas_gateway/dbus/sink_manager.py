@@ -173,6 +173,9 @@ class Sink:
             # so app config cannot be accessed
             logging.warning("Cannot get App Config")
 
+        # Add scratchpad related info
+        self.get_scratchpad_status(config)
+
         return config
 
     def _set_param(self, dic, key, attribute):
@@ -322,8 +325,11 @@ class Sink:
             else:
                 logging.error("Cannot set sink cost for sink {} ({})".format(self.sink_id, res))
 
-    def get_scratchpad_status(self):
-        d = {}
+    def get_scratchpad_status(self, out_d=None):
+        if out_d is None:
+            d = {}
+        else:
+            d = out_d
 
         dbus_to_gateway_satus = dict(
             [
@@ -361,24 +367,26 @@ class Sink:
         self._get_param(stored, "seq", "StoredSeq")
         self._get_param(stored, "crc", "StoredCrc")
         self._get_param(stored, "len", "StoredLen")
-        d["stored_scartchpad"] = stored
+        d["stored_scratchpad"] = stored
 
         processed = {}
         self._get_param(processed, "seq", "ProcessedSeq")
         self._get_param(processed, "crc", "ProcessedCrc")
         self._get_param(processed, "len", "ProcessedLen")
-        d["processed_scartchpad"] = processed
+        d["processed_scratchpad"] = processed
 
         self._get_param(d, "firmware_area_id", "FirmwareAreaId")
 
         try:
             seq, crc, action, param = self.proxy.GetTargetScratchpad()
-            d["target_action"] = wmm.ScratchpadAction(
+            target_and_action = {}
+            target_and_action["action"] = wmm.ScratchpadAction(
                 action + 1
             )  # Plus one as dualmcu version starts at 0, and we start at 1
-            d["target_seq"] = seq
-            d["target_crc"] = crc
-            d["target_param"] = param
+            target_and_action["target_seq"] = seq
+            target_and_action["target_crc"] = crc
+            target_and_action["param"] = param
+            d["target_and_action"] = target_and_action
         except GLib.Error:
             logging.warning("Cannot get Target Scratchpad")
 
