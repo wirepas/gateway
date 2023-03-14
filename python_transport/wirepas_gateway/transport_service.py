@@ -8,7 +8,7 @@ import sys
 import wirepas_mesh_messaging as wmm
 from time import time, sleep
 from uuid import getnode
-from threading import Thread
+from threading import Lock, Thread
 
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
@@ -187,7 +187,9 @@ class TransportService(BusClient):
 
         last_will_topic = TopicGenerator.make_status_topic(self.gw_id)
         last_will_message = wmm.StatusEvent(
-            self.gw_id, wmm.GatewayState.OFFLINE
+            self.gw_id, wmm.GatewayState.OFFLINE,
+            gateway_model=self.gw_model,
+            gateway_version=self.gw_version
         ).payload
 
         self.mqtt_wrapper = MQTTWrapper(
@@ -227,6 +229,10 @@ class TransportService(BusClient):
         else:
             self.data_event_id = None
 
+        # Flag to know if updating the status is already scheduled
+        self._is_update_status_scheduled = False
+        self._status_lock = Lock()
+
     def _on_mqtt_wrapper_termination_cb(self):
         """
         Callback used to be informed when the MQTT wrapper has exited
@@ -237,11 +243,62 @@ class TransportService(BusClient):
         self.stop_dbus_client()
 
     def _set_status(self):
-        event_online = wmm.StatusEvent(self.gw_id, wmm.GatewayState.ONLINE)
+        # Create a list of different sink configs
+        configs = []
+        for sink in self.sink_manager.get_sinks():
+            config = sink.read_config()
+            if config is not None:
+                configs.append(config)
+
+        topic = TopicGenerator.make_get_configs_response_topic(self.gw_id)
+
+        event_online = wmm.StatusEvent(
+                            self.gw_id,
+                            wmm.GatewayState.ONLINE,
+                            sink_configs=configs,
+                            gateway_model=self.gw_model,
+                            gateway_version=self.gw_version,
+                            )
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
 
         self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
+
+    def _update_status(self):
+        # First check if an update is about to be sent to avoid
+        # multiple updates in a short period (0.5s)
+        with self._status_lock:
+            if self._is_update_status_scheduled:
+                # Update is already scheduled, so our modification
+                # will be handled soon
+                logging.debug("Update already scheduled")
+                return
+            else:
+                logging.debug("Update not scheduled yet")
+                self._is_update_status_scheduled = True
+
+        def set_status_after_delay(delay_s):
+            sleep(delay_s)
+            logging.debug("Time to update the status")
+            self._is_update_status_scheduled = False
+            self._set_status()
+
+        # We are here as there was no update scheduled yet.
+        # Wait a bit
+        thread = Thread(target=set_status_after_delay, args=[0.5])
+        thread.start()
+
+    def update_gateway_status_dec(fn):
+        """
+        Decorator to update the gateway status when needed
+        """
+        def wrapper(self, *args, **kwargs):
+            fn(self, *args, **kwargs)
+            logging.debug("Updating gw status for %s", fn)
+            self._update_status()
+            return
+
+        return wrapper
 
     def _on_connect(self):
         # Register for get gateway info
@@ -361,15 +418,17 @@ class TransportService(BusClient):
         # backends
         self.mqtt_wrapper.publish(topic, event.payload, qos=1)
 
+    @update_gateway_status_dec
     def on_stack_started(self, name):
         logging.debug("Sink started: %s", name)
         # Generate a setconfig answer with req_id of 0
-        self. _send_asynchronous_set_config_response(name)
+        self._send_asynchronous_set_config_response(name)
 
+    @update_gateway_status_dec
     def on_stack_stopped(self, name):
         logging.debug("Sink stopped: %s", name)
         # Generate a setconfig answer with req_id of 0
-        self. _send_asynchronous_set_config_response(name)
+        self._send_asynchronous_set_config_response(name)
 
     def _send_asynchronous_set_config_response(self, name):
         sink = self.sink_manager.get_sink(name)
@@ -418,6 +477,7 @@ class TransportService(BusClient):
 
         return wrapper
 
+    @update_gateway_status_dec
     def on_sink_connected(self, name):
         logging.info("Sink connected, sending new configs")
         if self.monitoring_thread is not None:
@@ -438,6 +498,7 @@ class TransportService(BusClient):
 
         self._send_asynchronous_get_configs_response()
 
+    @update_gateway_status_dec
     def on_sink_disconnected(self, name):
         logging.info("Sink disconnected, sending new configs")
         self._send_asynchronous_get_configs_response()
@@ -507,6 +568,7 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     @deferred_thread
+    @update_gateway_status_dec
     def _on_own_status_received(self, client, userdata, message):
         try:
             if message.payload.__len__() > 0:
@@ -520,8 +582,6 @@ class TransportService(BusClient):
         # If we are here, something happened to our status.
         # Either not online or malformed or empty
         logging.error("Gateway info request is wrong or updated")
-        # Set our status back
-        self._set_status()
 
     def _on_get_gateway_info_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
@@ -550,6 +610,7 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     @deferred_thread
+    @update_gateway_status_dec
     def _on_set_config_cmd_received(self, client, userdata, message):
         # pylint: disable=unused-argument
         logging.info("Set config request received")
@@ -591,14 +652,9 @@ class TransportService(BusClient):
         if sink is not None:
             d = sink.get_scratchpad_status()
 
-            target_and_action = {}
             try:
-                target_and_action["action"] = d["target_action"]
-                target_and_action["target_sequence"] = d["target_seq"]
-                target_and_action["target_crc"] = d["target_crc"]
-                target_and_action["param"] = d["target_param"]
+                target_and_action = d["target_and_action"]
             except KeyError:
-                # If not present, just an old node
                 target_and_action = None
 
             response = wmm.GetScratchpadStatusResponse(
@@ -606,10 +662,10 @@ class TransportService(BusClient):
                 self.gw_id,
                 wmm.GatewayResultCode.GW_RES_OK,
                 request.sink_id,
-                d["stored_scartchpad"],
+                d["stored_scratchpad"],
                 d["stored_status"],
                 d["stored_type"],
-                d["processed_scartchpad"],
+                d["processed_scratchpad"],
                 d["firmware_area_id"],
                 target_and_action,
             )
@@ -628,6 +684,7 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     @deferred_thread
+    @update_gateway_status_dec
     def _on_otap_upload_scratchpad_request_received(self, client, userdata, message):
         # pylint: disable=unused-argument
         logging.info("OTAP upload request received")
@@ -682,6 +739,7 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     @deferred_thread
+    @update_gateway_status_dec
     def _on_otap_set_target_scratchpad_request_received(
         self, client, userdata, message
     ):
