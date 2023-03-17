@@ -377,18 +377,22 @@ class Sink:
 
         self._get_param(d, "firmware_area_id", "FirmwareAreaId")
 
-        try:
-            seq, crc, action, param = self.proxy.GetTargetScratchpad()
-            target_and_action = {}
-            target_and_action["action"] = wmm.ScratchpadAction(
-                action + 1
-            )  # Plus one as dualmcu version starts at 0, and we start at 1
-            target_and_action["target_seq"] = seq
-            target_and_action["target_crc"] = crc
-            target_and_action["param"] = param
-            d["target_and_action"] = target_and_action
-        except GLib.Error:
-            logging.warning("Cannot get Target Scratchpad")
+        # Read Target only if firmware is greater than 5.1
+        stack_version = self.proxy.FirmwareVersion
+        if stack_version[0] > 5 or (stack_version[0] == 5 and stack_version[1] > 0):
+            # Target scratchpad should be supported (except if dualmcu is too old)
+            try:
+                seq, crc, action, param = self.proxy.GetTargetScratchpad()
+                target_and_action = {}
+                target_and_action["action"] = wmm.ScratchpadAction(
+                    action + 1
+                )  # Plus one as dualmcu version starts at 0, and we start at 1
+                target_and_action["target_sequence"] = seq
+                target_and_action["target_crc"] = crc
+                target_and_action["param"] = param
+                d["target_and_action"] = target_and_action
+            except GLib.Error:
+                logging.warning("Cannot get Target Scratchpad")
 
         return d
 
