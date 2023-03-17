@@ -389,7 +389,27 @@ class Sink:
                 )  # Plus one as dualmcu version starts at 0, and we start at 1
                 target_and_action["target_sequence"] = seq
                 target_and_action["target_crc"] = crc
-                target_and_action["param"] = param
+                if target_and_action["action"] == wmm.ScratchpadAction.ACTION_PROPAGATE_AND_PROCESS_WITH_DELAY:
+                    # check if delay is in predifined list
+                    param_to_delay_dic = {
+                        0x4A: wmm.ProcessingDelay.DELAY_TEN_MINUTES,
+                        0x5E: wmm.ProcessingDelay.DELAY_THIRTY_MINUTES,
+                        0x81: wmm.ProcessingDelay.DELAY_ONE_HOUR,
+                        0x86: wmm.ProcessingDelay.DELAY_SIX_HOURS,
+                        0xC1: wmm.ProcessingDelay.DELAY_ONE_DAY,
+                        0xC2: wmm.ProcessingDelay.DELAY_TWO_DAYS,
+                        0xC5: wmm.ProcessingDelay.DELAY_FIVE_DAYS
+                    }
+
+                    try:
+                        target_and_action["delay"] = param_to_delay_dic[param]
+                    except KeyError:
+                        logging.debug("Delay not in predifined list: %d", param)
+                        target_and_action["param"] = param
+
+                else:
+                    target_and_action["param"] = param
+
                 d["target_and_action"] = target_and_action
             except GLib.Error:
                 logging.warning("Cannot get Target Scratchpad")
@@ -495,23 +515,24 @@ class Sink:
             if param is None:
                 param = 0
 
-            # Do a minus 1 as action are shifted by one with dual mcu
-            res = self.proxy.SetTargetScratchpad(
-                target_seq, target_crc, action.value - 1, param
-            )
             logging.info(
                 "Scratchpad target set to Action %s (%d) with seq"
-                " %d and crc %d on sink %s (res=%s)",
+                " %d and crc %d on sink %s",
                 action,
                 param,
                 target_seq,
                 target_crc,
                 self.sink_id,
-                res,
             )
+
+            # Do a minus 1 as action are shifted by one with dual mcu
+            self.proxy.SetTargetScratchpad(
+                target_seq, target_crc, action.value - 1, param
+            )
+
         except GLib.Error as e:
             ret = ReturnCode.error_from_dbus_exception(str(e))
-            logging.error("Cannot set target scratchpad: %s", ret.name)
+            logging.warning("Cannot set target scratchpad: %s (can be normal if same value as already set)", ret.name)
 
         return ret
 
