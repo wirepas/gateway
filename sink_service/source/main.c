@@ -74,12 +74,15 @@ static bool get_service_name(char service_name[MAX_SIZE_SERVICE_NAME], unsigned 
  *          Pointer where to store max_poll_fail_duration value (if any)
  * \param   fragment_max_duration_s
  *          Pointer where to store fragment_max_duration_s value (if any)
+ * \param   downlink_limit
+ *          Pointer where to store downlink_limit value (if any)
  */
 static void get_env_parameters(unsigned long * baudrate,
                                char ** port_name,
                                unsigned int * sink_id,
                                unsigned int * max_poll_fail_duration,
-                               unsigned int * fragment_max_duration_s)
+                               unsigned int * fragment_max_duration_s,
+                               unsigned int * downlink_limit)
 {
     char * ptr;
 
@@ -109,6 +112,11 @@ static void get_env_parameters(unsigned long * baudrate,
     {
         *fragment_max_duration_s = strtoul(ptr, NULL, 0);
         LOGI("WM_GW_SINK_MAX_FRAGMENT_DURATION_S: %lu\n", *fragment_max_duration_s);
+    }
+    if ((ptr = getenv("WM_GW_SINK_DOWNLINK_LIMIT")) != NULL)
+    {
+        *downlink_limit = strtoul(ptr, NULL, 0);
+        LOGI("WM_GW_SINK_DOWNLINK_LIMIT: %lu\n", *downlink_limit);
     }
 }
 
@@ -147,13 +155,14 @@ int main(int argc, char * argv[])
     unsigned int sink_id = 0;
     unsigned int max_poll_fail_duration = UNDEFINED_MAX_POLL_FAIL_DURATION;
     unsigned int fragment_max_duration_s = DEFAULT_FRAGMENT_MAX_DURATION_S;
+    unsigned int downlink_limit = true;
 
     /* Acquires environment parameters */
     get_env_parameters(&baudrate, &port_name, &sink_id, &max_poll_fail_duration,
-                       &fragment_max_duration_s);
+                       &fragment_max_duration_s, &downlink_limit);
 
     /* Parse command line arguments - take precedence over environmental ones */
-    while ((c = getopt(argc, argv, "b:p:i:d:f:")) != -1)
+    while ((c = getopt(argc, argv, "b:p:i:d:f:l:")) != -1)
     {
         switch (c)
         {
@@ -176,12 +185,21 @@ int main(int argc, char * argv[])
             case 'f':
                 fragment_max_duration_s = strtoul(optarg, NULL, 0);
                 break;
+            case 'l':
+                downlink_limit = strtoul(optarg, NULL, 0);
+                break;
             case '?':
             default:
                 LOGE("Error in argument parsing\n");
                 LOGE("Parameters are: -b <baudrate> -p <port> -i <sink_id> -f <fragment max duration>\n");
                 return EXIT_FAILURE;
         }
+    }
+
+    if (downlink_limit > 16)
+    {
+        LOGE("Max downlink limit is 16 (%d)\n", downlink_limit);
+        return EXIT_FAILURE;
     }
 
     /* Generate full service name */
@@ -263,7 +281,7 @@ int main(int argc, char * argv[])
         goto finish;
     }
 
-    if (Data_Init(m_bus, "/com/wirepas/sink", "com.wirepas.sink.data1") < 0)
+    if (Data_Init(m_bus, "/com/wirepas/sink", "com.wirepas.sink.data1", downlink_limit) < 0)
     {
         LOGE("Cannot initialize data module\n");
         r = -1;

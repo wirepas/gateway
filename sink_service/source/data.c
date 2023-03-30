@@ -29,21 +29,39 @@ static char * m_interface = NULL;
 /** Bus slot used to register the Vtable */
 static sd_bus_slot * m_slot = NULL;
 
+/** Max mtu size of sink */
+static size_t m_max_mtu;
+
+/* Max number of downlink packet being sent in parallel */
+static size_t m_downlink_limit;
+
 /**********************************************************************
  *                   DBUS Methods implementation                      *
  **********************************************************************/
+
+static uint8_t m_message_queued_in_sink = 0;
+
+static void on_data_sent_cb(uint16_t pduid, uint32_t buffering_delay, uint8_t result)
+{
+    m_message_queued_in_sink -= (uint8_t) (pduid >> 8);
+    LOGD("Message sent %d, Message_queued: %d\n", pduid, m_message_queued_in_sink);
+}
+
 /**
  * \brief   Send a message handler
  * \param   ... (from sd_bus function signature)
  */
 static int send_message(sd_bus_message * m, void * userdata, sd_bus_error * error)
 {
+    static uint8_t m_pdu_id = 0;
+
     app_message_t message;
     app_res_e res;
     const void * data;
     size_t n;
     int r;
     uint8_t qos;
+    uint8_t weight;
 
     /* Read the parameters */
     r = sd_bus_message_read(m,
@@ -77,20 +95,45 @@ static int send_message(sd_bus_message * m, void * userdata, sd_bus_error * erro
     message.bytes = data;
     message.num_bytes = n;
 
+    if (m_downlink_limit > 0)
+    {
+        /* Check if message can be queued */
+        weight = (n + m_max_mtu - 1) / m_max_mtu;
+        if (m_message_queued_in_sink + weight > m_downlink_limit)
+        {
+            // No point to try sending data, queue is already full
+            return sd_bus_reply_method_return(m, "u", APP_RES_OUT_OF_MEMORY);
+        }
+
+        /* Keep track of packet queued on the sink */
+        /* Encode weight in ID */
+        message.pdu_id = weight << 8 | m_pdu_id++;
+        message.on_data_sent_cb = on_data_sent_cb;
+    }
+    else
+    {
+        message.pdu_id = 0;
+        message.on_data_sent_cb = NULL;
+
+    }
+
     LOGD("Message to send on EP %d from EP %d to 0x%x size = %d\n",
          message.dst_ep,
          message.src_ep,
          message.dst_addr,
          message.num_bytes);
 
-    /* Send packet. For now, packets are not tracked to keep behavior simpler */
-    message.pdu_id = 0;
-    message.on_data_sent_cb = NULL;
+
 
     res = WPC_send_data_with_options(&message);
     if (res != APP_RES_OK)
     {
         LOGE("Cannot send data: %d\n", res);
+    }
+    else if (m_downlink_limit > 0)
+    {
+        m_message_queued_in_sink += weight;
+        LOGI("Message_queued: %d\n", m_message_queued_in_sink);
     }
 
     return sd_bus_reply_method_return(m, "u", res);
@@ -203,16 +246,23 @@ static const sd_bus_vtable data_vtable[] = {
 
     SD_BUS_VTABLE_END};
 
-int Data_Init(sd_bus * bus, char * object, char * interface)
+int Data_Init(sd_bus * bus, char * object, char * interface, size_t downlink_limit)
 {
     int ret;
 
     m_bus = bus;
     m_object = object;
     m_interface = interface;
+    m_downlink_limit = downlink_limit;
 
     /* Register for all data */
     WPC_register_for_data(onDataReceived);
+
+    if (WPC_get_mtu((uint8_t *) &m_max_mtu) != APP_RES_OK)
+    {
+        LOGW("Cannot read max mtu from node");
+        m_max_mtu = 102;
+    }
 
     /* Install the data vtable */
     ret = sd_bus_add_object_vtable(bus, &m_slot, object, interface, data_vtable, NULL);

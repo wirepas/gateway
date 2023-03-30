@@ -15,10 +15,12 @@
  *          The sd_bus instance to publish the config interface
  *\param    object
  *\param    interface
+ *\param    downlink_limit
+            If > 0, max number of downlink messages being queued in parallel
  * \return  0 if initialization succeed, an error code otherwise
  * \note    Connection with sink must be ready before calling this module
  */
-int Data_Init(sd_bus * bus, char * object, char * interface);
+int Data_Init(sd_bus * bus, char * object, char * interface, size_t downlink_limit);
 
 void Data_Close();
 
