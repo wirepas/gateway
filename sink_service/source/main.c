@@ -155,7 +155,7 @@ int main(int argc, char * argv[])
     unsigned int sink_id = 0;
     unsigned int max_poll_fail_duration = UNDEFINED_MAX_POLL_FAIL_DURATION;
     unsigned int fragment_max_duration_s = DEFAULT_FRAGMENT_MAX_DURATION_S;
-    unsigned int downlink_limit = true;
+    unsigned int downlink_limit = 0;
 
     /* Acquires environment parameters */
     get_env_parameters(&baudrate, &port_name, &sink_id, &max_poll_fail_duration,
@@ -191,7 +191,7 @@ int main(int argc, char * argv[])
             case '?':
             default:
                 LOGE("Error in argument parsing\n");
-                LOGE("Parameters are: -b <baudrate> -p <port> -i <sink_id> -f <fragment max duration>\n");
+                LOGE("Parameters are: -b <baudrate> -p <port> -i <sink_id> -f <fragment max duration> -l <downlink limit>\n");
                 return EXIT_FAILURE;
         }
     }
@@ -213,6 +213,11 @@ int main(int argc, char * argv[])
          port_name,
          baudrate,
          full_service_name);
+
+    if (downlink_limit > 0)
+    {
+        LOGI("Downlink limit is set to %d\n", downlink_limit);
+    }
 
     if (baudrate != 0)
     {
