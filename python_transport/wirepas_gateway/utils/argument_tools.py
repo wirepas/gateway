@@ -363,6 +363,31 @@ class ParserHelper:
             ),
         )
 
+        self.mqtt.add_argument(
+            "--mqtt_retain_flag_not_supported",
+            default=os.environ.get("WM_SERVICES_MQTT_RETAIN_FLAG_NOT_SUPPORTED", False),
+            type=self.str2bool,
+            nargs="?",
+            const=True,
+            help=(
+                "Set to true if broker support retain flag"
+                "Gateway is sending its status periodically only"
+                "if retain option is not supported"
+                "otherwise status is retained in the MQTT"
+            ),
+        )
+
+        self.mqtt.add_argument(
+            "--mqtt_send_gateway_status_period_s",
+            default=os.environ.get("WM_SERVICES_MQTT_SEND_GATEWAY_STATUS_PERIOD_S", 20),
+            action="store",
+            type=self.str2int,
+            help=(
+                "Period in seconds of a gateway to send its status"
+                "to the backend if retain option is not supported"
+            ),
+        )
+
     def add_buffering_settings(self):
         """ Parameters used to avoid black hole case """
         self.buffering.add_argument(

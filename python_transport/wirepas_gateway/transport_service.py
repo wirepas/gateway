@@ -156,6 +156,67 @@ class ConnectionToBackendMonitorThread(Thread):
                 sink.cost = self.minimum_sink_cost
 
 
+class SendGatewayStatusThread(Thread):
+    def __init__(
+        self,
+        period_s,
+        mqtt_wrapper,
+        gw_id,
+    ):
+        """
+        Thread sending periodically Gateway Status to the MQTT broker.
+        Args:
+            period_s: the period to send the status
+            mqtt_wrapper: the mqtt wrapper to publish gateway status on
+            gw_id: the id of the gateway to be use for MQTT topic
+        """
+        Thread.__init__(self)
+
+        # Daemonize thread to exit with full process
+        self.daemon = True
+
+        # How often to send status
+        self.period_s = period_s
+        self.mqtt_wrapper = mqtt_wrapper
+
+        self.gw_id = gw_id
+        self.running = False
+
+    def publish_status(self):
+        """
+        Publish the gateway status in the MQTT Broker.
+        """
+        event_online = wmm.StatusEvent(self.gw_id, wmm.GatewayState.ONLINE)
+        status_topic = TopicGenerator.make_status_topic(self.gw_id)
+        logging.info("Publishing periodic gateway status!")
+        self.mqtt_wrapper.publish(status_topic, event_online.payload, qos=1)
+
+    def is_connected(self):
+        """
+        Check if the gateway is connected with the MQTT broker.
+        """
+        return self.mqtt_wrapper.connected
+
+    def run(self):
+        """
+        Main loop that send periodically the status of the gateway to the MQTT Broker.
+        """
+        self.running = True
+
+        while self.running:
+            if self.is_connected():
+                self.publish_status()
+
+            # Wait for period_s seconds
+            sleep(self.period_s)
+
+    def stop(self):
+        """
+        Stop the periodical sending gateway status thread.
+        """
+        self.running = False
+
+
 class TransportService(BusClient):
     """
     Implementation of gateway to backend protocol
@@ -183,9 +244,12 @@ class TransportService(BusClient):
         self.gw_model = settings.gateway_model
         self.gw_version = settings.gateway_version
 
+        # Does broker support retain flag
+        self.retain_supported = not settings.mqtt_retain_flag_not_supported
+
         self.whitened_ep_filter = settings.whitened_endpoints_filter
 
-        last_will_topic = TopicGenerator.make_status_topic(self.gw_id)
+        self.make_status_topic = TopicGenerator.make_status_topic(self.gw_id)
         last_will_message = wmm.StatusEvent(
             self.gw_id, wmm.GatewayState.OFFLINE
         ).payload
@@ -194,7 +258,7 @@ class TransportService(BusClient):
             settings,
             self._on_mqtt_wrapper_termination_cb,
             self._on_connect,
-            last_will_topic,
+            self.make_status_topic,
             last_will_message,
         )
 
@@ -227,6 +291,18 @@ class TransportService(BusClient):
         else:
             self.data_event_id = None
 
+        if not self.retain_supported:
+            logging.info("Gateway status is sent every %d seconds", settings.mqtt_send_gateway_status_period_s)
+
+            self.send_status_thread = SendGatewayStatusThread(
+                settings.mqtt_send_gateway_status_period_s,
+                self.mqtt_wrapper,
+                self.gw_id,
+            )
+            self.send_status_thread.start()
+        else:
+            logging.info("Retain flag is supported by the gateway")
+
     def _on_mqtt_wrapper_termination_cb(self):
         """
         Callback used to be informed when the MQTT wrapper has exited
@@ -239,9 +315,12 @@ class TransportService(BusClient):
     def _set_status(self):
         event_online = wmm.StatusEvent(self.gw_id, wmm.GatewayState.ONLINE)
 
-        topic = TopicGenerator.make_status_topic(self.gw_id)
-
-        self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
+        self.mqtt_wrapper.publish(
+            self.make_status_topic,
+            event_online.payload,
+            qos=1,
+            retain=self.retain_supported
+        )
 
     def _on_connect(self):
         # Register for get gateway info
@@ -283,13 +362,17 @@ class TransportService(BusClient):
             topic, self._on_otap_set_target_scratchpad_request_received
         )
 
+        topic = TopicGenerator.make_get_gw_status_request_topic()
+        self.mqtt_wrapper.subscribe(
+            topic, self._on_get_gw_status_request_received
+        )
+
         # Register ourself to our status in case someone else (by mistake)
         # update our status.
         # It will work only if we are allowed to register for event topic
         # at broker level
-        topic = TopicGenerator.make_status_topic(self.gw_id)
         self.mqtt_wrapper.subscribe(
-            topic, self._on_own_status_received
+            self.make_status_topic, self._on_own_status_received
         )
 
         self._set_status()
@@ -746,6 +829,29 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    @deferred_thread
+    def _on_get_gw_status_request_received(
+        self, client, userdata, message
+    ):
+        # pylint: disable=unused-argument
+        res = wmm.GatewayResultCode.GW_RES_OK
+        logging.info("Get gateway status request received")
+        try:
+            request = wmm.GetGatewayStatusRequest.from_payload(
+                message.payload
+            )
+        except wmm.GatewayAPIParsingException as e:
+            logging.error(str(e))
+            return
+
+        response = wmm.GetGatewayStatusResponse(
+            request.req_id, self.gw_id, res, wmm.GatewayState.ONLINE
+        )
+        topic = TopicGenerator.make_get_gw_status_response_topic(
+            self.gw_id
+        )
+
+        self.mqtt_wrapper.publish(topic, response.payload, qos=1)
 
 def parse_setting_list(list_setting):
     """ This function parse ep list specified from setting file or cmd line

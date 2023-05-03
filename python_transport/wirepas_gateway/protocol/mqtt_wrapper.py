@@ -43,6 +43,9 @@ class MQTTWrapper(Thread):
         # Keep track of latest published packet
         self._publish_monitor = PublishMonitor()
 
+        # Load special settings for broker compatibility
+        self.retain_supported = not settings.mqtt_retain_flag_not_supported
+
         if settings.mqtt_use_websocket:
             transport = "websockets"
             self._use_websockets = True
@@ -233,7 +236,7 @@ class MQTTWrapper(Thread):
 
     def _set_last_will(self, topic, data):
         # Set Last wil message
-        self._client.will_set(topic, data, qos=2, retain=True)
+        self._client.will_set(topic, data, qos=2, retain=self.retain_supported)
 
     def run(self):
         self.running = True
@@ -278,6 +281,9 @@ class MQTTWrapper(Thread):
             retain: Is it a retain message
 
         """
+        # Clear retain flag if not supported
+        retain = retain and self.retain_supported
+
         mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
         self._unpublished_mid_set.add(mid)
 
@@ -296,6 +302,12 @@ class MQTTWrapper(Thread):
         self._publish_monitor.on_publish_request()
 
     def subscribe(self, topic, cb, qos=2) -> None:
+        """ Method to subscribe to mqtt topic
+        Args:
+            topic: Topic to subscribe to
+            cb: Callback to call on message reception
+            qos: Qos to use.
+        """
         logging.debug("Subscribing to: {}".format(topic))
         self._client.subscribe(topic, qos)
         self._client.message_callback_add(topic, cb)
