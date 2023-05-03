@@ -162,10 +162,10 @@ class MQTTWrapper(Thread):
                 # Publish everything. Loop is not necessary as
                 # next select will exit immediately if queue not empty
                 while True:
-                    topic, payload, qos, retain = self._publish_queue.get()
+                    topic, payload, retain = self._publish_queue.get()
 
                     self._publish_from_wrapper_thread(
-                        topic, payload, qos=qos, retain=retain
+                        topic, payload, retain=retain
                     )
 
                     # FIX: read internal sockpairR as it is written but
@@ -233,7 +233,7 @@ class MQTTWrapper(Thread):
 
     def _set_last_will(self, topic, data):
         # Set Last wil message
-        self._client.will_set(topic, data, qos=2, retain=True)
+        self._client.will_set(topic, data, qos=1, retain=True)
 
     def run(self):
         self.running = True
@@ -267,37 +267,42 @@ class MQTTWrapper(Thread):
             # thread has exited
             self.on_termination_cb()
 
-    def _publish_from_wrapper_thread(self, topic, payload, qos, retain):
+    def _publish_from_wrapper_thread(self, topic, payload, retain):
         """Internal method to publish on Mqtt. This method is only called from
         mqtt wrapper thread to avoid races.
 
         Args:
             topic: Topic to publish on
             payload: Payload
-            qos: Qos to use
             retain: Is it a retain message
 
         """
-        mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
+        mid = self._client.publish(topic, payload, qos=1, retain=retain).mid
         self._unpublished_mid_set.add(mid)
 
-    def publish(self, topic, payload, qos=1, retain=False) -> None:
+    def publish(self, topic, payload, retain=False) -> None:
         """ Method to publish to Mqtt from any thread
 
         Args:
             topic: Topic to publish on
             payload: Payload
-            qos: Qos to use
             retain: Is it a retain message
 
         """
         # Send it to the queue to be published from Mqtt thread
-        self._publish_queue.put((topic, payload, qos, retain))
+        self._publish_queue.put((topic, payload, retain))
         self._publish_monitor.on_publish_request()
 
-    def subscribe(self, topic, cb, qos=2) -> None:
+    def subscribe(self, topic, cb) -> None:
+        """ Method to subscribe to mqtt topic
+
+        Args:
+            topic: Topic to subscribe to
+            cb: Callback to call on message reception
+
+        """
         logging.debug("Subscribing to: {}".format(topic))
-        self._client.subscribe(topic, qos)
+        self._client.subscribe(topic, qos=1)
         self._client.message_callback_add(topic, cb)
 
     @property

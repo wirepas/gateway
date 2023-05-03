@@ -22,6 +22,8 @@ env_vars["WM_SERVICES_MQTT_ALLOW_UNTRUSTED"] = True
 env_vars["WM_GW_BUFFERING_MAX_BUFFERED_PACKETS"] = 1000
 env_vars["WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH"] = 128
 env_vars["WM_GW_BUFFERING_MINIMAL_SINK_COST"] = 240
+env_vars["WM_CACHE_TIME_WINDOW_S"] = 1800
+env_vars["WM_CACHE_UPDATE_S"] = 60
 env_vars["WM_GW_ID"] = "1"
 env_vars["WM_GW_MODEL"] = "test"
 env_vars["WM_GW_VERSION"] = "pytest"
@@ -54,6 +56,8 @@ file_vars["buffering_max_delay_without_publish"] = env_vars[
     "WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH"
 ]
 file_vars["buffering_minimal_sink_cost"] = env_vars["WM_GW_BUFFERING_MINIMAL_SINK_COST"]
+file_vars["cache_time_window_s"] = env_vars["WM_CACHE_TIME_WINDOW_S"]
+file_vars["cache_update_s"] = env_vars["WM_CACHE_UPDATE_S"]
 
 file_vars["gateway_id"] = env_vars["WM_GW_ID"]
 file_vars["gateway_model"] = env_vars["WM_GW_MODEL"]
@@ -103,6 +107,7 @@ def get_args(delete_bools=False, set_env=True, set_file=False):
     parse.add_gateway_config()
     parse.add_filtering_config()
     parse.add_buffering_settings()
+    parse.add_cache_settings()
 
     settings = parse.settings()
 
@@ -153,6 +158,14 @@ def content_tests(settings, vcopy):
         vcopy["WM_GW_BUFFERING_MINIMAL_SINK_COST"]
         == settings.buffering_minimal_sink_cost
     )
+    assert (
+        vcopy["WM_CACHE_TIME_WINDOW_S"]
+        == settings.cache_time_window_s
+    )
+    assert (
+        vcopy["WM_CACHE_UPDATE_S"]
+        == settings.cache_update_s
+    )
 
     assert vcopy["WM_GW_ID"] == settings.gateway_id
     assert vcopy["WM_GW_MODEL"] == settings.gateway_model
@@ -184,6 +197,7 @@ def test_defaults():
     parse.add_gateway_config()
     parse.add_filtering_config()
     parse.add_buffering_settings()
+    parse.add_cache_settings()
 
     sys.argv = [sys.argv[0]]
     settings = parse.settings()
@@ -203,6 +217,8 @@ def test_defaults():
     assert settings.buffering_max_buffered_packets == 0
     assert settings.buffering_max_delay_without_publish == 0
     assert settings.buffering_minimal_sink_cost == 0
+    assert settings.cache_update_s == 20
+    assert settings.cache_time_window_s == 1200
     assert settings.gateway_id is None
     assert settings.gateway_model is None
     assert settings.gateway_version is None
