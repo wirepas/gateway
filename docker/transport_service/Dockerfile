@@ -29,7 +29,7 @@ USER wirepas
 RUN pip3 install dist/wirepas_gateway*.whl --no-deps --user
 # Dependencies are installed manually as runner image already have wmm
 # Todo: removing wmm from requirement list would be better
-RUN pip3 install paho-mqtt==1.4.0 pydbus==0.6.0 PyYAML==5.4 --user
+RUN pip3 install paho-mqtt==1.4.0 pydbus==0.6.0 PyYAML==6.0.1 --user
 RUN pip3 install gobject PyGObject --user
 
 

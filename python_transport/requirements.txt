@@ -4,8 +4,8 @@ wirepas_mesh_messaging==1.2.3
 # dbus bindings
 pydbus==0.6.0
 
-# grpc
-PyYAML==5.4
+# PyYAML
+PyYAML==6.0.1
 
 # mqtt
 paho-mqtt==1.4.0
