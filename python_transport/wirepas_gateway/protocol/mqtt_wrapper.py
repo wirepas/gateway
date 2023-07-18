@@ -94,15 +94,22 @@ class MQTTWrapper(Thread):
                 "Error on MQTT address %s:%d => %s"
                 % (settings.mqtt_hostname, settings.mqtt_port, str(e))
             )
-            exit(-1)
+            # Do not exit as it and let the retry mechanism
+            # to reconnect. It can happen if connection is not available yet.
+            # mqtt_reconnect_delay setting can be used to limit the retry.
         except ConnectionRefusedError:
             logging.error("Connection Refused by MQTT broker")
             exit(-1)
+        except OSError as e:
+            logging.error("Cannot establish connection (%s)", str(e))
+            # It will happen if broker is down when trying first connection.
+            # But it can happen also if settings are wrong (host or port)
+            # mqtt_reconnect_delay setting can be used to limit the retry.
 
         self.timeout = settings.mqtt_reconnect_delay
 
         # Set options to initial socket if tcp transport only
-        if not self._use_websockets:
+        if not self._use_websockets and self._client.socket() is not None:
             self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
 
         self._publish_queue = SelectableQueue()
@@ -110,7 +117,6 @@ class MQTTWrapper(Thread):
         # Thread is not started yes
         self.running = False
         self.connected = False
-        self.first_connection_done = False
 
     def _on_connect(self, client, userdata, flags, rc):
         # pylint: disable=unused-argument
@@ -119,7 +125,6 @@ class MQTTWrapper(Thread):
             self.running = False
             return
 
-        self.first_connection_done = True
         self.connected = True
         if self.on_connect_cb is not None:
             self.on_connect_cb()
@@ -191,10 +196,6 @@ class MQTTWrapper(Thread):
 
         if self.connected:
             logging.error("MQTT Inner loop, unexpected disconnection")
-        elif not self.first_connection_done:
-            # It's better to avoid retrying if the first connection was not successful
-            logging.error("Impossible to connect - authentication failure ?")
-            return None
 
         # Socket is not opened anymore, try to reconnect for timeout if set
         loop_forever = self.timeout == 0
