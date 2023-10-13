@@ -85,7 +85,7 @@ class Sink:
                 logging.error("Cannot send message err=%s", res)
                 return ReturnCode.error_from_dbus_return_code(res)
         except GLib.Error as e:
-            logging.exception("Fail to send message: %s", str(e))
+            logging.error("Fail to send message: %s", str(e))
             return ReturnCode.error_from_dbus_exception(str(e))
         except OverflowError:
             # It may happens as protobuf has bigger container value
@@ -137,7 +137,7 @@ class Sink:
             config["started"] = (self.proxy.StackStatus & 0x01) == 0
         except GLib.Error as e:
             error = ReturnCode.error_from_dbus_exception(str(e))
-            logging.exception("Cannot get Stack state: %s", error)
+            logging.error("Cannot get Stack state: %s", error)
             return None
 
         self._get_param(config, "node_address", "NodeAddress")
@@ -289,7 +289,7 @@ class Sink:
                 self.proxy.SetStackState(new_state)
         except GLib.Error as err:
             res = ReturnCode.error_from_dbus_exception(str(err))
-            logging.exception(
+            logging.error(
                 "Cannot set Stack state. Problem in communication probably: %s",
                 res.name,
             )
