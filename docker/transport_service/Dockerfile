@@ -39,7 +39,7 @@ COPY --from=builder /home/wirepas/python_transport/dist/*.tar.gz .
 
 
 # Build the final image with prebuilt wmm image
-FROM wirepas/wmm_alpine_cpp:1.2.3
+FROM wirepas/wmm_alpine_cpp:1.2.4
 
 USER root
 
