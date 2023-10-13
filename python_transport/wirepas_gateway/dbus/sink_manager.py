@@ -22,11 +22,12 @@ class Sink:
         self.on_stack_stopped = on_stack_stopped
         self.bus = bus
         self.unique_name = unique_name
-        self.on_started_handle = None
+        self._on_started_handle = None
+        self._on_stopped_handle = None
 
     def register_for_stack_started(self):
         # Use the subscribe directly to be able to specify the sender
-        self.on_started_handle = self.bus.subscribe(
+        self._on_started_handle = self.bus.subscribe(
             signal="StackStarted",
             object="/com/wirepas/sink",
             iface="com.wirepas.sink.config1",
@@ -35,18 +36,22 @@ class Sink:
         )
 
     def unregister_from_stack_started(self):
-        if self.on_started_handle is not None:
-            self.on_started_handle.unsubscribe()
+        if self._on_started_handle is not None:
+            self._on_started_handle.unsubscribe()
 
     def register_for_stack_stopped(self):
         # Use the subscribe directly to be able to specify the sender
-        self.on_started_handle = self.bus.subscribe(
+        self._on_stopped_handle = self.bus.subscribe(
             signal="StackStopped",
             object="/com/wirepas/sink",
             iface="com.wirepas.sink.config1",
             sender=self.unique_name,
             signal_fired=self._on_stack_stopped,
         )
+
+    def unregister_from_stack_stopped(self):
+        if self._on_stopped_handle is not None:
+            self._on_stopped_handle.unsubscribe()
 
     def get_network_address(self, force=False):
         if self.network_address is None or force:
@@ -609,6 +614,7 @@ class SinkManager:
         try:
             sink = self.sinks.pop(short_name)
             sink.unregister_from_stack_started()
+            sink.unregister_from_stack_stopped()
 
             # Remove Sink to association list
             for k, v in self.sender_to_name.items():
