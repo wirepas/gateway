@@ -7,7 +7,7 @@ on:
     paths:
       - 'docker/local_history_service/Dockerfile'
       - 'local_history_service/**'
-      - '.github/workflows/local_history_service.yml'
+      - '.github/workflows/docker_local_history_service.yml'
 
   workflow_dispatch:
     inputs:
