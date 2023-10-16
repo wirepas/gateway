@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - 'docker/gateway_local_history_service/Dockerfile'
+      - 'docker/local_history_service/Dockerfile'
       - 'local_history_service/**'
       - '.github/workflows/local_history_service.yml'
 
