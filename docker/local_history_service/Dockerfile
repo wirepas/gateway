@@ -41,9 +41,7 @@ USER root
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
 
-RUN apk add --no-cache libelogind glib gobject-introspection ndisc6 iproute2 sudo
-
-RUN adduser wirepas wheel
+RUN apk add --no-cache libelogind glib gobject-introspection
 
 USER wirepas
 
