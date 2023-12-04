@@ -240,22 +240,22 @@ class MQTTWrapper(Thread):
         self.running = True
 
         while self.running:
-
             try:
-                # check if we are connected
-                # Get client socket to select on it
-                # This function manage the reconnect
-                sock = self._get_socket()
-                if sock is None:
-                    # Cannot get the socket, probably an issue
-                    # with connection. Exit the thread
-                    logging.error("Cannot get MQTT socket, exit...")
-                    self.running = False
-                else:
-                    self._do_select(sock)
-            except TimeoutError:
-                logging.error("Timeout in connection, force a reconnect")
-                self._client.reconnect()
+                try:
+                    # check if we are connected
+                    # Get client socket to select on it
+                    # This function manage the reconnect
+                    sock = self._get_socket()
+                    if sock is None:
+                        # Cannot get the socket, probably an issue
+                        # with connection. Exit the thread
+                        logging.error("Cannot get MQTT socket, exit...")
+                        self.running = False
+                    else:
+                        self._do_select(sock)
+                except TimeoutError:
+                    logging.error("Timeout in connection, force a reconnect")
+                    self._client.reconnect()
             except Exception:
                 # If an exception is not caught before this point
                 # All the transport module must be stopped in order to be fully
