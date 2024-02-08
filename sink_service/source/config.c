@@ -578,6 +578,8 @@ static const sd_bus_vtable config_vtable[] = {
 
     /* Event generated when stack starts */
     SD_BUS_SIGNAL("StackStarted", "", 0),
+    /* Event generated when stack is stopped */
+    SD_BUS_SIGNAL("StackStopped", "", 0),
 
     SD_BUS_VTABLE_END};
 
