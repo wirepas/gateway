@@ -24,6 +24,7 @@ class Sink:
         self.unique_name = unique_name
         self._on_started_handle = None
         self._on_stopped_handle = None
+        self._last_config_dict = None
 
     def register_for_stack_started(self):
         # Use the subscribe directly to be able to specify the sender
@@ -136,6 +137,7 @@ class Sink:
     def read_config(self):
         config = {}
         config["sink_id"] = self.sink_id
+        partial = False
 
         # Should always be available
         try:
@@ -143,7 +145,6 @@ class Sink:
         except GLib.Error as e:
             error = ReturnCode.error_from_dbus_exception(str(e))
             logging.error("Cannot get Stack state: %s", error)
-            return None
 
         self._get_param(config, "node_address", "NodeAddress")
         self._get_param(config, "node_role", "NodeRole")
@@ -181,7 +182,16 @@ class Sink:
         # Add scratchpad related info
         self.get_scratchpad_status(config)
 
-        return config
+        if self._last_config_dict is not None:
+            for key, value in self._last_config_dict.items():
+                if key not in config:
+                    logging.warning("Add %s from cache in config", key)
+                    config[key] = value
+                    partial = True
+
+        self._last_config_dict = config.copy()
+
+        return config, partial
 
     def _set_param(self, dic, key, attribute):
         try:

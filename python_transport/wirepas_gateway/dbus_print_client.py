@@ -46,7 +46,8 @@ class PrintClient(BusClient):
 
         if sink is not None:
             # Read Stack status of sink on connection
-            logging.info("Sink connected with config: %s", sink.read_config())
+            config, _ = sink.read_config()
+            logging.info("Sink connected with config: %s", config)
 
 
 def main():

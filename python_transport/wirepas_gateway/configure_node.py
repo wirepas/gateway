@@ -175,7 +175,7 @@ class SinkConfigurator(BusClient):
         print("List of sinks:")
         for sink in sinks:
             print("============== [%s] ===============" % sink.sink_id)
-            config = sink.read_config()
+            config, _ = sink.read_config()
             for key in config.keys():
                 if key == "node_role":
                     print("[%s]: %s" % (key, NodeRole.from_dualmcu_value(config[key])))

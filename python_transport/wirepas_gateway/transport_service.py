@@ -233,6 +233,8 @@ class TransportService(BusClient):
         self._is_update_status_scheduled = False
         self._status_lock = Lock()
 
+        self._last_status_config = None
+
     def _on_mqtt_wrapper_termination_cb(self):
         """
         Callback used to be informed when the MQTT wrapper has exited
@@ -244,13 +246,23 @@ class TransportService(BusClient):
 
     def _set_status(self):
         # Create a list of different sink configs
+        partial_status = False
         configs = []
         for sink in self.sink_manager.get_sinks():
-            config = sink.read_config()
+            config, partial = sink.read_config()
+            partial_status |= partial
             if config is not None:
                 configs.append(config)
 
-        topic = TopicGenerator.make_get_configs_response_topic(self.gw_id)
+        if partial_status:
+            # Some part of the status were read from cache value
+            logging.warning("Some value were not up to date")
+
+        # Publish only if something has changed
+        if self._last_status_config is not None and \
+            self._last_status_config == configs:
+                logging.info("No new status to publish")
+                return
 
         event_online = wmm.StatusEvent(
                             self.gw_id,
@@ -263,6 +275,10 @@ class TransportService(BusClient):
         topic = TopicGenerator.make_status_topic(self.gw_id)
 
         self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
+
+        self._last_status_config = configs.copy()
+
+        return partial_status
 
     def _update_status(self):
         # First check if an update is about to be sent to avoid
@@ -279,12 +295,27 @@ class TransportService(BusClient):
 
         def set_status_after_delay(delay_s):
             sleep(delay_s)
+            attempt = 0
             logging.debug("Time to update the status")
+            if self._set_status():
+                # Status is partial, retry few times until we have valid one
+                delay_s = 2
+                while attempt < 5:
+                    sleep(delay_s)
+                    logging.debug("New attempt to publish status")
+                    if not self._set_status():
+                        # Successful update
+                        break
+
+                    attempt += 1
+                    delay_s *= 2
+
+            if attempt == 5:
+                logging.error("Not able to read a full status")
             self._is_update_status_scheduled = False
-            self._set_status()
 
         # We are here as there was no update scheduled yet.
-        # Wait a bit
+        # Wait a bit in case something else is changing
         thread = Thread(target=set_status_after_delay, args=[0.5])
         thread.start()
 
@@ -426,12 +457,14 @@ class TransportService(BusClient):
         if sink is None:
             logging.error("Sink %s error: unknown sink", name)
             return
+
+        config, _ = sink.read_config()
         response = wmm.SetConfigResponse(
             0,
             self.gw_id,
             wmm.GatewayResultCode.GW_RES_OK,
             sink.sink_id,
-            sink.read_config(),
+            config,
         )
         topic = TopicGenerator.make_set_config_response_topic(self.gw_id, sink.sink_id)
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
@@ -440,7 +473,7 @@ class TransportService(BusClient):
         # Create a list of different sink configs
         configs = []
         for sink in self.sink_manager.get_sinks():
-            config = sink.read_config()
+            config, _ = sink.read_config()
             if config is not None:
                 configs.append(config)
 
@@ -547,7 +580,7 @@ class TransportService(BusClient):
         # Create a list of different sink configs
         configs = []
         for sink in self.sink_manager.get_sinks():
-            config = sink.read_config()
+            config, _ = sink.read_config()
             if config is not None:
                 configs.append(config)
 
@@ -599,7 +632,7 @@ class TransportService(BusClient):
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
             res = sink.write_config(request.new_config)
-            new_config = sink.read_config()
+            new_config, _ = sink.read_config()
         else:
             res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
             new_config = None
