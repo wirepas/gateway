@@ -232,7 +232,7 @@ def main():
         default=os.environ.get("WM_RTC_RETRY_PERIOD_S", 1),
         action="store",
         type=str2int,
-        help=("Period of retry sending the the rtc time when it couldn't be sent to the network."
+        help=("Period in seconds of the retries sending the rtc time when it couldn't be sent to the network."
               "Note: It might take additional 5 seconds to know that the rtc time can't be retrieved.")
     )
 
