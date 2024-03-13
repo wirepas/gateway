@@ -14,6 +14,7 @@ The RTC service needs four parameters to start.
 | WM_RTC_TIMEZONE_FROM_GATEWAY_CLOCK | A boolean to assert whether the timezone offset should be taken directly from the gateway clock or from the the parameter WM_RTC_TIMEZONE_OFFSET_S | The default value is False |
 | WM_RTC_TIMEZONE_OFFSET_S | Timezone offset in seconds of the local time. | It is taken in account only if WM_RTC_TIMEZONE_FROM_GATEWAY_CLOCK is False. |
 | WM_RTC_GET_TIME_FROM_LOCAL | Asserts if the rtc time is sent from local time or from a ntp server time | If set to True, it is assumed that gateways are synchronize. The default value is False |
+| WM_RTC_NTP_SERVER_ADDRESS | Address of the ntp server to query the time if it is taken from an ntp server. | WM_RTC_GET_TIME_FROM_LOCAL must be set to False for that option to be taken into account |
 
 RTC service is available as a docker image to ease the integration.
 
