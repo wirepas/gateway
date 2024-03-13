@@ -71,6 +71,7 @@ class SynchronizationThread(Thread):
         timezone_offset_s,
         timezone_from_gateway_clock,
         get_time_from_local,
+        ntp_server_address,
         sink_manager
     ):
         """
@@ -78,6 +79,16 @@ class SynchronizationThread(Thread):
 
         Args:
             period: The period to send gateway time to the network
+            timezone_offset_s: Offset of the local time in seconds
+                if timezone_from_gateway_clock is False.
+            timezone_from_gateway_clock: True if timezone offset must be taken from gateway clock.
+                False (default) means that the timezone offset is given by timezone_offset_s argument.
+            get_time_from_local: False(default) will force the gateway to ask time
+                from a ntp server before sending it to the network
+                True means that the time is taken directly from gateway.
+                Note: You must assure that gateway are synchronized if set to True
+            ntp_server_address: Address of the ntp server to query the time
+                                if it is taken from an ntp server.
             sink_manager: The sink manager to send sink the rtc informations
         """
         Thread.__init__(self)
@@ -97,6 +108,7 @@ class SynchronizationThread(Thread):
         logging.info(f"Timezone offset is set to {self.timezone_offset_s}s")
 
         self.get_time_from_local = get_time_from_local
+        self.ntp_server_address = ntp_server_address
         if not self.get_time_from_local:
             logging.info("RTC time is taken from a ntp server")
             self.ntp_client = ntplib.NTPClient()
@@ -111,7 +123,7 @@ class SynchronizationThread(Thread):
         """
         if not self.get_time_from_local:
             try:
-                req = self.ntp_client.request('pool.ntp.org', version=3)
+                req = self.ntp_client.request(self.ntp_server_address, version=3)
                 timestamp = req.dest_time + req.offset
             except ntplib.NTPException as err:
                 logging.warning("Couldn't get time from NTP server. (%s)", err)
@@ -158,6 +170,7 @@ class RtcService(BusClient):
             settings.timezone_offset_s,
             settings.timezone_from_gateway_clock,
             settings.get_time_from_local,
+            settings.ntp_server_address,
             self.sink_manager,
         )
         self.synchronization_thread.start()
@@ -208,7 +221,7 @@ def main():
         type=str2bool,
         help=("True if timezone offset must be taken from gateway clock."
               "False (default) means that the timezone offset is"
-              "given by utc_to_local_offset_s argument"),
+              "given by timezone_offset_s argument"),
     )
 
     parser.add_argument(
@@ -228,6 +241,16 @@ def main():
               "before sending it to the network"
               "True means that the time is taken directly from gateway."
               "Note: You must assure that gateway are synchronized if set to True"),
+    )
+
+    parser.add_argument(
+        "--ntp_server_address",
+        default=os.environ.get("WM_RTC_NTP_SERVER_ADDRESS", "pool.ntp.org"),
+        action="store",
+        type=str,
+        help=("Address of the ntp server to query the time if it is taken from an ntp server. "
+              "(WM_RTC_GET_TIME_FROM_LOCAL must be set to False "
+              "for that option to be taken into account)")
     )
 
     settings = parser.parse_args()
