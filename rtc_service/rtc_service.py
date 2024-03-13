@@ -7,6 +7,7 @@ import datetime
 import logging
 import ntplib
 import os
+import socket
 import struct
 import sys
 from time import sleep, time
@@ -68,6 +69,7 @@ class SynchronizationThread(Thread):
     def __init__(
         self,
         period,
+        retry_period,
         timezone_offset_s,
         timezone_from_gateway_clock,
         get_time_from_local,
@@ -96,8 +98,12 @@ class SynchronizationThread(Thread):
         # Daemonize thread to exit with full process
         self.daemon = True
 
+        # Retry sending time if it couldn't be sent for connection issues.
+        self.force_retry = False
+
         # How often to send time
         self.period = period
+        self.retry_period = retry_period
         self.timezone_from_gateway_clock = timezone_from_gateway_clock
         if timezone_from_gateway_clock is True:
             self.timezone_offset_s = datetime.datetime.now(datetime.timezone.utc).astimezone().utcoffset().seconds
@@ -125,8 +131,9 @@ class SynchronizationThread(Thread):
             try:
                 req = self.ntp_client.request(self.ntp_server_address, version=3)
                 timestamp = req.dest_time + req.offset
-            except ntplib.NTPException as err:
-                logging.warning("Couldn't get time from NTP server. (%s)", err)
+            except (ntplib.NTPException, socket.gaierror) as err:
+                logging.warning("An error occured when trying to get time from NTP server. (%s)", err)
+                self.force_retry = True
                 return
         else:
             timestamp = time()
@@ -134,7 +141,9 @@ class SynchronizationThread(Thread):
         timestamp_ms = int(timestamp*1000)
         data_payload = RTC_VERSION.to_bytes(2, "little") + encode_tlv(timestamp_ms, self.timezone_offset_s)
         logging.info("Send rtc message to the network")
+        logging.debug("Payload: %s", data_payload.hex())
         for sink in self.sink_manager.get_sinks():
+            self.force_retry = False
             start = time()
             sink.send_data(
                 dst=BROADCAST_ADDRESS,
@@ -153,7 +162,10 @@ class SynchronizationThread(Thread):
         """
         while True:
             self.publish_time()
-            sleep(self.period)
+            if self.force_retry:
+                sleep(self.retry_period)
+            else:
+                sleep(self.period)
 
 
 class RtcService(BusClient):
@@ -167,6 +179,7 @@ class RtcService(BusClient):
         super(RtcService, self).__init__(**kwargs)
         self.synchronization_thread = SynchronizationThread(
             settings.rtc_synchronization_period_s,
+            settings.rtc_retry_period_s,
             settings.timezone_offset_s,
             settings.timezone_from_gateway_clock,
             settings.get_time_from_local,
@@ -212,6 +225,15 @@ def main():
         action="store",
         type=str2int,
         help=("Period of time to send a new rtc time in the network."),
+    )
+
+    parser.add_argument(
+        "--rtc_retry_period_s",
+        default=os.environ.get("WM_RTC_RETRY_PERIOD_S", 1),
+        action="store",
+        type=str2int,
+        help=("Period of retry sending the the rtc time when it couldn't be sent to the network."
+              "Note: It might take additional 5 seconds to know that the rtc time can't be retrieved.")
     )
 
     parser.add_argument(
