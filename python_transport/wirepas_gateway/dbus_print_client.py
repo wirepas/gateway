@@ -8,6 +8,7 @@ import sys
 from datetime import datetime
 
 from wirepas_gateway.dbus.dbus_client import BusClient
+from wirepas_gateway import __pkg_name__
 
 
 class PrintClient(BusClient):
@@ -70,15 +71,13 @@ def main():
         pass
 
     debug_level = "{0}".format(debug_level.upper())
-
-    # Create a "Print Client" object and enable his logger
-    obj = PrintClient()
     logging.basicConfig(
-        format='%(asctime)s | [%(levelname)s] %(name)s@%(filename)s:%(lineno)d:%(message)s',
+        format=f'%(asctime)s | [%(levelname)s] {__pkg_name__}@%(filename)s:%(lineno)d:%(message)s',
         level=debug_level,
         stream=sys.stdout
     )
-    obj.run()
+
+    PrintClient().run()
 
 
 if __name__ == "__main__":
