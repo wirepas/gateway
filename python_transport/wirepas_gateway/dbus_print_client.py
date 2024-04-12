@@ -8,7 +8,6 @@ import sys
 from datetime import datetime
 
 from wirepas_gateway.dbus.dbus_client import BusClient
-from wirepas_gateway import __pkg_name__
 
 
 class PrintClient(BusClient):
@@ -31,10 +30,7 @@ class PrintClient(BusClient):
     ):
         """ logs incoming data from the WM network """
         logging.info(
-            "[%s] Sink %s FROM %d TO %d on EP %d Data Size is %d",
-            datetime.utcfromtimestamp(int(timestamp / 1000)).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            ),
+            "Sink %s FROM %d TO %d on EP %d Data Size is %d",
             sink_id,
             src,
             dst,
@@ -72,7 +68,7 @@ def main():
 
     debug_level = "{0}".format(debug_level.upper())
     logging.basicConfig(
-        format=f'%(asctime)s | [%(levelname)s] {__pkg_name__}@%(filename)s:%(lineno)d:%(message)s',
+        format='%(asctime)s | [%(levelname)s] %(message)s',
         level=debug_level,
         stream=sys.stdout
     )
