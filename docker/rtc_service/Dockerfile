@@ -36,7 +36,7 @@ RUN pip3 install dist/wirepas_gateway*.whl --no-deps --user
 # Dependencies are installed manually as runner image already have wmm
 # Todo: removing wmm from requirement list would be better
 RUN pip3 install pydbus==0.6.0 PyYAML==6.0.1 --user
-RUN pip3 install gobject PyGObject --user
+RUN pip3 install gobject==0.1.0 PyGObject==3.46.0 --user
 RUN pip3 install ntplib --user
 
 
