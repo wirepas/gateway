@@ -14,6 +14,7 @@ from time import sleep, time
 from threading import Thread
 
 from wirepas_gateway.dbus.dbus_client import BusClient
+import wirepas_mesh_messaging as wmm
 
 
 PKG_NAME = "rtc_service"
@@ -81,6 +82,8 @@ class SynchronizationThread(Thread):
 
         Args:
             period: The period to send gateway time to the network
+            retry_period: Period in seconds of the retries sending
+                the ntp rtc time when it couldn't be sent to the network.
             timezone_offset_s: Offset of the local time in seconds
                 if timezone_from_gateway_clock is False.
             timezone_from_gateway_clock: True if timezone offset must be taken from gateway clock.
@@ -97,9 +100,6 @@ class SynchronizationThread(Thread):
 
         # Daemonize thread to exit with full process
         self.daemon = True
-
-        # Retry sending time if it couldn't be sent for connection issues.
-        self.force_retry = False
 
         # How often to send time
         self.period = period
@@ -123,9 +123,10 @@ class SynchronizationThread(Thread):
         self.sink_manager = sink_manager
         logging.info(f"Expected RTC sending period is set to {self.period}s")
 
-    def publish_time(self):
+    def publish_time(self) -> bool:
         """
         Publish the rtc time in the network.
+        Return True if the time could published, return False otherwise.
         """
         if not self.get_time_from_local:
             try:
@@ -133,19 +134,25 @@ class SynchronizationThread(Thread):
                 timestamp = req.dest_time + req.offset
             except (ntplib.NTPException, socket.gaierror) as err:
                 logging.warning("An error occured when trying to get time from NTP server. (%s)", err)
-                self.force_retry = True
-                return
+                return False
         else:
             timestamp = time()
 
         timestamp_ms = int(timestamp*1000)
         data_payload = RTC_VERSION.to_bytes(2, "little") + encode_tlv(timestamp_ms, self.timezone_offset_s)
+
+        sinks = self.sink_manager.get_sinks()
+        if not sinks:
+            logging.error("No sinks are detected!")
+            return False
+
         logging.info("Send rtc message to the network")
         logging.debug("Payload: %s", data_payload.hex())
-        for sink in self.sink_manager.get_sinks():
-            self.force_retry = False
+        sent_to_one_sink: bool = False
+
+        for sink in sinks:
             start = time()
-            sink.send_data(
+            res = sink.send_data(
                 dst=BROADCAST_ADDRESS,
                 src_ep=RTC_SOURCE_EP,
                 dst_ep=RTC_DEST_EP,
@@ -153,19 +160,24 @@ class SynchronizationThread(Thread):
                 initial_time=0,
                 data=data_payload
             )
-            logging.debug("time elapsed to send RTC time through the gateway: "
-                          f"{int((time()-start)*1000)}ms")
+            logging.debug("time elapsed to send RTC time through the gateway: %dms",
+                          int((time() - start) * 1000))
+            if res == wmm.GatewayResultCode.GW_RES_OK:
+                sent_to_one_sink = True
+            else:
+                logging.error("rtc time couldn't be sent to %s sink: %s", sink.sink_id, res)
+
+        return sent_to_one_sink
 
     def run(self):
         """
         Main loop that send periodically gateway time to the network.
         """
         while True:
-            self.publish_time()
-            if self.force_retry:
-                sleep(self.retry_period)
-            else:
+            if self.publish_time():
                 sleep(self.period)
+            else:
+                sleep(self.retry_period)
 
 
 class RtcService(BusClient):
