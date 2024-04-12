@@ -30,10 +30,7 @@ class PrintClient(BusClient):
     ):
         """ logs incoming data from the WM network """
         logging.info(
-            "[%s] Sink %s FROM %d TO %d on EP %d Data Size is %d",
-            datetime.utcfromtimestamp(int(timestamp / 1000)).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            ),
+            "Sink %s FROM %d TO %d on EP %d Data Size is %d",
             sink_id,
             src,
             dst,
@@ -70,15 +67,13 @@ def main():
         pass
 
     debug_level = "{0}".format(debug_level.upper())
-
-    # Create a "Print Client" object and enable his logger
-    obj = PrintClient()
     logging.basicConfig(
-        format='%(asctime)s | [%(levelname)s] %(name)s@%(filename)s:%(lineno)d:%(message)s',
+        format='%(asctime)s | [%(levelname)s] %(message)s',
         level=debug_level,
         stream=sys.stdout
     )
-    obj.run()
+
+    PrintClient().run()
 
 
 if __name__ == "__main__":
