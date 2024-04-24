@@ -11,7 +11,7 @@ A minimal docker based gateway will run three containers.
 
  In order to run a Docker based gateway you need to install Docker engine:
  
- * Recommanded version is 19.03.0+
+ * Recommanded version is 20.10+
  * [Installation guide](https://docs.docker.com/engine/install/)
  
  And optionnaly you can use docker-compose to ease the setup:
@@ -40,11 +40,6 @@ All these images have the following tags available:
 * __edge__: built from top of master
 * __latest__: built from latest release
 * __vx.x.x__: built from each release
-
-### Internal images
-Image | Description | Docker Hub Link | Tags
------ | ----------- | --------------- | ----
-[base_builder](base_builder) | This image is used to speed up build of other images. It contains the part that are common to all images | [gateway_base_builder](https://hub.docker.com/r/wirepas/gateway_base_builder) | It is tagged and push manually only when needed and tag is used in other Dockerfiles 
 
 ## How to start a Docker based gateway
 
