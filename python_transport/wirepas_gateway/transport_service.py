@@ -371,6 +371,10 @@ class TransportService(BusClient):
             topic, self._on_otap_set_target_scratchpad_request_received
         )
 
+        # Reset our cached value to be sure the status is published again
+        # If we are here, it means that we were disconnected and our last_will
+        # status was sent
+        self._last_status_config = None
         self._set_status()
 
         logging.info("MQTT connected!")
