@@ -29,10 +29,13 @@ static char * port_name = "/dev/ttyACM0";
 #define MAX_SIZE_SERVICE_NAME 100
 /* Prefix for sink service name */
 #define BASE_SERVICE_NAME "com.wirepas.sink.sink0"
-/* max poll fail duration undefined */
-#define UNDEFINED_MAX_POLL_FAIL_DURATION 0xffffffff
+
 /* max default delay to keep incomplete fragmented packet inside our buffers */
 #define DEFAULT_FRAGMENT_MAX_DURATION_S    900
+/* max default delay for poll fail duration */
+/* 120s should cover most scratchpad exchanges and image processing. Sink is
+   not answearing during that time */
+#define DEFAULT_MAX_POLL_FAIL_DURATION_S   120
 
 /* Dbus bus instance*/
 static sd_bus * m_bus = NULL;
@@ -153,7 +156,7 @@ int main(int argc, char * argv[])
     int r;
     int c;
     unsigned int sink_id = 0;
-    unsigned int max_poll_fail_duration = UNDEFINED_MAX_POLL_FAIL_DURATION;
+    unsigned int max_poll_fail_duration = DEFAULT_MAX_POLL_FAIL_DURATION_S;
     unsigned int fragment_max_duration_s = DEFAULT_FRAGMENT_MAX_DURATION_S;
     unsigned int downlink_limit = 0;
 
@@ -256,13 +259,10 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (max_poll_fail_duration != UNDEFINED_MAX_POLL_FAIL_DURATION)
+    if (WPC_set_max_poll_fail_duration(max_poll_fail_duration))
     {
-        if (WPC_set_max_poll_fail_duration(max_poll_fail_duration))
-        {
-            LOGE("Cannot set max poll fail duration (%d)\n", max_poll_fail_duration);
-            return EXIT_FAILURE;
-        }
+        LOGE("Cannot set max poll fail duration (%d)\n", max_poll_fail_duration);
+        return EXIT_FAILURE;
     }
 
     if (WPC_set_max_fragment_duration(fragment_max_duration_s))
