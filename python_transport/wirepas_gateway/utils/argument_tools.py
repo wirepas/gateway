@@ -363,6 +363,18 @@ class ParserHelper:
             ),
         )
 
+        self.mqtt.add_argument(
+            "--mqtt_rate_limit_pps",
+            default=os.environ.get("WM_SERVICES_MQTT_RATE_LIMIT_PPS", 0),
+            action="store",
+            type=self.str2int,
+            help=(
+                "Max rate limit for the mqtt client to publish on mqtt broker. It can be set to "
+                "protect the broker from very high usage when one or more gateways are offline for a while "
+                "and publish all their buffers when connection to broker is restored"
+            ),
+        )
+
     def add_buffering_settings(self):
         """ Parameters used to avoid black hole case """
         self.buffering.add_argument(
