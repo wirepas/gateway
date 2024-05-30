@@ -8,7 +8,7 @@ import socket
 import ssl
 from select import select
 from threading import Thread, Lock
-from time import sleep
+from time import sleep, monotonic
 from datetime import datetime
 
 from paho.mqtt import client as mqtt
@@ -74,6 +74,7 @@ class MQTTWrapper(Thread):
             "Max inflight messages set to %s", settings.mqtt_max_inflight_messages
         )
         self._client.max_inflight_messages_set(settings.mqtt_max_inflight_messages)
+        self._max_inflight_messages = settings.mqtt_max_inflight_messages
 
         self._client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
         self._client.on_connect = self._on_connect
@@ -112,7 +113,9 @@ class MQTTWrapper(Thread):
         if not self._use_websockets and self._client.socket() is not None:
             self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
 
-        self._publish_queue = SelectableQueue()
+        self._publish_queue = SelectableQueue(rate_limit_pps=settings.mqtt_rate_limit_pps)
+        if settings.mqtt_rate_limit_pps >= 0:
+            logging.info("Rate control set to %s", settings.mqtt_rate_limit_pps)
 
         # Thread is not started yes
         self.running = False
@@ -160,18 +163,14 @@ class MQTTWrapper(Thread):
             self._client.loop_write()
 
         self._client.loop_misc()
-
         # Check if we have something to publish
         if self._publish_queue in r:
             try:
-                # Publish everything. Loop is not necessary as
-                # next select will exit immediately if queue not empty
-                while True:
+                while len(self._unpublished_mid_set) < self._max_inflight_messages:
+                    # Publish a single packet from our queue
                     topic, payload, qos, retain = self._publish_queue.get()
-
-                    self._publish_from_wrapper_thread(
-                        topic, payload, qos=qos, retain=retain
-                    )
+                    info = self._client.publish(topic, payload, qos=qos, retain=retain)
+                    self._unpublished_mid_set.add(info.mid)
 
                     # FIX: read internal sockpairR as it is written but
                     # never read as we don't use the internal paho loop
@@ -268,20 +267,6 @@ class MQTTWrapper(Thread):
             # thread has exited
             self.on_termination_cb()
 
-    def _publish_from_wrapper_thread(self, topic, payload, qos, retain):
-        """Internal method to publish on Mqtt. This method is only called from
-        mqtt wrapper thread to avoid races.
-
-        Args:
-            topic: Topic to publish on
-            payload: Payload
-            qos: Qos to use
-            retain: Is it a retain message
-
-        """
-        mid = self._client.publish(topic, payload, qos=qos, retain=retain).mid
-        self._unpublished_mid_set.add(mid)
-
     def publish(self, topic, payload, qos=1, retain=False) -> None:
         """ Method to publish to Mqtt from any thread
 
@@ -310,17 +295,26 @@ class MQTTWrapper(Thread):
         return self._publish_monitor.get_publish_waiting_time_s()
 
 
-class SelectableQueue(queue.Queue):
+class SelectableQueue(queue.LifoQueue):
     """
     Wrapper arround a Queue to make it selectable with an associated
-    socket
+    socket and with a built-in rate limit in term of reading
+
+    Args:
+        rate_limit_pps: maximum number of get during one second, None for unlimited
     """
 
-    def __init__(self):
+    def __init__(self, rate_limit_pps=None):
         super().__init__()
         self._putsocket, self._getsocket = socket.socketpair()
-        self._lock = Lock()
-        self._size = 0
+        if rate_limit_pps == 0:
+            # 0 is same as no limit
+            rate_limit_pps = None
+        self.rate_limit_pps = rate_limit_pps
+        self._get_ts_list = list()
+        self._signal_scheduled = False
+        self._signaled = False
+        self._signal_lock = Lock()
 
     def fileno(self):
         """
@@ -330,26 +324,100 @@ class SelectableQueue(queue.Queue):
         return self._getsocket.fileno()
 
     def put(self, item, block=True, timeout=None):
-        with self._lock:
-            if self._size == 0:
-                # Send 1 byte on socket to signal select
+        # Insert item in queue
+        super().put(item, block, timeout)
+        self._signal()
+
+    def _signal(self, delay_s=0):
+        with self._signal_lock:
+            if self._signaled:
+                return
+
+            if self._signal_scheduled:
+                return
+
+            def _signal_with_delay(delay_s):
+                sleep(delay_s)
+                with self._signal_lock:
+                    self._signal_scheduled = False
+                    self._putsocket.send(b"x")
+                    self._signaled = True
+
+            if delay_s > 0:
+                self._signal_scheduled = True
+                Thread(target=_signal_with_delay, args=[delay_s]).start()
+            else:
+                # No delay needed, signal directly
                 self._putsocket.send(b"x")
-            self._size = self._size + 1
+                self._signaled = True
 
-            # Insert item in queue
-            super().put(item, block, timeout)
+    def _unsignal(self):
+        with self._signal_lock:
+            self._getsocket.recv(1)
+            self._signaled = False
 
-    def get(self, block=False, timeout=None):
-        with self._lock:
-            # Get item first so get can be called and
-            # raise empty exception
-            item = super().get(block, timeout)
+    def _get_current_rate(self):
+        # First of all, remove the element that are older than 1 second
+        now = monotonic()
+        for i in range(len(self._get_ts_list) - 1, -1, -1):
+            if (self._get_ts_list[i] + 1) < now:
+                del self._get_ts_list[: i + 1]
+                break
 
-            self._size = self._size - 1
-            if self._size == 0:
-                # Consume 1 byte from socket
-                self._getsocket.recv(1)
+        return len(self._get_ts_list)
+
+    def _get_next_time(self):
+        # Compute when next room will be available
+        # in moving window
+        # Return value is between 0 and 1
+
+        # Note that _get_current_rate should have been called before
+        # so that items are all queued for less than 1s
+        now = monotonic()
+        if len(self._get_ts_list) > 0:
+            queued_time = now - self._get_ts_list[0]
+            if queued_time <= 1:
+                return 1 - queued_time
+
+            return 0
+
+    def _is_rate_limit_reached(self):
+        # Rate limit is computed on last second
+        if self.rate_limit_pps is None:
+            # No rate control
+            return False
+
+        if self._get_current_rate() >= self.rate_limit_pps:
+            # We have reached rate limit
+            # compute when new room is present
+            logging.debug("Over the rate limit still {} paquet queued".format(self.qsize()))
+            # How many time remains for first entry
+            return True
+
+        return False
+
+    def get(self):
+        if self._is_rate_limit_reached():
+            # We are over the limit so clear select
+            self._unsignal()
+            # Start a task to signal available messages
+            self._signal(delay_s=self._get_next_time())
+            # There is something to get but rate limit is reached
+            # so it is empty from consumer point of view
+            raise queue.Empty
+
+        # Get item first so get can be called and
+        # raise empty exception
+        try:
+            item = super().get(False, None)
+            # If rate limt set, add the get
+            if self.rate_limit_pps is not None:
+                self._get_ts_list.append(monotonic())
+
             return item
+        except queue.Empty as e:
+            self._unsignal()
+            raise e
 
 
 class PublishMonitor:
