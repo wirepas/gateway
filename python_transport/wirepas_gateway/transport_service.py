@@ -207,7 +207,7 @@ class TransportService(BusClient):
         self.monitoring_thread = None
         self.minimum_sink_cost = settings.buffering_minimal_sink_cost
 
-        if settings.buffering_max_buffered_packets > 0:
+        if settings.buffering_max_buffered_packets > 0 or settings.buffering_max_delay_without_publish > 0:
             logging.info(
                 " Black hole detection enabled: max_packets=%s packets, max_delay=%s",
                 settings.buffering_max_buffered_packets,
