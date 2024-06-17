@@ -88,11 +88,14 @@ class Sink:
                 data,
             )
             if res != 0:
-                logging.error("Cannot send message err=%s", res)
-                return ReturnCode.error_from_dbus_return_code(res)
+                error = ReturnCode.error_from_dbus_return_code(res)
+                logging.error("Cannot send message %s err=%s", error.name, res)
+                return error
         except GLib.Error as e:
             logging.error("Fail to send message: %s", str(e))
-            return ReturnCode.error_from_dbus_exception(str(e))
+            error = ReturnCode.error_from_dbus_exception(str(e))
+            logging.error("Cannot send message %s", error.name)
+            return error
         except OverflowError:
             # It may happens as protobuf has bigger container value
             logging.error("Invalid range value")
@@ -144,7 +147,7 @@ class Sink:
             config["started"] = (self.proxy.StackStatus & 0x01) == 0
         except GLib.Error as e:
             error = ReturnCode.error_from_dbus_exception(str(e))
-            logging.error("Cannot get Stack state: %s", error)
+            logging.error("Cannot get Stack state: %s", error.name)
 
         self._get_param(config, "node_address", "NodeAddress")
         self._get_param(config, "node_role", "NodeRole")
@@ -207,14 +210,17 @@ class Sink:
             logging.debug("key not present: %s", key)
         except GLib.Error as e:
             # Exception raised when setting attribute
+            error = ReturnCode.error_from_dbus_exception(str(e))
             logging.error(
-                "Cannot set %s for param %s on sink %s: %s",
+                "Cannot set %s for param %s on sink %s: %s (%s)",
                 value,
                 key,
                 self.sink_id,
-                str(e),
+                error.name,
+                str(e)
             )
-            return ReturnCode.error_from_dbus_exception(str(e))
+
+            return error
         except OverflowError:
             # It may happens as protobuf has bigger container value
             logging.error(
