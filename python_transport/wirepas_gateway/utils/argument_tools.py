@@ -388,6 +388,16 @@ class ParserHelper:
             ),
         )
 
+        self.buffering.add_argument(
+            "--buffering_stop_stack",
+            default=os.environ.get("WM_GW_BUFFERING_STOP_STACK", False),
+            type=self.str2bool,
+            help=(
+                "When true, when a black hole is detected, stack is stopped instead of "
+                " increasing the sink cost"
+            ),
+        )
+
         # This minimal sink cost could be moved somewhere as it can be used even
         # buffering limitation is not in use
         self.buffering.add_argument(
