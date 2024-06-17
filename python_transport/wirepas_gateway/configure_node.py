@@ -183,6 +183,7 @@ class SinkConfigurator(BusClient):
                     print("[%s]: %s" % (key, binascii.hexlify(config[key])))
                 else:
                     print("[%s]: %s" % (key, config[key]))
+            print("[cost]: %d" % (sink.cost))
             print("===================================")
 
 

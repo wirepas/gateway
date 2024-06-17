@@ -35,6 +35,7 @@ class ConnectionToBackendMonitorThread(Thread):
         minimum_sink_cost,
         max_buffered_packets,
         max_delay_without_publish,
+        stop_stack = False
     ):
         """
         Thread monitoring the connection with the MQTT broker.
@@ -53,6 +54,7 @@ class ConnectionToBackendMonitorThread(Thread):
                                   rising the sink costs
             max_delay_without_publish: the maximum delay without any successful publish (with
                                        something in the queue before rising the sink costs
+            stop_stack: stop the stack instead of increasing the sink cost in case of black hole
         """
         Thread.__init__(self)
 
@@ -71,10 +73,19 @@ class ConnectionToBackendMonitorThread(Thread):
         self.minimum_sink_cost = minimum_sink_cost
         self.max_buffered_packets = max_buffered_packets
         self.max_delay_without_publish = max_delay_without_publish
+        self.stop_stack = stop_stack
 
     def _set_sinks_cost(self, cost):
         for sink in self.sink_manager.get_sinks():
             sink.cost = cost
+
+    def _stop_sinks(self):
+        for sink in self.sink_manager.get_sinks():
+            sink.write_config({"started": False})
+
+    def _start_sinks(self):
+        for sink in self.sink_manager.get_sinks():
+            sink.write_config({"started": True})
 
     def _set_sinks_cost_high(self):
         self._set_sinks_cost(self.SINK_COST_HIGH)
@@ -113,22 +124,34 @@ class ConnectionToBackendMonitorThread(Thread):
             if not self.disconnected:
                 # Check if a condition to declare "back hole" is met
                 if self._is_publish_delay_over() or self._is_buffer_threshold_reached():
-                    logging.info("Increasing sink cost of all sinks")
-                    logging.debug(
+                    if self.stop_stack:
+                        logging.info("Black hole detected, stop all stacks")
+                        self._stop_sinks()
+                    else:
+                        logging.info("Increasing sink cost of all sinks")
+                        self._set_sinks_cost_high()
+
+                    logging.info(
                         "Last publish: %s Queue Size %s",
                         self.mqtt_wrapper.publish_waiting_time_s,
                         self.mqtt_wrapper.publish_queue_size,
                     )
 
-                    self._set_sinks_cost_high()
                     self.disconnected = True
             else:
                 if self.mqtt_wrapper.publish_queue_size == 0:
                     # Network is back, put the connection back
                     logging.info(
-                        "Connection is back, decreasing sink cost of all sinks"
+                        "Connection is back, black hole is finished"
                     )
-                    self._set_sinks_cost_low()
+
+                    if self.stop_stack:
+                        logging.info("Restart all sinks")
+                        self._start_sinks()
+                    else:
+                        logging.info("Decreasing sink cost")
+                        self._set_sinks_cost_low()
+
                     self.disconnected = False
 
             # Wait for period
@@ -146,14 +169,16 @@ class ConnectionToBackendMonitorThread(Thread):
         Args:
             name: name of sink to initialize
         """
-        sink = self.sink_manager.get_sink(name)
+        # It is only required if black hole is managed by sink cost
+        if not self.stop_stack:
+            sink = self.sink_manager.get_sink(name)
 
-        logging.info("Initialize sinkCost of sink %s", name)
-        if sink is not None:
-            if self.disconnected:
-                sink.cost = self.SINK_COST_HIGH
-            else:
-                sink.cost = self.minimum_sink_cost
+            logging.info("Initialize sinkCost of sink %s", name)
+            if sink is not None:
+                if self.disconnected:
+                    sink.cost = self.SINK_COST_HIGH
+                else:
+                    sink.cost = self.minimum_sink_cost
 
 
 class TransportService(BusClient):
@@ -209,9 +234,10 @@ class TransportService(BusClient):
 
         if settings.buffering_max_buffered_packets > 0 or settings.buffering_max_delay_without_publish > 0:
             logging.info(
-                " Black hole detection enabled: max_packets=%s packets, max_delay=%s",
+                " Black hole detection enabled: max_packets=%s packets, max_delay=%s, stop_stack=%s",
                 settings.buffering_max_buffered_packets,
                 settings.buffering_max_delay_without_publish,
+                settings.buffering_stop_stack
             )
             # Create and start a monitoring thread for black hole issue
             self.monitoring_thread = ConnectionToBackendMonitorThread(
@@ -221,6 +247,7 @@ class TransportService(BusClient):
                 settings.buffering_minimal_sink_cost,
                 settings.buffering_max_buffered_packets,
                 settings.buffering_max_delay_without_publish,
+                settings.buffering_stop_stack
             )
             self.monitoring_thread.start()
 
