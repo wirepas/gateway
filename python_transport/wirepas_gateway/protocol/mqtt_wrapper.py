@@ -10,6 +10,7 @@ from select import select
 from threading import Thread, Lock
 from time import sleep, monotonic
 from datetime import datetime
+from random import randrange
 
 from paho.mqtt import client as mqtt
 from paho.mqtt.client import connack_string
@@ -196,27 +197,44 @@ class MQTTWrapper(Thread):
         if self.connected:
             logging.error("MQTT Inner loop, unexpected disconnection")
 
+        start_disconnection = monotonic()
         # Socket is not opened anymore, try to reconnect for timeout if set
-        loop_forever = self.timeout == 0
-        delay = 0
+        if self.timeout == 0:
+            loop_forever = True
+        else:
+            loop_forever = False
+            loop_until = monotonic() + self.timeout
+
         logging.info("Starting reconnect loop with timeout %d" % self.timeout)
         # Loop forever or until timeout is over
-        while loop_forever or (delay <= self.timeout):
+        next_attempt_window_s = 1
+        while loop_forever or (monotonic() <= loop_until):
+            now = monotonic()
             try:
-                logging.debug("MQTT reconnect attempt delay=%d" % delay)
+                if loop_forever:
+                    remaining_time = "-"
+                else:
+                    remaining_time = int(loop_until - now)
+
+                logging.info("MQTT reconnect attempt (since: %s, remaining time: %s)"
+                             % (int(now - start_disconnection), remaining_time))
+
                 ret = self._client.reconnect()
                 if ret == mqtt.MQTT_ERR_SUCCESS:
                     break
             except Exception:
-                # Retry to connect in 1 sec up to timeout if set
-                sleep(1)
-                delay += 1
-                logging.debug("Retrying to connect in 1 sec")
+                # Retry to connect in current attempt windows range
+                delay_s = randrange(next_attempt_window_s, next_attempt_window_s * 2)
+                if next_attempt_window_s < 32:
+                    next_attempt_window_s = next_attempt_window_s * 2
+                logging.debug("Retrying to connect in %d seconds", delay_s)
+                # Last sleep may end after max timeout, but not a big issue
+                sleep(delay_s)
 
         if not loop_forever:
             # In case of timeout set, check if it exits because of timeout
-            if delay > self.timeout:
-                logging.error("Unable to reconnect after %s seconds", delay)
+            if monotonic() > loop_until:
+                logging.error("Unable to reconnect after %s seconds", self.timeout)
                 return None
 
         # Socket must be available once reconnect is successful
