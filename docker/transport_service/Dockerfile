@@ -7,7 +7,9 @@ RUN apk add --no-cache \
 		bash \
 		build-base \
 		make \
+		cmake \
 		musl-dev \
+		dpkg \
 		elogind-dev \
 		python3-dev \
 		py3-gobject3 \
