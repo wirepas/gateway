@@ -195,6 +195,9 @@ class TransportService(BusClient):
     # Period in s to check for black hole issue
     MONITORING_BUFFERING_PERIOD_S = 1
 
+    # Special sequence used to indicate clearing of the scratchpad
+    SCRATCHPAD_CLEAR_SEQUENCE = 0xFFFF_FFFF
+
     def __init__(self, settings, **kwargs):
         logging.info("Version is: %s", transport_version)
 
@@ -288,8 +291,8 @@ class TransportService(BusClient):
         # Publish only if something has changed
         if self._last_status_config is not None and \
             self._last_status_config == configs:
-                logging.info("No new status to publish")
-                return
+            logging.info("No new status to publish")
+            return
 
         event_online = wmm.StatusEvent(
                             self.gw_id,
@@ -737,7 +740,14 @@ class TransportService(BusClient):
 
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
-            res = sink.upload_scratchpad(request.seq, request.scratchpad)
+            should_clear_scratchpad = (
+                request.scratchpad is None
+                and request.seq == self.SCRATCHPAD_CLEAR_SEQUENCE
+            )
+            if should_clear_scratchpad:
+                res = sink.clear_local_scratchpad()
+            else:
+                res = sink.upload_scratchpad(request.seq, request.scratchpad)
         else:
             res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
 

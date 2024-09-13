@@ -114,6 +114,37 @@ static int upload_scratchpad(sd_bus_message * m, void * userdata, sd_bus_error *
 }
 
 /**
+ * \brief   Clear local scratchpad
+ * \param   ... (from sd_bus function signature)
+ */
+static int clear_local_scratchpad(sd_bus_message * m, void * userdata, sd_bus_error * error)
+{
+    LOGD("Will clear local scratchpad\n");
+
+    const app_res_e res = WPC_clear_local_scratchpad();
+    if (res != APP_RES_OK)
+    {
+        LOGE("Cannot clear local scratchpad\n");
+        SET_WPC_ERROR(error, "WPC_clear_local_scratchpad", res);
+        return -EINVAL;
+    }
+
+    /* Scratchpad cleared, update parameters values exposed on bus */
+    initialize_unmodifiable_variables();
+
+    LOGD("Stored status:%08X, stored type:%08X\n", m_sink_otap.stored_status, m_sink_otap.stored_type);
+
+    /* Do some sanity check: Do not generate error for that */
+    if (m_sink_otap.stored_len != 0)
+    {
+        LOGE("Scratchpad is not cleared correctly (size not zero) %d", m_sink_otap.stored_len);
+    }
+
+    /* Reply with the response */
+    return sd_bus_reply_method_return(m, "");
+}
+
+/**
  * \brief   Update local scratchpad
  * \param   ... (from sd_bus function signature)
  */
@@ -245,6 +276,7 @@ static const sd_bus_vtable otap_vtable[] =
      *  ay -> byte array containing the scratchpad to upload
      */
     SD_BUS_METHOD("UploadScratchpad","yay", "", upload_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("ClearLocalScratchpad", "", "", clear_local_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("SetTargetScratchpad","yqyy", "b", set_target_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("GetTargetScratchpad", "", "yqyy", get_target_scratchpad, SD_BUS_VTABLE_UNPRIVILEGED),
 
