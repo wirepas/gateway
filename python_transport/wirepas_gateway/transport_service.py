@@ -195,9 +195,6 @@ class TransportService(BusClient):
     # Period in s to check for black hole issue
     MONITORING_BUFFERING_PERIOD_S = 1
 
-    # Special sequence used to indicate clearing of the scratchpad
-    SCRATCHPAD_CLEAR_SEQUENCE = 0xFFFF_FFFF
-
     def __init__(self, settings, **kwargs):
         logging.info("Version is: %s", transport_version)
 
@@ -740,11 +737,7 @@ class TransportService(BusClient):
 
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
-            should_clear_scratchpad = (
-                request.scratchpad is None
-                and request.seq == self.SCRATCHPAD_CLEAR_SEQUENCE
-            )
-            if should_clear_scratchpad:
+            if request.scratchpad is None:
                 res = sink.clear_local_scratchpad()
             else:
                 res = sink.upload_scratchpad(request.seq, request.scratchpad)
