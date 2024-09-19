@@ -288,8 +288,8 @@ class TransportService(BusClient):
         # Publish only if something has changed
         if self._last_status_config is not None and \
             self._last_status_config == configs:
-                logging.info("No new status to publish")
-                return
+            logging.info("No new status to publish")
+            return
 
         event_online = wmm.StatusEvent(
                             self.gw_id,
@@ -737,7 +737,10 @@ class TransportService(BusClient):
 
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
-            res = sink.upload_scratchpad(request.seq, request.scratchpad)
+            if request.scratchpad is None:
+                res = sink.clear_local_scratchpad()
+            else:
+                res = sink.upload_scratchpad(request.seq, request.scratchpad)
         else:
             res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
 

@@ -499,6 +499,35 @@ class Sink:
 
         return ret
 
+    def clear_local_scratchpad(self):
+        ret = wmm.GatewayResultCode.GW_RES_OK
+        restart = False
+        try:
+            # Stop the stack if not already stopped
+            if self.proxy.StackStatus == 0:
+                self.proxy.SetStackState(False)
+                restart = True
+        except GLib.Error:
+            logging.error("Sink in invalid state")
+            return wmm.GatewayResultCode.GW_RES_INVALID_SINK_STATE
+
+        try:
+            self.proxy.ClearLocalScratchpad()
+            logging.info("Scratchpad cleared on sink %s", self.sink_id)
+        except GLib.Error as e:
+            ret = ReturnCode.error_from_dbus_exception(str(e))
+            logging.error("Cannot clear local scratchpad: %s", ret.name)
+
+        if restart:
+            try:
+                # Restart sink if we stopped it for this request
+                self.proxy.SetStackState(True)
+            except GLib.Error as e:
+                ret = ReturnCode.error_from_dbus_exception(str(e))
+                logging.error("Could not restore sink's state: %s", ret.name)
+
+        return ret
+
     def set_target_scratchpad(self, action, target_seq, target_crc, param):
         ret = wmm.GatewayResultCode.GW_RES_OK
 
