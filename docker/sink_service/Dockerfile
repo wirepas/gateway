@@ -5,7 +5,7 @@ ARG GATEWAY_BUILD_SHA1=unset
 
 RUN adduser --disabled-password wirepas
 
-RUN apk add --no-cache gcc make musl-dev elogind-dev linux-headers
+RUN apk add --no-cache gcc make cmake musl-dev dpkg elogind-dev linux-headers
 
 USER wirepas
 
