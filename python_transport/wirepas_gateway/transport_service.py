@@ -11,6 +11,7 @@ from uuid import getnode
 from threading import Lock, Thread
 
 from wirepas_gateway.dbus.dbus_client import BusClient
+from wirepas_gateway.keep_alive_service import KeepAliveServiceThread
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
 from wirepas_gateway.utils import ParserHelper
@@ -255,6 +256,17 @@ class TransportService(BusClient):
             self.data_event_id = 0
         else:
             self.data_event_id = None
+
+        # Run the keep alive service if it is activated
+        self.keep_alive_service = None
+        if settings.activate_keep_alive_service:
+            self.keep_alive_service = KeepAliveServiceThread(
+                self.sink_manager,
+                self.mqtt_wrapper,
+                settings.keep_alive_interval_s,
+                settings.keep_alive_timezone_offset_mn
+            )
+            self.keep_alive_service.start()
 
         # Flag to know if updating the status is already scheduled
         self._is_update_status_scheduled = False
@@ -1002,6 +1014,7 @@ def main():
     parse.add_buffering_settings()
     parse.add_debug_settings()
     parse.add_deprecated_args()
+    parse.add_keep_alive_config()
 
     settings = parse.settings()
 
