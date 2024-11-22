@@ -12,6 +12,7 @@ from threading import Thread, Event
 from copy import deepcopy
 
 from wirepas_gateway.dbus.dbus_client import BusClient
+from wirepas_gateway.keep_alive_service import KeepAliveServiceThread
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
 from wirepas_gateway.utils import ParserHelper
@@ -479,8 +480,18 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.start()
 
-        logging.info("Gateway started with id: %s", self.gw_id)
+        # Run the keep alive service if it is activated
+        self.keep_alive_service = None
+        if settings.activate_keep_alive_service:
+            self.keep_alive_service = KeepAliveServiceThread(
+                self.sink_manager,
+                self.mqtt_wrapper,
+                settings.keep_alive_interval_s,
+                settings.keep_alive_timezone_offset_mn
+            )
+            self.keep_alive_service.start()
 
+        logging.info("Gateway started with id: %s", self.gw_id)
 
     def _on_mqtt_wrapper_termination_cb(self):
         """
@@ -1276,6 +1287,7 @@ def main():
     parse.add_buffering_settings()
     parse.add_debug_settings()
     parse.add_deprecated_args()
+    parse.add_keep_alive_config()
 
     settings = parse.settings()
 
