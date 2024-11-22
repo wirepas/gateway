@@ -74,6 +74,9 @@ The list of all possible parameters to configure the transport service are given
 | WM_GW_VERSION | Version of the gateway | None | Any string |
 | WM_GW_IGNORED_ENDPOINTS_FILTER | Destination endpoints list to ignore (not published) | None | List of endpoints (i.e. [1,2,3]), a range of endpoints (i.e. [1-3]), or a combination of both |
 | WM_GW_WHITENED_ENDPOINTS_FILTER | Destination endpoints list to whiten (no payload content, only size) | None | List of endpoints (i.e. [1,2,3]), a range of endpoints (i.e. [1-3]), or a combination of both |
+| WM_KEEP_ALIVE_ACTIVATE | Activate the keep alive service thread to send those messages periodically to the network. | False | "yes", "true", "t", "y",  "1","no", "false", "f", "n", "0", "" |
+| WM_KEEP_ALIVE_INTERVAL_S | The interval in seconds between keep-alive messages if those are activated with WM_KEEP_ALIVE_ACTIVATE. | 300 | Any positive integer |
+| WM_KEEP_ALIVE_TIMEZONE_OFFSET_MN | Time zone offset from UTC in minutes (-840 to +720) to be sent in keep alive messages if those are activated with WM_KEEP_ALIVE_ACTIVATE. | 0 | Any integer between -840 and 720 |
 | WM_DEBUG_LEVEL | Configure log level for the transport service. Please be aware that levels such as debug should not be used in a production system | info | debug, info, critical, fatal, error, warning |
 
 
