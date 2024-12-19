@@ -19,7 +19,8 @@ A minimal docker based gateway will run three containers.
  * Recommanded version is 1.26.0+
  * [Installation guide](https://docs.docker.com/compose/install/)
  
-Installation is only tested on Linux but could work on Mac and Windows. For Windows and Docker desktop using WSL2, it will not work as devices cannot be mapped to a container yet.
+Installation is only tested on Linux but could work on Mac and Windows.  
+For Windows and Docker desktop using WSL2, please follow the instructions given in [setup under WSL2](#setup-under-wsl2).
 
 ## Docker images
 
@@ -57,3 +58,28 @@ Example to build a custom sink service tagged local/my_sink_service:tag1 in your
 docker build -f docker/sink-service/Dockerfile -t local/my_sink_service:tag1
 ```
 You can then use this image in the docker-compose template instead of the Wirepas Docker Hub ones.
+
+## Setup under WSL2
+The Wirepas gateway driver can be deployed under Windows Subsystem for Linux 2 aka WSL2. Its setup procedure is described in this section for the Ubuntu 22.04LTS distribution. It should work with any other but can require some adaptation to what is provided.  
+
+### Prerequisites
+* Windows 10 or 11 (Build 22000 or later) installed
+
+### Flow
+Install (or update) WSL v2 package. Its version must be \>= v1.0  
+Install docker desktop for windows  
+Install Ubuntu distribution with `wsl.exe --list --online` and `wsl --install <some name from the list>`  
+Enable Docker desktop integration with your WSL distribution  
+Follow the instructions given in [WSL: connect USB devices](https://learn.microsoft.com/en-us/windows/wsl/connect-usb).  
+>
+> :warning:
+> 
+> If you have Windows 10 you do not need to build a custom kernel to support usbipd. Please follow the Windows 11 path.
+>
+At this point, your should be able to attach a sink within WSL.
+Once the sink is properly attached to your WSL system please change (if required) the device owner to your current user with `sudo -k chown <your username>:<your user group> /dev/<your sink device enumerated name>`  
+Edit the _docker-compose.yml_ file accordingly:  
+* Transport service and sink service configuration  
+* container logging driver from **journald** to **local** , if systemd is not enabled on your WSL system (WSL default configuration. More information from [here](https://learn.microsoft.com/en-us/windows/wsl/systemd))  
+
+Issue a `docker-compose up -d` command (where the docker-compose.yml file is located) to download and start the services
