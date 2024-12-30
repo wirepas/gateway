@@ -1,18 +1,16 @@
-FROM python:3.10.8-alpine3.17 AS builder
+ARG BASE_IMAGE=python:3.13-alpine
+FROM $BASE_IMAGE AS builder
 
 RUN adduser --disabled-password wirepas
 
 RUN apk add --no-cache \
-		gcc \
-		bash \
 		build-base \
-		make \
-		cmake \
-		musl-dev \
+		# Needed for the wheel generation:
+		bash \
 		dpkg \
+		# Needed for dbus_c.c:
 		elogind-dev \
-		python3-dev \
-		py3-gobject3 \
+		# Needed for PyGObject:
 		cairo-dev \
 		gobject-introspection-dev
 
@@ -28,12 +26,11 @@ RUN ./utils/generate_wheel.sh
 
 USER wirepas
 
-RUN pip3 install dist/wirepas_gateway*.whl --no-deps --user
-# Dependencies are installed manually as runner image already have wmm
-# Todo: removing wmm from requirement list would be better
-RUN pip3 install paho-mqtt==1.4.0 pydbus==0.6.0 PyYAML==6.0.1 --user
-RUN pip3 install gobject==0.1.0 PyGObject==3.46.0 --user
+# Needed by pydbus
+RUN pip3 install PyGObject~=3.0 --user
 
+# Install protobuf from source to get the UPB implementation
+RUN pip3 install dist/wirepas_gateway*.whl --no-binary protobuf --user
 
 # Special target to extract binaries
 FROM scratch AS export
@@ -41,9 +38,9 @@ COPY --from=builder /home/wirepas/python_transport/dist/*.tar.gz .
 
 
 # Build the final image with prebuilt wmm image
-FROM wirepas/wmm_alpine_cpp:1.2.5
+FROM $BASE_IMAGE AS runner
 
-USER root
+RUN adduser --disabled-password wirepas
 
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
@@ -56,6 +53,11 @@ ENV PATH="/home/wirepas/.local/bin:${PATH}"
 
 # Copy the built wheel and its dependencies from builder
 COPY --from=builder /home/wirepas/.local /home/wirepas/.local
+
+# Sanity check to confirm we have the UPB implementation for protobuf
+RUN python3 -c "import sys;\
+from google.protobuf.internal import api_implementation;\
+sys.exit(0 if api_implementation.Type() == 'upb' else 1)"
 
 CMD ["wm-gw"]
 
