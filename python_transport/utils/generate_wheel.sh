@@ -2,13 +2,9 @@
 
 set -e
 
-rm -r build || true
 rm -r dist || true
 
-pip install pyclean
-python3 -m pyclean . || true
-python3 setup.py clean --all
-python3 setup.py sdist bdist_wheel
+python3 -m build .
 
 if ! command -v dpkg &>/dev/null; then
   echo "dpkg could not be found!"

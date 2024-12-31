@@ -81,7 +81,8 @@ static int on_packet_received(sd_bus_message * m, void * userdata, sd_bus_error 
             return -1;
         }
 
-        result = PyEval_CallObject(m_message_callback, arglist);
+        result = PyObject_Call(m_message_callback, arglist, NULL);
+
         if (result == NULL)
         {
             PyErr_Print();
@@ -205,11 +206,6 @@ static struct PyModuleDef dbusCExtension = {PyModuleDef_HEAD_INIT,
  */
 PyMODINIT_FUNC PyInit_dbusCExtension(void)
 {
-    if (!PyEval_ThreadsInitialized())
-    {
-        PyEval_InitThreads();
-    }
-
     int r;
     r = sd_bus_open_system(&m_bus);
     if (r < 0)

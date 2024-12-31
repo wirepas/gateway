@@ -92,6 +92,7 @@ setup(
             libraries=get_systemd_lib("libraries"),
             include_dirs=get_systemd_lib("include_dirs"),
             library_dirs=get_systemd_lib("library_dirs"),
+            extra_compile_args=["-Werror"]
         )
     ],
     include_package_data=True,
