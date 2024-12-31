@@ -4,17 +4,15 @@
 ## Building the wheel
 
 To build the source distribution and wheel file, make sure you have the
-wheel package installed
+build package installed
 
 ```shell
-   pip install wheel
+   pip install build
 ```
 and then run
 
 ```shell
-   py3clean .
-   python3 setup.py clean --all
-   python3 setup.py sdist bdist_wheel
+   python3 -m build .
 ```
 
 A convenience script is available from the [utils folder][here_utils_wheel].
@@ -60,7 +58,7 @@ Please read on
 
 [wm_gateway_transport_conf]: https://github.com/wirepas/gateway/blob/master/README.md#transport-service-configuration
 [wm_gateway_requirements]: https://github.com/wirepas/gateway/blob/master/README.md#linux-requirements
-[here_utils_wheel]: https://github.com/wirepas/gateway/blob/update-readme/python_transport/utils/generate_wheel.sh
+[here_utils_wheel]: https://github.com/wirepas/gateway/blob/master/python_transport/utils/generate_wheel.sh
 
 [virtualenv]: https://docs.python.org/3/tutorial/venv.html
 [pipenv]: https://github.com/pypa/pipenv

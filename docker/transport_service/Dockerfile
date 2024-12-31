@@ -14,7 +14,7 @@ RUN apk add --no-cache \
 		cairo-dev \
 		gobject-introspection-dev
 
-RUN python3 -m pip install wheel setuptools pkgconfig
+RUN python3 -m pip install build
 
 USER wirepas
 WORKDIR /home/wirepas
