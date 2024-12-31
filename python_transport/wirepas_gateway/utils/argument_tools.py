@@ -563,6 +563,36 @@ class ParserHelper:
             ),
         )
 
+    def add_keep_alive_config(self):
+        self.filtering.add_argument(
+            "--activate_keep_alive_service",
+            default=os.environ.get("WM_KEEP_ALIVE_ACTIVATE", False),
+            type=self.str2bool,
+            nargs="?",
+            const=True,
+            help=("Default to False. Activate the keep alive service thread. "
+                  "Note: Gateway time is supposed to be synchronized "
+                  "with the NTP server before launching the service.")
+        )
+
+        self.filtering.add_argument(
+            "--keep_alive_interval_s",
+            default=os.environ.get("WM_KEEP_ALIVE_INTERVAL_S", 300),
+            action="store",
+            type=int,
+            help=("Default to 300 seconds. "
+                  "The interval in seconds between keep-alive messages.")
+        )
+
+        self.filtering.add_argument(
+            "--keep_alive_timezone_offset_mn",
+            default=os.environ.get("WM_KEEP_ALIVE_TIMEZONE_OFFSET_MN", 0),
+            action="store",
+            type=int,
+            help=("Default to 0. Time zone offset from UTC in minutes (-840 to +720) "
+                  "to be sent in keep alive messages."),
+        )
+
     def dump(self, path):
         """ dumps the arguments into a file """
         with open(path, "w") as f:
