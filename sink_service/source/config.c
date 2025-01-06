@@ -312,7 +312,7 @@ static bool send_dbus_signal(const char * name)
 static int set_stack_state(sd_bus_message * m, void * userdata, sd_bus_error * error)
 {
     app_res_e res;
-    bool state;
+    int state;
     int r;
 
     /* Read the parameters */
