@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=python:3.13-alpine
+ARG BASE_IMAGE=python:3.13-alpine3.21
 FROM $BASE_IMAGE AS builder
 
 RUN adduser --disabled-password wirepas
@@ -37,7 +37,7 @@ FROM scratch AS export
 COPY --from=builder /home/wirepas/python_transport/dist/*.tar.gz .
 
 
-# Build the final image with prebuilt wmm image
+# Build the final image
 FROM $BASE_IMAGE AS runner
 
 RUN adduser --disabled-password wirepas
