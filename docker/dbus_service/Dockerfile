@@ -1,4 +1,4 @@
-FROM alpine:3.17.0
+FROM alpine:3.21
 
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
