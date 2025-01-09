@@ -182,6 +182,17 @@ class Sink:
             # so app config cannot be accessed
             logging.warning("Cannot get App Config")
 
+        # Get config data items
+        config_data_items = []
+        try:
+            config_data_items = self.proxy.GetConfigDataContent()
+        except GLib.Error:
+            logging.error("Cannot get config data content")
+        for endpoint, payload in config_data_items:
+            cdc = config.setdefault("configuration_data_content", [])
+            cdc_item = {"endpoint": endpoint, "payload": payload}
+            cdc.append(cdc_item)
+
         # Add scratchpad related info
         self.get_scratchpad_status(config)
 
@@ -292,6 +303,10 @@ class Sink:
             res = wmm.GatewayResultCode.GW_RES_INVALID_PARAM
             logging.error("Invalid range value")
 
+        cdc_res = self._set_config_data_items_on_node(config)
+        if wmm.GatewayResultCode.GW_RES_OK != cdc_res:
+            res = cdc_res
+
         # Set stack in state defined by new config or set it as it was
         # previously
         try:
@@ -321,6 +336,25 @@ class Sink:
         self.get_network_address(True)
 
         return res
+
+    def _set_config_data_items_on_node(self, config):
+        for cdc_item in config.get("configuration_data_content", []):
+            try:
+                endpoint = cdc_item["endpoint"]
+                payload = cdc_item["payload"]
+                self.proxy.SetConfigDataItem(endpoint, payload)
+            except GLib.Error as e:
+                error_code = ReturnCode.error_from_dbus_exception(str(e))
+                logging.error("Cannot set config data item: %s", error_code.name)
+                return error_code
+            except (OverflowError, TypeError) as e:
+                logging.error(f"Invalid config data item parameter value: {e}")
+                return wmm.GatewayResultCode.GW_RES_INVALID_PARAM
+            except:
+                logging.exception("Unknown exception")
+                return wmm.GatewayResultCode.GW_RES_INTERNAL_ERROR
+
+        return wmm.GatewayResultCode.GW_RES_OK
 
     @property
     def cost(self):

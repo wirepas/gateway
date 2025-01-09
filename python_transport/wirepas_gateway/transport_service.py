@@ -291,12 +291,16 @@ class TransportService(BusClient):
             logging.info("No new status to publish")
             return
 
+        gw_features = [
+            wmm.OptionalGatewayFeature.CDD_API,
+        ]
         event_online = wmm.StatusEvent(
                             self.gw_id,
                             wmm.GatewayState.ONLINE,
                             sink_configs=configs,
                             gateway_model=self.gw_model,
                             gateway_version=self.gw_version,
+                            gw_features=gw_features
                             )
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
