@@ -2,10 +2,12 @@
 #
 # See file LICENSE for full license details.
 #
+from datetime import datetime
 from enum import IntEnum
 import logging
 import struct
-from time import time, sleep
+import pytz
+from time import monotonic, sleep, time
 from threading import Thread
 
 import wirepas_mesh_messaging as wmm
@@ -17,13 +19,15 @@ KEEP_ALIVE_DST_EP = 67
 
 # Timeouts and periods used for the keep alive service.
 WM_MSG_RETRY_PERIOD_S = 1
-KEEP_ALIVE_MSG_RECONNECTION_PERIOD_S = 60
+
+# Maximum number of time the service is trying to send a message to sinks.
+KEEP_ALIVE_MSG_RETRIES_NUMBER = 3
 
 BROADCAST_ADDRESS = 0xFFFFFFFF
 
 
 class KeepAliveType(IntEnum):
-    """ Keep alive fields TLV type enumerate. """
+    """Keep alive fields TLV type enumerate."""
     VERSION_TYPE = 0x01
     GATEWAY_STATUS_TYPE = 0x02
     RTC_TIMESTAMP_TYPE = 0x03
@@ -52,8 +56,8 @@ class KeepAliveMessage():
         self.timezone_offset_mn = timezone_offset_mn
         self.keep_alive_interval_s = keep_alive_interval_s
 
-    @classmethod
-    def encode_tlv_item(cls, elt_type, length, value, packing):
+    @staticmethod
+    def _encode_tlv_item(elt_type, length, value, packing):
         """
         Encode a new TLV item in little endian.
 
@@ -61,10 +65,10 @@ class KeepAliveMessage():
             elt_type (int): Type of the element to encode.
             length (int): Number of bytes of the value to be encoded.
             value: Value to encode. Note: Value should have a specific type
-                   corresponding to the packing parameter.
+                corresponding to the packing parameter.
             packing (str): String representing the format characters allowing
-                           the conversion between C and Python bytes when packing the value.
-                           See https://docs.python.org/3/library/struct.html#format-characters.
+                the conversion between C and Python bytes when packing the value.
+                See https://docs.python.org/3/library/struct.html#format-characters.
         """
         assert (0 <= elt_type <= 0xFF), "A TLV type must be include between 0 and 255"
         assert isinstance(length, int), "A TLV length must be an integer"
@@ -83,23 +87,23 @@ class KeepAliveMessage():
                       f"keep_alive_interval_s={self.keep_alive_interval_s}")
 
         buffer = bytes()
-        buffer += KeepAliveMessage.encode_tlv_item(
-            KeepAliveType.VERSION_TYPE, 1, KEEP_ALIVE_SERVICE_VERSION, "B"
+        buffer += KeepAliveMessage._encode_tlv_item(
+            KeepAliveType.VERSION_TYPE, 1, self.version, "B"
         )
         if self.gateway_status is not None:
-            buffer += KeepAliveMessage.encode_tlv_item(
+            buffer += KeepAliveMessage._encode_tlv_item(
                 KeepAliveType.GATEWAY_STATUS_TYPE, 1, self.gateway_status, "B"
             )
         if self.rtc_timestamp_ms is not None:
-            buffer += KeepAliveMessage.encode_tlv_item(
+            buffer += KeepAliveMessage._encode_tlv_item(
                 KeepAliveType.RTC_TIMESTAMP_TYPE, 8, self.rtc_timestamp_ms, "Q",
             )
         if self.timezone_offset_mn is not None:
-            buffer += KeepAliveMessage.encode_tlv_item(
+            buffer += KeepAliveMessage._encode_tlv_item(
                 KeepAliveType.TIME_ZONE_OFFSET_TYPE, 2, self.timezone_offset_mn, "h"
             )
         if self.keep_alive_interval_s is not None:
-            buffer += KeepAliveMessage.encode_tlv_item(
+            buffer += KeepAliveMessage._encode_tlv_item(
                 KeepAliveType.KEEP_ALIVE_INTERVAL_TYPE, 2, self.keep_alive_interval_s, "H",
             )
 
@@ -109,7 +113,7 @@ class KeepAliveMessage():
 class KeepAliveServiceThread(Thread):
     def __init__(self, sink_manager, mqtt_wrapper,
                  keep_alive_interval_s=300,
-                 keep_alive_timezone_offset_mn=0):
+                 keep_alive_timezone_name="Etc/UTC"):
         """ Thread sending periodically keep alive messages to the network.
 
         Args:
@@ -117,8 +121,10 @@ class KeepAliveServiceThread(Thread):
             mqtt_wrapper: The mqtt wrapper to get access to queue level of the mqtt broker.
             keep_alive_interval_s (int): Default to 300 seconds.
                 The interval in seconds between keep-alive messages.
-            keep_alive_timezone_offset_mn (int): Default to 0.
-                Time zone offset from UTC in minutes (-840 to +720) of the keep alive message.
+            keep_alive_timezone_name (str): Default to "Etc/UTC".
+                Time zone name used to set the timezone offset in the keep alive message.
+                Check https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List
+                to see the list of timezone identifiers: for example "Etc/UTC"
         """
         Thread.__init__(self)
 
@@ -128,19 +134,28 @@ class KeepAliveServiceThread(Thread):
         self.sink_manager = sink_manager
         self.mqtt_wrapper = mqtt_wrapper
 
-        self.disconnected_sinks = set()  # All sinks that are detected as disconnected to the gateway
-        self.connected_sinks = set()  #  All sinks that are detected as connected to the gateway
+        # All sinks that are detected as disconnected to the gateway
+        self.disconnected_sinks = set()
+        # All sinks that are detected as connected to the gateway
+        self.connected_sinks = set()
 
         self.keep_alive_interval_s = keep_alive_interval_s
-        self.keep_alive_timezone_offset_mn = keep_alive_timezone_offset_mn
+        try:
+            self.keep_alive_timezone = pytz.timezone(keep_alive_timezone_name)
+        except pytz.UnknownTimeZoneError:
+            logging.error("%s is not a valid timezone name.",
+                          self.keep_alive_timezone)
+            self.keep_alive_timezone = pytz.timezone("Etc/UTC")
+
+    def get_timezone_offset_mns(self):
+        """ Return the timezone offset in minutes. """
+        local_time = datetime.now(self.keep_alive_timezone)
+        return int(local_time.utcoffset().total_seconds() / 60)
 
     def prepare_keep_alive_msg(self):
         """ Prepare and return a keep alive message. """
-        rtc_timestamp_ms = None
-        time_zone_offset = None
-
         rtc_timestamp_ms = int(time() * 1000)
-        time_zone_offset = self.keep_alive_timezone_offset_mn
+        time_zone_offset = self.get_timezone_offset_mns()
 
         gateway_status = int(self.mqtt_wrapper.connected)
         keep_alive_msg = KeepAliveMessage(KEEP_ALIVE_SERVICE_VERSION,
@@ -154,12 +169,13 @@ class KeepAliveServiceThread(Thread):
     def send_keep_alive_msg_to_sink(self, sink) -> bool:
         """
         Send the keep alive message to the network.
-        Returns True if the keep alive message could be sent to the sink, False otherwise.
+        Returns True if the keep alive message could be sent to the sink,
+        False otherwise.
 
         Args:
             sink: Sink to send the keep alive message to.
         """
-        retries_left = 3
+        retries_left = KEEP_ALIVE_MSG_RETRIES_NUMBER
         res = wmm.GatewayResultCode.GW_RES_UNKNOWN_ERROR
 
         while retries_left > 0 and res != wmm.GatewayResultCode.GW_RES_OK:
@@ -192,7 +208,7 @@ class KeepAliveServiceThread(Thread):
     def wait_for_next_keep_alive_message_iteration(self, time_to_wait, start_timer=None):
         """ Wait for the next keep alive message iteration. """
         if start_timer:
-            time_to_wait = max(time_to_wait - (time() - start_timer), 0)
+            time_to_wait = max(time_to_wait - (monotonic() - start_timer), 0)
 
         sleep(time_to_wait)
 
@@ -200,11 +216,10 @@ class KeepAliveServiceThread(Thread):
         """ Main loop that send periodically keep alive message to the network. """
         while True:
             # Put a timer so that the message are periodic with a good precision
-            start_timer = time()
+            start_timer = monotonic()
 
             # Get current connected sinks
-            current_sinks = set([sink.sink_id for sink in self.sink_manager.get_sinks()])
-            current_connected_sinks = set()
+            current_sinks = [sink.sink_id for sink in self.sink_manager.get_sinks()]
 
             if not current_sinks:
                 logging.error("No sinks are detected!")
@@ -214,32 +229,6 @@ class KeepAliveServiceThread(Thread):
             # Send keep alive messages to all sinks
             logging.info("Send a keep alive message to the network")
             for sink_id in current_sinks:
-                if self.send_keep_alive_msg_to_sink(self.sink_manager.get_sink(sink_id)):
-                    current_connected_sinks.add(sink_id)
-                else:
-                    self.disconnected_sinks.add(sink_id)
+                self.send_keep_alive_msg_to_sink(self.sink_manager.get_sink(sink_id))
 
-            # Find sinks that disappeared and those which reconnected during this iteration
-            non_detected_sinks = self.connected_sinks.difference(current_sinks)
-            reconnected_sinks = current_connected_sinks.intersection(self.disconnected_sinks)
-
-            # Update sinks current status
-            self.connected_sinks = current_connected_sinks
-            self.disconnected_sinks.difference_update(current_connected_sinks)
-            self.disconnected_sinks.update(non_detected_sinks)
-
-            # If a sink reconnected, send 4 other keep alive messages in the next minutes
-            if reconnected_sinks:
-                messages_to_send = 4
-                logging.debug("Sending keep alive messages more often to reconnected sinks: %s",
-                              ' '.join(reconnected_sinks))
-                self.wait_for_next_keep_alive_message_iteration(KEEP_ALIVE_MSG_RECONNECTION_PERIOD_S, start_timer)
-
-                for _ in range(messages_to_send):
-                    start_timer = time()
-                    for sink_id in reconnected_sinks:
-                        self.send_keep_alive_msg_to_sink(self.sink_manager.get_sink(sink_id))
-
-                    self.wait_for_next_keep_alive_message_iteration(KEEP_ALIVE_MSG_RECONNECTION_PERIOD_S, start_timer)
-            else:  # Else wait for sending the next keep alive message
-                self.wait_for_next_keep_alive_message_iteration(self.keep_alive_interval_s, start_timer)
+            self.wait_for_next_keep_alive_message_iteration(self.keep_alive_interval_s, start_timer)

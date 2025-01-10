@@ -585,12 +585,15 @@ class ParserHelper:
         )
 
         self.filtering.add_argument(
-            "--keep_alive_timezone_offset_mn",
-            default=os.environ.get("WM_KEEP_ALIVE_TIMEZONE_OFFSET_MN", 0),
-            action="store",
-            type=int,
-            help=("Default to 0. Time zone offset from UTC in minutes (-840 to +720) "
-                  "to be sent in keep alive messages."),
+            "--keep_alive_timezone_name",
+            default=os.environ.get("WM_KEEP_ALIVE_TIMEZONE_NAME", "Etc/UTC"),
+            type=self.str2none,
+            nargs="?",
+            const=True,
+            help=("Default to 'Etc/UTC'. Time zone name used to set the "
+                  "timezone offset in the keep alive message. Check "
+                  "https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List "
+                  "to see the list of timezone identifiers."),
         )
 
     def dump(self, path):
