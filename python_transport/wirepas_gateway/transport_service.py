@@ -440,7 +440,7 @@ class TransportService(BusClient):
                 self.sink_manager,
                 self.mqtt_wrapper,
                 settings.keep_alive_interval_s,
-                settings.keep_alive_timezone_offset_mn
+                settings.keep_alive_timezone_name
             )
             self.keep_alive_service.start()
 
