@@ -79,7 +79,7 @@ The list of all possible parameters to configure the transport service are given
 | WM_SERVICES_DEBUG_INCR_EVENT_ID | When true the data received event id will be incremental starting at 0 when service starts. Otherwise it will be random 64 bits id | false | "yes", "true", "t", "y",  "1","no", "false", "f", "n", "0", "" |
 | WM_KEEP_ALIVE_ACTIVATE | Activate the keep alive service thread to send those messages periodically to the network. | False | "yes", "true", "t", "y",  "1","no", "false", "f", "n", "0", "" |
 | WM_KEEP_ALIVE_INTERVAL_S | The interval in seconds between keep-alive messages if those are activated with WM_KEEP_ALIVE_ACTIVATE. | 300 | Any positive integer |
-| WM_KEEP_ALIVE_TIMEZONE_OFFSET_MN | Time zone offset from UTC in minutes (-840 to +720) to be sent in keep alive messages if those are activated with WM_KEEP_ALIVE_ACTIVATE. | 0 | Any integer between -840 and 720 |
+| WM_KEEP_ALIVE_TIMEZONE_NAME | Time zone name used to set the timezone offset in the keep alive message. Check https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List to see the list of timezone identifiers: for example "Etc/UTC" | "Etc/UTC" | Any valid timezone identifiers. |
 | WM_DEBUG_LEVEL | Configure log level for the transport service. Please be aware that levels such as debug should not be used in a production system | info | debug, info, critical, fatal, error, warning |
 
 
