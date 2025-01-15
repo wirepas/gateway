@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <signal.h>
 
 #include <systemd/sd-bus.h>
 
@@ -149,6 +150,30 @@ static int open_and_check_connection(unsigned long baudrate, char * port_name)
     return 0;
 }
 
+static volatile sig_atomic_t m_stop_requested = 0;
+
+static void stop_signal_handler(const int signum)
+{
+    m_stop_requested = 1;
+}
+
+static bool setup_signal_handlers_for_stopping()
+{
+    // Handle SIGINT and SIGTERM signals for graceful shutdown
+    if (signal(SIGINT, stop_signal_handler) == SIG_ERR)
+    {
+        LOGE("Could not set SIGINT signal handler: %s\n", strerror(errno));
+        return false;
+    }
+    if (signal(SIGTERM, stop_signal_handler) == SIG_ERR)
+    {
+        LOGE("Could not set SIGTERM signal handler: %s\n", strerror(errno));
+        return false;
+    }
+
+    return true;
+}
+
 int main(int argc, char * argv[])
 {
     unsigned long baudrate = 0;
@@ -159,6 +184,11 @@ int main(int argc, char * argv[])
     unsigned int max_poll_fail_duration = DEFAULT_MAX_POLL_FAIL_DURATION_S;
     unsigned int fragment_max_duration_s = DEFAULT_FRAGMENT_MAX_DURATION_S;
     unsigned int downlink_limit = 0;
+
+    if (!setup_signal_handlers_for_stopping())
+    {
+        return EXIT_FAILURE;
+    }
 
     /* Acquires environment parameters */
     get_env_parameters(&baudrate, &port_name, &sink_id, &max_poll_fail_duration,
@@ -308,7 +338,7 @@ int main(int argc, char * argv[])
         goto finish;
     }
 
-    for (;;)
+    while (!m_stop_requested)
     {
         /* Process requests */
         r = sd_bus_process(m_bus, NULL);
@@ -323,6 +353,8 @@ int main(int argc, char * argv[])
             continue;
 
         /* Wait for the next request to process */
+        /* sd_bus_wait uses ppoll() internally, and also returns if a signal is */
+        /* caught. */
         r = sd_bus_wait(m_bus, (uint64_t) -1);
         if (r < 0)
         {
@@ -332,6 +364,7 @@ int main(int argc, char * argv[])
     }
 
 finish:
+    LOGI("Exiting\n");
     Otap_Close();
     Data_Close();
     Config_Close();
