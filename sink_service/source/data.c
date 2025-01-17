@@ -157,7 +157,7 @@ static bool onDataReceived(const uint8_t * bytes,
                            uint8_t hop_count,
                            unsigned long long timestamp_ms)
 {
-    sd_bus_message * m = NULL;
+    __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *m = NULL;
     int r;
 
     LOGD("%llu -> Data received on EP %d of len %d from 0x%x to 0x%x\n",
@@ -204,9 +204,6 @@ static bool onDataReceived(const uint8_t * bytes,
 
     /* Send the signal on bus */
     sd_bus_send(m_bus, m, NULL);
-
-    /* Release message to free memory */
-    sd_bus_message_unref(m);
 
     return true;
 }

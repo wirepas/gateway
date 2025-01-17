@@ -281,7 +281,7 @@ static int set_authen_key(sd_bus * bus,
 static bool send_dbus_signal(const char * name)
 {
     /* Create a new signal to be generated on Dbus */
-    sd_bus_message * m = NULL;
+    __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *m = NULL;
     int r = sd_bus_message_new_signal(m_bus, &m, m_object, m_interface, name);
 
     if (r < 0)
@@ -295,12 +295,8 @@ static bool send_dbus_signal(const char * name)
     if (r < 0)
     {
         LOGE("Cannot send signal error=%s\n", strerror(-r));
-        sd_bus_message_unref(m);
         return false;
     }
-
-    /* Release message to free memory */
-    sd_bus_message_unref(m);
 
     return true;
 }
@@ -403,7 +399,7 @@ static int get_app_config(sd_bus_message * m, void * userdata, sd_bus_error * er
     uint8_t app_config[MAX_APP_CONFIG_SIZE];
     uint8_t size;
 
-    sd_bus_message * reply = NULL;
+    __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *reply = NULL;
 
     res = WPC_get_app_config_data_size(&size);
     if (res != APP_RES_OK)

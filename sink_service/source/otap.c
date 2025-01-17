@@ -187,7 +187,7 @@ static int get_target_scratchpad(sd_bus_message * m, void * userdata, sd_bus_err
     uint8_t action;
     uint8_t param;
 
-    sd_bus_message * reply = NULL;
+    __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *reply = NULL;
 
     res = WPC_read_target_scratchpad(&target_seq, &target_crc, &action, &param);
     if (res != APP_RES_OK)
