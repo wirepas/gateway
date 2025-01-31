@@ -24,6 +24,13 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: 
+          - linux/amd64
+          - linux/arm64
+          - linux/arm/v7
+          - linux/arm/v6
     steps:
       - name: checkout code
         uses: actions/checkout@v4
@@ -61,7 +68,7 @@ jobs:
         with:
           context: .
           file: docker/local_history_service/Dockerfile
-          platforms: linux/amd64, linux/arm64, linux/arm/v7, linux/arm/v6
+          platforms: ${{ matrix.platform }}
           push: true
           build-args: GATEWAY_BUILD_SHA1= ${{ github.sha }}
           tags: |
