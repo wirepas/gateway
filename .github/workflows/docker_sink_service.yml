@@ -74,7 +74,7 @@ jobs:
           file: docker/sink_service/Dockerfile
           platforms: ${{ matrix.platform }}
           build-args: GATEWAY_BUILD_SHA1= ${{ github.sha }}
-          outputs: type=image,"name=${{ env.TAG1 }},${{ env.TAG2 }}",push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,"name=${{ env.IMAGE_NAME }}",push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |
