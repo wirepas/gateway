@@ -8,7 +8,7 @@ import sys
 import wirepas_mesh_messaging as wmm
 from time import time, sleep
 from uuid import getnode
-from threading import Lock, Thread
+from threading import Thread, Event
 
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
@@ -181,6 +181,143 @@ class ConnectionToBackendMonitorThread(Thread):
                     sink.cost = self.minimum_sink_cost
 
 
+class SetStatusThread(Thread):
+
+    # Maximum number of attempts to read a full config
+    MAX_FULL_STATUS_ATTEMPTS = 5
+
+    def __init__(
+        self,
+        mqtt_wrapper,
+        sink_manager,
+        gw_id,
+        gw_model,
+        gw_version,
+        agregate_delay_s=0.5,
+        backup_delay_s=3600
+    ):
+        """
+        Thread sending periodically the gateway status
+
+        Args:
+            mqtt_wrapper: the mqtt wrapper to publish status
+            sink_manager: the sink manager to generate the config
+            agregate_delay_s: delay to wait once update is requested to avoid
+                              multiple sending in a row
+            backup_delay_s: delay in s to update gateway status, just in case.
+                            It should never generate a publish as content
+                            may not change
+        """
+        Thread.__init__(self)
+
+        # Daemonize thread to exit with full process
+        self.daemon = True
+
+        self.agregate_delay_s = agregate_delay_s
+        self.backup_delay_s = backup_delay_s
+        self.mqtt_wrapper = mqtt_wrapper
+        self.sink_manager = sink_manager
+        self.gw_id = gw_id
+        self.gw_model = gw_model
+        self.gw_version = gw_version
+
+        self.running = False
+
+        self._set_status_event = Event()
+
+        self._last_status_config = None
+
+    def _set_status(self) -> bool:
+        # Create a list of different sink configs
+        partial_status = False
+        configs = []
+        for sink in self.sink_manager.get_sinks():
+            config, partial = sink.read_config()
+            partial_status |= partial
+            if config is not None:
+                configs.append(config)
+
+        if partial_status:
+            # Some part of the status were read from cache value
+            logging.warning("Some value were not up to date")
+
+        # Publish only if something has changed
+        if self._last_status_config is not None and \
+           self._last_status_config == configs:
+            logging.debug("No new status to publish")
+            return partial_status
+
+        event_online = wmm.StatusEvent(
+                self.gw_id,
+                wmm.GatewayState.ONLINE,
+                sink_configs=configs,
+                gateway_model=self.gw_model,
+                gateway_version=self.gw_version
+        )
+
+        topic = TopicGenerator.make_status_topic(self.gw_id)
+
+        self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
+        logging.info("Status published partial=%s", partial_status)
+        self._last_status_config = configs.copy()
+
+        return partial_status
+
+    def run(self):
+        """
+        Main loop that checks if it is time to send a status
+        """
+
+        self.running = True
+        attempt = 0
+        next_delay_s = self.backup_delay_s
+
+        while self.running:
+            requested = self._set_status_event.wait(next_delay_s)
+            if requested:
+                logging.info("Explicit request to update status")
+                # wait a bit for other request to "mutualize" the publish
+                # during that time, event may be set multiple time
+                sleep(self.agregate_delay_s)
+                # Reset attempts counter
+                attempt = 0
+            else:
+                logging.info("Backup mechanism to send a new status or next attempt")
+
+            # Before generating config, reset the Event to be sure any
+            # request will be served after this point
+            self._set_status_event.clear()
+
+            if self._set_status() and attempt < self.MAX_FULL_STATUS_ATTEMPTS:
+                # Status is partial, retry few times with exponential delay
+                # until we have a real one
+                next_delay_s = 2**attempt
+                attempt += 1
+            else:
+                # Status is correctly published or too much partial attempt
+                if attempt == self.MAX_FULL_STATUS_ATTEMPTS:
+                    logging.error("Too much attempt and status still partial")
+
+                # wait until someone notify us or backup delay
+                attempt = 0
+                next_delay_s = self.backup_delay_s
+
+    def stop(self):
+        """
+        Stop the status publication
+        """
+        self.running = False
+
+    def update_status(self, force=False):
+        """
+        Request to update the status
+        """
+        logging.debug("Request to update status")
+        if force:
+            self._last_status_config = None
+
+        self._set_status_event.set()
+
 class TransportService(BusClient):
     """
     Implementation of gateway to backend protocol
@@ -256,11 +393,14 @@ class TransportService(BusClient):
         else:
             self.data_event_id = None
 
-        # Flag to know if updating the status is already scheduled
-        self._is_update_status_scheduled = False
-        self._status_lock = Lock()
-
-        self._last_status_config = None
+        self.status_thread = SetStatusThread(
+            self.mqtt_wrapper,
+            self.sink_manager,
+            self.gw_id,
+            self.gw_model,
+            self.gw_version
+        )
+        self.status_thread.start()
 
     def _on_mqtt_wrapper_termination_cb(self):
         """
@@ -271,80 +411,6 @@ class TransportService(BusClient):
         logging.error("MQTT wrapper ends. Terminate the program")
         self.stop_dbus_client()
 
-    def _set_status(self):
-        # Create a list of different sink configs
-        partial_status = False
-        configs = []
-        for sink in self.sink_manager.get_sinks():
-            config, partial = sink.read_config()
-            partial_status |= partial
-            if config is not None:
-                configs.append(config)
-
-        if partial_status:
-            # Some part of the status were read from cache value
-            logging.warning("Some value were not up to date")
-
-        # Publish only if something has changed
-        if self._last_status_config is not None and \
-            self._last_status_config == configs:
-            logging.info("No new status to publish")
-            return
-
-        event_online = wmm.StatusEvent(
-                            self.gw_id,
-                            wmm.GatewayState.ONLINE,
-                            sink_configs=configs,
-                            gateway_model=self.gw_model,
-                            gateway_version=self.gw_version,
-                            )
-
-        topic = TopicGenerator.make_status_topic(self.gw_id)
-
-        self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
-
-        self._last_status_config = configs.copy()
-
-        return partial_status
-
-    def _update_status(self):
-        # First check if an update is about to be sent to avoid
-        # multiple updates in a short period (0.5s)
-        with self._status_lock:
-            if self._is_update_status_scheduled:
-                # Update is already scheduled, so our modification
-                # will be handled soon
-                logging.debug("Update already scheduled")
-                return
-            else:
-                logging.debug("Update not scheduled yet")
-                self._is_update_status_scheduled = True
-
-        def set_status_after_delay(delay_s):
-            sleep(delay_s)
-            attempt = 0
-            logging.debug("Time to update the status")
-            if self._set_status():
-                # Status is partial, retry few times until we have valid one
-                delay_s = 2
-                while attempt < 5:
-                    sleep(delay_s)
-                    logging.debug("New attempt to publish status")
-                    if not self._set_status():
-                        # Successful update
-                        break
-
-                    attempt += 1
-                    delay_s *= 2
-
-            if attempt == 5:
-                logging.error("Not able to read a full status")
-            self._is_update_status_scheduled = False
-
-        # We are here as there was no update scheduled yet.
-        # Wait a bit in case something else is changing
-        thread = Thread(target=set_status_after_delay, args=[0.5])
-        thread.start()
 
     def update_gateway_status_dec(fn):
         """
@@ -353,7 +419,7 @@ class TransportService(BusClient):
         def wrapper(self, *args, **kwargs):
             fn(self, *args, **kwargs)
             logging.debug("Updating gw status for %s", fn)
-            self._update_status()
+            self.status_thread.update_status()
             return
 
         return wrapper
@@ -397,12 +463,8 @@ class TransportService(BusClient):
         self.mqtt_wrapper.subscribe(
             topic, self._on_otap_set_target_scratchpad_request_received
         )
-
-        # Reset our cached value to be sure the status is published again
-        # If we are here, it means that we were disconnected and our last_will
-        # status was sent
-        self._last_status_config = None
-        self._set_status()
+        # Force to generate a status (to be sure offline status is erase)
+        self.status_thread.update_status(force=True)
 
         logging.info("MQTT connected!")
 
