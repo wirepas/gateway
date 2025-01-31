@@ -66,14 +66,16 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/sink_service/Dockerfile
           platforms: ${{ matrix.platform }}
-          push: true
           build-args: GATEWAY_BUILD_SHA1= ${{ github.sha }}
-          tags: |
-            ${{ env.TAG1 }}
-            ${{ env.TAG2 }}
+          outputs: type=image,"name=${{ env.TAG1 }},${{ env.TAG2 }}",push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          echo "${{ steps.build.outputs.digest }}"
