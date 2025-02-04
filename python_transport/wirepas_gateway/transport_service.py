@@ -855,6 +855,13 @@ class TransportService(BusClient):
                 message.payload
             )
             action = request.target["action"]
+            req_id = request.req_id
+            sink_id = request.sink_id
+        except wmm.wirepas_exceptions.InvalidMessageContents as e:
+            logging.error(e)
+            res = wmm.GatewayResultCode.GW_RES_INVALID_PARAM
+            req_id = e.header["req_id"]
+            sink_id = e.header["sink_id"]
         except wmm.GatewayAPIParsingException as e:
             logging.error(str(e))
             return
@@ -890,7 +897,7 @@ class TransportService(BusClient):
                 param = request.target.get("param")
 
             # no error so far
-            sink = self.sink_manager.get_sink(request.sink_id)
+            sink = self.sink_manager.get_sink(sink_id)
             if sink is not None:
                 res = sink.set_target_scratchpad(
                     action=action, target_seq=seq, target_crc=crc, param=param
@@ -899,11 +906,11 @@ class TransportService(BusClient):
                 res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
 
         response = wmm.SetScratchpadTargetAndActionResponse(
-            request.req_id, self.gw_id, res, request.sink_id
+            req_id, self.gw_id, res, sink_id
         )
 
         topic = TopicGenerator.make_otap_set_target_scratchpad_response_topic(
-            self.gw_id, request.sink_id
+            self.gw_id, sink_id
         )
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
