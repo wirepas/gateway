@@ -230,12 +230,12 @@ class SetStatusThread(Thread):
     def _set_status(self) -> bool:
         # Create a list of different sink configs
         partial_status = False
-        configs = []
+        configs = {}
         for sink in self.sink_manager.get_sinks():
             config, partial = sink.read_config()
             partial_status |= partial
             if config is not None:
-                configs.append(config)
+                configs[sink.sink_id] = config
 
         if partial_status:
             # Some part of the status were read from cache value
@@ -250,7 +250,7 @@ class SetStatusThread(Thread):
         event_online = wmm.StatusEvent(
                 self.gw_id,
                 wmm.GatewayState.ONLINE,
-                sink_configs=configs,
+                sink_configs=configs.values(),
                 gateway_model=self.gw_model,
                 gateway_version=self.gw_version
         )
@@ -259,6 +259,36 @@ class SetStatusThread(Thread):
 
         self.mqtt_wrapper.publish(topic, event_online.payload, qos=1, retain=True)
         logging.info("Status published partial=%s", partial_status)
+
+        # For backward compatibility, also generate a Getconfig answer
+        # with req_id of 0 as some backend may still use this mechanism
+        # instead of listening the status
+        response = wmm.GetConfigsResponse(
+            0, self.gw_id, wmm.GatewayResultCode.GW_RES_OK, configs.values()
+        )
+        topic = TopicGenerator.make_get_configs_response_topic(self.gw_id)
+        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
+        for sink_id in configs.keys():
+            try:
+                if self._last_status_config is not None and \
+                    self._last_status_config[sink_id] == configs[sink_id]:
+                    logging.info("No change on sink %s" % sink_id)
+                    continue
+            except KeyError:
+                # sink id was not in old list so generate a message
+                pass
+
+            response = wmm.SetConfigResponse(
+                0,
+                self.gw_id,
+                wmm.GatewayResultCode.GW_RES_OK,
+                sink_id,
+                configs[sink_id],
+            )
+            topic = TopicGenerator.make_set_config_response_topic(self.gw_id, sink_id)
+            self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
         self._last_status_config = configs.copy()
 
         return partial_status
@@ -536,48 +566,10 @@ class TransportService(BusClient):
     @update_gateway_status_dec
     def on_stack_started(self, name):
         logging.debug("Sink started: %s", name)
-        # Generate a setconfig answer with req_id of 0
-        self._send_asynchronous_set_config_response(name)
 
     @update_gateway_status_dec
     def on_stack_stopped(self, name):
         logging.debug("Sink stopped: %s", name)
-        # Generate a setconfig answer with req_id of 0
-        self._send_asynchronous_set_config_response(name)
-
-    def _send_asynchronous_set_config_response(self, name):
-        sink = self.sink_manager.get_sink(name)
-        if sink is None:
-            logging.error("Sink %s error: unknown sink", name)
-            return
-
-        config, _ = sink.read_config()
-        response = wmm.SetConfigResponse(
-            0,
-            self.gw_id,
-            wmm.GatewayResultCode.GW_RES_OK,
-            sink.sink_id,
-            config,
-        )
-        topic = TopicGenerator.make_set_config_response_topic(self.gw_id, sink.sink_id)
-        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
-
-    def _send_asynchronous_get_configs_response(self):
-        # Create a list of different sink configs
-        configs = []
-        for sink in self.sink_manager.get_sinks():
-            config, _ = sink.read_config()
-            if config is not None:
-                configs.append(config)
-
-        # Generate a setconfig answer with req_id of 0 as not from
-        # a real request
-        response = wmm.GetConfigsResponse(
-            0, self.gw_id, wmm.GatewayResultCode.GW_RES_OK, configs
-        )
-        topic = TopicGenerator.make_get_configs_response_topic(self.gw_id)
-
-        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     def deferred_thread(fn):
         """
@@ -613,12 +605,9 @@ class TransportService(BusClient):
                 except ValueError:
                     logging.debug("Cannot set cost, probably not a sink")
 
-        self._send_asynchronous_get_configs_response()
-
     @update_gateway_status_dec
     def on_sink_disconnected(self, name):
         logging.info("Sink disconnected, sending new configs")
-        self._send_asynchronous_get_configs_response()
 
     @deferred_thread
     def _on_send_data_cmd_received(self, client, userdata, message):
