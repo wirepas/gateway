@@ -526,6 +526,100 @@ static int set_ac_range(sd_bus_message * m, void * userdata, sd_bus_error * erro
     return sd_bus_reply_method_return(m, "b", true);
 }
 
+/**
+ * \brief   Set config data item
+ * \param   ... (from sd_bus function signature)
+ */
+static int set_config_data_item(sd_bus_message *m, void *userdata, sd_bus_error *error)
+{
+
+    uint16_t endpoint;
+    const void *payload;
+    size_t payload_size;
+
+    int r = sd_bus_message_read(m, "q", &endpoint);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot read endpoint: %s\n", strerror(-r));
+        return r;
+    }
+
+    r = sd_bus_message_read_array(m, 'y', &payload, &payload_size);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot read payload: %s\n", strerror(-r));
+        return r;
+    }
+
+    LOGD("Set config data item: endpoint:%d, payload size:%d\n", endpoint, payload_size);
+
+    if (payload_size > UINT8_MAX)
+    {
+        sd_bus_error_set_errno(error, EINVAL);
+        LOGE("Payload size is too large (%zu)\n", payload_size);
+        return -EINVAL;
+    }
+
+    const app_res_e wpc_res = WPC_set_config_data_item(endpoint, payload, (uint8_t) payload_size);
+    if (APP_RES_OK != wpc_res) {
+        SET_WPC_ERROR(error, "WPC_set_config_data_item", wpc_res);
+        LOGE("Cannot set config data item (ret=%d)\n", wpc_res);
+        return -EINVAL;
+    }
+
+    return sd_bus_reply_method_return(m, "");
+}
+
+/**
+ * \brief   Get config data item
+ * \param   ... (from sd_bus function signature)
+ */
+static int get_config_data_item(sd_bus_message *m, void *userdata, sd_bus_error *error)
+{
+    uint16_t endpoint;
+
+    int r = sd_bus_message_read(m, "q", &endpoint);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot read endpoint: %s\n", strerror(-r));
+        return r;
+    }
+
+    LOGD("Get config data item: endpoint:%d\n", endpoint);
+
+    __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *reply = NULL;
+
+    uint8_t payload[UINT8_MAX];
+    uint8_t payload_size = 0;
+    const app_res_e wpc_res = WPC_get_config_data_item(endpoint, payload, &payload_size);
+    if (APP_RES_OK != wpc_res) {
+        SET_WPC_ERROR(error, "WPC_get_config_data_item", wpc_res);
+        LOGE("Cannot get config data item (ret=%d)\n", wpc_res);
+        return -EINVAL;
+    }
+
+    r = sd_bus_message_new_method_return(m, &reply);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot create response message: %s\n", strerror(-r));
+        return r;
+    }
+
+    r = sd_bus_message_append_array(reply, 'y', payload, payload_size);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot append config data item payload to response: %s\n", strerror(-r));
+        return r;
+    }
+
+    return sd_bus_send(sd_bus_message_get_bus(reply), reply, NULL);
+}
+
 /**********************************************************************
  *                   VTABLE for config module                         *
  **********************************************************************/
@@ -571,6 +665,8 @@ static const sd_bus_vtable config_vtable[] = {
     SD_BUS_METHOD("SetAppConfig", "yqay", "b", set_app_config, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("GetAppConfig", "", "yqay", get_app_config, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("SetACRange", "qq", "b", set_ac_range, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("SetConfigDataItem", "qay", "", set_config_data_item, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("GetConfigDataItem", "q", "ay", get_config_data_item, SD_BUS_VTABLE_UNPRIVILEGED),
 
     /* Event generated when stack starts */
     SD_BUS_SIGNAL("StackStarted", "", 0),
