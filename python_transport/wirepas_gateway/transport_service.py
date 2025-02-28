@@ -441,7 +441,6 @@ class TransportService(BusClient):
         logging.error("MQTT wrapper ends. Terminate the program")
         self.stop_dbus_client()
 
-
     def update_gateway_status_dec(fn):
         """
         Decorator to update the gateway status when needed
@@ -493,6 +492,19 @@ class TransportService(BusClient):
         self.mqtt_wrapper.subscribe(
             topic, self._on_otap_set_target_scratchpad_request_received
         )
+
+        # Register for set configuration data item request
+        topic = TopicGenerator.make_set_configuration_data_item_request_topic(self.gw_id)
+        self.mqtt_wrapper.subscribe(
+            topic, self._on_set_configuration_data_item_request_received
+        )
+
+        # Register for get configuration data item request
+        topic = TopicGenerator.make_get_configuration_data_item_request_topic(self.gw_id)
+        self.mqtt_wrapper.subscribe(
+            topic, self._on_get_configuration_data_item_request_received
+        )
+
         # Force to generate a status (to be sure offline status is erase)
         self.status_thread.update_status(force=True)
 
@@ -900,6 +912,70 @@ class TransportService(BusClient):
 
         topic = TopicGenerator.make_otap_set_target_scratchpad_response_topic(
             self.gw_id, sink_id
+        )
+
+        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
+    @deferred_thread
+    def _on_set_configuration_data_item_request_received(
+        self, client, userdata, message
+    ):
+        logging.info("Set configuration data item request received")
+        try:
+            request = wmm.SetConfigurationDataItemRequest.from_payload(message.payload)
+        except wmm.GatewayAPIParsingException as e:
+            logging.error(str(e))
+            return
+
+        sink = self.sink_manager.get_sink(request.sink_id)
+        if sink is not None:
+            res = sink.set_configuration_data_item(request.cdc_endpoint, request.cdc_payload)
+        else:
+            res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
+
+        response = wmm.SetConfigurationDataItemResponse(
+            request.req_id, self.gw_id, res, request.sink_id
+        )
+
+        topic = TopicGenerator.make_set_configuration_data_item_response_topic(
+            self.gw_id, request.sink_id
+        )
+
+        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
+    @deferred_thread
+    def _on_get_configuration_data_item_request_received(
+        self, client, userdata, message
+    ):
+        logging.info("Get configuration data item request received")
+        try:
+            request = wmm.GetConfigurationDataItemRequest.from_payload(message.payload)
+        except wmm.GatewayAPIParsingException as e:
+            logging.error(str(e))
+            return
+
+        sink = self.sink_manager.get_sink(request.sink_id)
+        if sink is not None:
+            res, cdc_payload = sink.get_configuration_data_item(request.cdc_endpoint)
+        else:
+            res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
+
+        if cdc_payload is not None:
+            response = wmm.GetConfigurationDataItemResponse(
+                request.req_id,
+                self.gw_id,
+                res,
+                request.sink_id,
+                request.cdc_endpoint,
+                cdc_payload,
+            )
+        else:
+            response = wmm.GetConfigurationDataItemResponse(
+                request.req_id, self.gw_id, res, request.sink_id
+            )
+
+        topic = TopicGenerator.make_get_configuration_data_item_response_topic(
+            self.gw_id, request.sink_id
         )
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
