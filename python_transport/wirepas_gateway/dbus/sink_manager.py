@@ -586,6 +586,41 @@ class Sink:
 
         return ret
 
+    def set_configuration_data_item(self, endpoint, payload):
+        try:
+            self.proxy.SetConfigDataItem(endpoint, payload)
+        except GLib.Error as e:
+            error_code = ReturnCode.error_from_dbus_exception(str(e))
+            logging.error("Cannot set config data item: %s", error_code.name)
+            return error_code
+        except (OverflowError, TypeError) as e:
+            # This is expected to happen if endpoint is too large to be uint16_t
+            logging.error(f"Invalid config data item parameter value: {e}")
+            return wmm.GatewayResultCode.GW_RES_INVALID_DEST_ENDPOINT
+        except:
+            logging.exception("Unknown exception")
+            return wmm.GatewayResultCode.GW_RES_INTERNAL_ERROR
+
+        return wmm.GatewayResultCode.GW_RES_OK
+
+    def get_configuration_data_item(self, endpoint):
+        cdc_payload = None
+        try:
+            cdc_payload = self.proxy.GetConfigDataItem(endpoint)
+        except GLib.Error as e:
+            error_code = ReturnCode.error_from_dbus_exception(str(e))
+            logging.error("Cannot get config data item: %s", error_code.name)
+            return (error_code, None)
+        except (OverflowError, TypeError) as e:
+            # This is expected to happen if endpoint is too large to be uint16_t
+            logging.error(f"Invalid config data item parameter value: {e}")
+            return (wmm.GatewayResultCode.GW_RES_INVALID_DEST_ENDPOINT, None)
+        except:
+            logging.exception("Unknown exception")
+            return (wmm.GatewayResultCode.GW_RES_INTERNAL_ERROR, None)
+
+        return (wmm.GatewayResultCode.GW_RES_OK, bytes(cdc_payload))
+
 
 class SinkManager:
     "Helper class to manage the Sink list"
