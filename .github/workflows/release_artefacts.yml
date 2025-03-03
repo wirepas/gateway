@@ -1,4 +1,4 @@
-name: Generate sink service and Transport wheel
+name: Generate transport service wheel
 
 on:
   release:
@@ -13,37 +13,18 @@ jobs:
         with:
           submodules: true
 
-      - name: Set up QEMU
-        run: sudo apt-get update && sudo apt-get install qemu-user-static -y
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Build and extract sinkService
-        uses: docker/build-push-action@v6
-        with:
-            context: .
-            file: docker/sink_service/Dockerfile
-            platforms: linux/amd64, linux/arm64, linux/arm/v7, linux/arm/v6
-            push: false
-            target: export
-            outputs: ./artifacts/sinkService/
 
       - name: Build and extract transportService wheel
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/transport_service/Dockerfile
-          platforms: linux/amd64, linux/arm64, linux/arm/v7, linux/arm/v6
+          platforms: linux/amd64
           push: false
           target: export
           outputs: ./artifacts/transportService/
-
-      - name: Get wheel name
-        id: wheel_name
-        run: |
-          WHEEL_NAME=$(find ./artifacts/transportService/linux_arm_v7/ -maxdepth 1 -type f -name '*.tar.gz' -printf "%f")
-          echo "::set-output name=wheel_name::$WHEEL_NAME"
 
       - name: Store artefacts localy
         uses: actions/upload-artifact@v4
@@ -51,44 +32,8 @@ jobs:
           name: binaries
           path: ./artifacts/
 
-      - name: Get release url
-        id: get_release
-        uses: bruceadams/get-release@v1.2.1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Upload Armv7 SinkService
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./artifacts/sinkService/linux_arm_v7/sinkService
-          asset_name: sinkService-${{ github.event.release.tag_name }}-arm
-          asset_content_type: application/octet-stream
-
-      - name: Upload amd64 SinkService
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./artifacts/sinkService/linux_amd64/sinkService
-          asset_name: sinkService-${{ github.event.release.tag_name }}-amd64
-          asset_content_type: application/octet-stream
-
-      - name: Upload tar.gz wheel
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./artifacts/transportService/linux_amd64/${{ steps.wheel_name.outputs.wheel_name }}
-          asset_name: ${{ steps.wheel_name.outputs.wheel_name }}
-          asset_content_type: application/octet-stream
-
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.4.1
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_PWD }}
