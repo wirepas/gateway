@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "config_macros.h"
@@ -526,6 +527,118 @@ static int set_ac_range(sd_bus_message * m, void * userdata, sd_bus_error * erro
     return sd_bus_reply_method_return(m, "b", true);
 }
 
+static bool scan_done = false;
+static uint8_t scan_status = false;
+
+static void onScanNeighborsDone(uint8_t status)
+{
+    LOGD("Scan neighbors is done res=%d\n", status);
+    scan_status = status;
+    scan_done = true;
+}
+
+static int start_nbors_scan(sd_bus_message * m, void * userdata, sd_bus_error * error)
+{
+    // Register for end of scan Neighbors
+    app_res_e res = WPC_register_for_scan_neighbors_done(onScanNeighborsDone);
+
+    if (res != APP_RES_OK)
+    {
+        LOGE("Cannot register neighbors done callback\n");
+    }
+
+    // Ask for a scan
+    res = WPC_start_scan_neighbors();
+    if (res != APP_RES_OK)
+    {
+        LOGE("Cannot start scan\n");
+        SET_WPC_ERROR(error, "WPC_start_scan_neighbors", res);
+        return sd_bus_reply_method_return(m, "u", EIO);
+    }
+
+    LOGI("Wait 5 seconds for scan result\n");
+    usleep(5 * 1000 * 1000);
+
+    // scan_done should be protected but we can assume
+    // that 5 sec is enough and no race can occur
+    if (!scan_done)
+    {
+        LOGE("Scan is not done\n");
+        return sd_bus_reply_method_return(m, "u", ETIMEDOUT);
+    }
+
+    int r = scan_status;
+
+    scan_done = false;
+    scan_status = 0;
+
+    return sd_bus_reply_method_return(m, "u", r);
+}
+
+
+static int get_neighbors(sd_bus * bus,
+                                const char * path,
+                                const char * interface,
+                                const char * property,
+                                sd_bus_message * reply,
+                                void * userdata,
+                                sd_bus_error * error)
+{
+    app_nbors_t neighbors_list;
+    app_res_e res = WPC_get_neighbors(&neighbors_list);
+    int r;
+
+    if (res != APP_RES_OK)
+    {
+        LOGE("Cannot get neighbors list\n");
+        SET_WPC_ERROR(error, "WPC_get_neighbors", res);
+        return -ENODATA;
+    }
+
+    res = WPC_unregister_from_scan_neighbors_done();
+    if (res != APP_RES_OK)
+    {
+        LOGE("Cannot unregister from scan neighbors \n");
+        SET_WPC_ERROR(error, "WPC_unregister_from_scan_neighbors_done", res);
+        return -EAGAIN;
+    }
+
+    // clang-format off
+    if (neighbors_list.number_of_neighbors <= 0)
+    {
+        sd_bus_error_set_errno(error, -ENODATA);
+        r = -ENODATA;
+        return r;
+    }
+    sd_bus_message_open_container(reply, SD_BUS_TYPE_ARRAY, "(uuuuuuuuu)");
+    for (int i = 0; i < neighbors_list.number_of_neighbors; i++)
+    {
+        sd_bus_message_open_container(reply, SD_BUS_TYPE_STRUCT, "uuuuuuuuu");
+        sd_bus_message_append(reply, "u", (uint32_t)neighbors_list.nbors[i].add);
+        sd_bus_message_append(reply, "u", (uint32_t)neighbors_list.nbors[i].link_rel);
+        sd_bus_message_append(reply, "u", (uint32_t)neighbors_list.nbors[i].norm_rssi);
+        sd_bus_message_append(reply, "u", (uint32_t)neighbors_list.nbors[i].cost);
+        sd_bus_message_append(reply, "u", (uint32_t)neighbors_list.nbors[i].channel);
+        sd_bus_message_append(reply, "u", (uint32_t)neighbors_list.nbors[i].nbor_type);
+        sd_bus_message_append(reply, "u", (uint32_t)neighbors_list.nbors[i].tx_power);
+        sd_bus_message_append(reply, "u", (uint32_t)neighbors_list.nbors[i].rx_power);
+        sd_bus_message_append(reply, "u", (uint32_t)neighbors_list.nbors[i].last_update);
+        sd_bus_message_close_container(reply);
+    }
+    r = sd_bus_message_close_container(reply);
+
+    if (r < 0)
+    {
+        LOGE("Cannot append info error=%s\n", strerror(-r));
+        sd_bus_error_set_errno(error, -ENOMEM);
+        r = -ENOMEM;
+    }
+    // clang-format on
+
+    return r;
+}
+
+
 /**********************************************************************
  *                   VTABLE for config module                         *
  **********************************************************************/
@@ -551,6 +664,7 @@ static const sd_bus_vtable config_vtable[] = {
     SD_BUS_PROPERTY("StackStatus", "y", stack_status_read_handler, 0, 0),
     SD_BUS_PROPERTY("ACRangeMinCur", "q", cur_ac_range_handler, 0, 0),
     SD_BUS_PROPERTY("ACRangeMaxCur", "q", cur_ac_range_handler, 0, 0),
+    SD_BUS_PROPERTY("GetNbors", "a(uuuuuuuuu)", get_neighbors, 0, 0),
 
     /* Read/Write parameters with node interrogation */
     SD_BUS_WRITABLE_PROPERTY("NodeAddress", "u", node_add_read_handler, node_add_write_handler, 0, 0),
@@ -571,6 +685,7 @@ static const sd_bus_vtable config_vtable[] = {
     SD_BUS_METHOD("SetAppConfig", "yqay", "b", set_app_config, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("GetAppConfig", "", "yqay", get_app_config, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("SetACRange", "qq", "b", set_ac_range, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("StartScan", "", "u", start_nbors_scan, SD_BUS_VTABLE_UNPRIVILEGED),
 
     /* Event generated when stack starts */
     SD_BUS_SIGNAL("StackStarted", "", 0),
