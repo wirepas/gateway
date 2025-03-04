@@ -3,6 +3,7 @@ name: Generate transport service wheel
 on:
   release:
     types: [created]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,6 +27,11 @@ jobs:
           target: export
           outputs: ./artifacts/transportService/
 
+      - name: Move transport service wheel
+        run: |
+          mkdir ./artifacts/transportService/wheel/
+          mv ./artifacts/transportService/wirepas_gateway-*.tar.gz ./artifacts/transportService/wheel/
+
       - name: Store artefacts localy
         uses: actions/upload-artifact@v4
         with:
@@ -37,4 +43,5 @@ jobs:
         with:
           user: __token__
           password: ${{ secrets.PYPI_PWD }}
-          packages_dir: ./artifacts/transportService/
+          packages_dir: ./artifacts/transportService/wheel/
+
