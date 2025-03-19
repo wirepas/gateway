@@ -193,6 +193,7 @@ class SetStatusThread(Thread):
         gw_id,
         gw_model,
         gw_version,
+        gw_features,
         agregate_delay_s=0.5,
         backup_delay_s=3600
     ):
@@ -220,6 +221,7 @@ class SetStatusThread(Thread):
         self.gw_id = gw_id
         self.gw_model = gw_model
         self.gw_version = gw_version
+        self.gw_features = gw_features
 
         self.running = False
 
@@ -252,7 +254,8 @@ class SetStatusThread(Thread):
                 wmm.GatewayState.ONLINE,
                 sink_configs=configs.values(),
                 gateway_model=self.gw_model,
-                gateway_version=self.gw_version
+                gateway_version=self.gw_version,
+                gateway_features=self.gw_features
         )
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
@@ -375,6 +378,10 @@ class TransportService(BusClient):
         self.gw_model = settings.gateway_model
         self.gw_version = settings.gateway_version
 
+        self.gw_features = [
+            wmm.GatewayFeature.GW_FEATURE_CONFIGURATION_DATA_V1
+        ]
+
         self.whitened_ep_filter = settings.whitened_endpoints_filter
 
         last_will_topic = TopicGenerator.make_status_topic(self.gw_id)
@@ -428,7 +435,8 @@ class TransportService(BusClient):
             self.sink_manager,
             self.gw_id,
             self.gw_model,
-            self.gw_version
+            self.gw_version,
+            self.gw_features
         )
         self.status_thread.start()
 
@@ -706,6 +714,7 @@ class TransportService(BusClient):
             gateway_model=self.gw_model,
             gateway_version=self.gw_version,
             implemented_api_version=IMPLEMENTED_API_VERSION,
+            gateway_features=self.gw_features
         )
 
         topic = TopicGenerator.make_get_gateway_info_response_topic(self.gw_id)
