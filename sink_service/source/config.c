@@ -30,6 +30,7 @@ typedef struct
     uint8_t ch_range_min;
     uint8_t ch_range_max;
     uint8_t pdu_buffer_size;
+    uint16_t mesh_api_version;
 } sink_config_t;
 
 /** Sink static values read at init time */
@@ -557,8 +558,9 @@ static int set_config_data_item(sd_bus_message *m, void *userdata, sd_bus_error 
 
     if (payload_size > UINT8_MAX)
     {
-        sd_bus_error_set_errno(error, EINVAL);
-        LOGE("Payload size is too large (%zu)\n", payload_size);
+        const app_res_e wpc_res = APP_RES_INVALID_VALUE;
+        SET_WPC_ERROR(error, __FUNCTION__, wpc_res);
+        LOGE("Payload size is too large (%zu) (ret=%d)\n", payload_size, wpc_res);
         return -EINVAL;
     }
 
@@ -573,13 +575,114 @@ static int set_config_data_item(sd_bus_message *m, void *userdata, sd_bus_error 
 }
 
 /**
- * \brief   Get config data item
+ * \brief   Append config data item payload to the given message
+ *
+ * Requests the config data item and appends its payload to the given message
+ *
+ * \param   message
+ *          Message to append the config data item to
+ * \param   error
+ *          Pointer to the sd_bus error of the request message
+ * \param   endpoint
+ *          Endpoint of the config data item to get
+ * \return  On success, a non-negative value. On failure, a negative errno-style
+ *          code consistent with other sd_bus methods.
+ */
+static int get_cdd_item_and_append_payload_to_message(sd_bus_message *const message,
+                                                      sd_bus_error *const error,
+                                                      const uint16_t endpoint)
+{
+    uint8_t payload[UINT8_MAX];
+    uint8_t payload_size = 0;
+    const app_res_e wpc_res = WPC_get_config_data_item(endpoint, payload, sizeof(payload), &payload_size);
+    if (APP_RES_OK != wpc_res)
+    {
+        SET_WPC_ERROR(error, "WPC_get_config_data_item", wpc_res);
+        LOGE("Cannot get config data item (ret=%d)\n", wpc_res);
+        return -EINVAL;
+    }
+
+    return sd_bus_message_append_array(message, 'y', payload, payload_size);
+}
+
+/**
+ * \brief   Append config data items to the given message
+ *
+ * Reads the config data items and appends them the given message as containers
+ * (uint16_t endpoint + byte array for the payload).
+ *
+ * \param   message
+ *          Message to append the config data items to
+ * \param   error
+ *          Pointer to the sd_bus error of the request message
+ * \return  On success, a non-negative value. On failure, a negative errno-style
+ *          code consistent with other sd_bus methods.
+ */
+static int get_cdd_items_and_append_to_message(sd_bus_message *const message,
+                                               sd_bus_error *const error)
+{
+    const size_t MAX_ENDPOINT_COUNT = 64;
+    uint16_t endpoints[MAX_ENDPOINT_COUNT];
+    uint8_t num_of_items;
+    const app_res_e wpc_res = WPC_get_config_data_item_list(endpoints,
+                                                            sizeof(endpoints),
+                                                            &num_of_items);
+    if (APP_RES_OK != wpc_res)
+    {
+        SET_WPC_ERROR(error, "WPC_get_config_data_item_list", wpc_res);
+        LOGE("Cannot get config data item list (ret=%d)\n", wpc_res);
+        return -EINVAL;
+    }
+
+    int r = 0;
+    for (uint8_t i = 0; i < num_of_items && i < MAX_ENDPOINT_COUNT; i++)
+    {
+        const uint16_t endpoint = endpoints[i];
+        r = sd_bus_message_open_container(message, SD_BUS_TYPE_STRUCT, "qay");
+        if (r < 0)
+        {
+            sd_bus_error_set_errno(error, r);
+            LOGE("Cannot create container in response: %s\n", strerror(-r));
+            return r;
+        }
+
+        r = sd_bus_message_append(message, "q", endpoint);
+        if (r < 0)
+        {
+            sd_bus_error_set_errno(error, r);
+            LOGE("Cannot append endpoint to response: %s\n", strerror(-r));
+            return r;
+        }
+
+        r = get_cdd_item_and_append_payload_to_message(message, error, endpoint);
+        if (r < 0)
+        {
+            sd_bus_error_set_errno(error, r);
+            LOGE("Cannot append item payload to response: %s\n", strerror(-r));
+            return r;
+        }
+
+        r = sd_bus_message_close_container(message);
+        if (r < 0)
+        {
+            sd_bus_error_set_errno(error, r);
+            LOGE("Cannot close container in response: %s\n", strerror(-r));
+            return r;
+        }
+    }
+
+    LOGD("Preparing response with %d config data items\n", num_of_items);
+
+    return r;
+}
+
+/**
+ * \brief   Get a single config data item
  * \param   ... (from sd_bus function signature)
  */
 static int get_config_data_item(sd_bus_message *m, void *userdata, sd_bus_error *error)
 {
     uint16_t endpoint;
-
     int r = sd_bus_message_read(m, "q", &endpoint);
     if (r < 0)
     {
@@ -592,15 +695,6 @@ static int get_config_data_item(sd_bus_message *m, void *userdata, sd_bus_error 
 
     __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *reply = NULL;
 
-    uint8_t payload[UINT8_MAX];
-    uint8_t payload_size = 0;
-    const app_res_e wpc_res = WPC_get_config_data_item(endpoint, payload, &payload_size);
-    if (APP_RES_OK != wpc_res) {
-        SET_WPC_ERROR(error, "WPC_get_config_data_item", wpc_res);
-        LOGE("Cannot get config data item (ret=%d)\n", wpc_res);
-        return -EINVAL;
-    }
-
     r = sd_bus_message_new_method_return(m, &reply);
     if (r < 0)
     {
@@ -609,11 +703,73 @@ static int get_config_data_item(sd_bus_message *m, void *userdata, sd_bus_error 
         return r;
     }
 
-    r = sd_bus_message_append_array(reply, 'y', payload, payload_size);
+    r = get_cdd_item_and_append_payload_to_message(reply, error, endpoint);
     if (r < 0)
     {
         sd_bus_error_set_errno(error, r);
         LOGE("Cannot append config data item payload to response: %s\n", strerror(-r));
+        return r;
+    }
+
+    return sd_bus_send(sd_bus_message_get_bus(reply), reply, NULL);
+}
+
+/**
+ * \brief    Checks if CDD API is supported based on DualMCU version
+ */
+static bool is_cdd_api_supported()
+{
+    const uint16_t MIN_SUPPORTED_VERSION = 20;
+    return m_sink_config.mesh_api_version >= MIN_SUPPORTED_VERSION;
+}
+
+/**
+ * \brief   Get config data content
+ *
+ * The reply message contains an array of config data items. Each item consists
+ * of the endpoint and a byte array for the payload.
+ *
+ * If the operation is not supported on the sink as determined by the mesh API
+ * version, an empty response is sent.
+ *
+ * \param   ... (from sd_bus function signature)
+ */
+static int get_config_data_content(sd_bus_message *m, void *userdata, sd_bus_error *error)
+{
+    __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *reply = NULL;
+
+    int r = sd_bus_message_new_method_return(m, &reply);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot create response message: %s\n", strerror(-r));
+        return r;
+    }
+
+    r = sd_bus_message_open_container(reply, SD_BUS_TYPE_ARRAY, "(qay)");
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot create container in response: %s\n", strerror(-r));
+        return r;
+    }
+
+    if (is_cdd_api_supported())
+    {
+        r = get_cdd_items_and_append_to_message(reply, error);
+        if (r < 0)
+        {
+            sd_bus_error_set_errno(error, r);
+            LOGE("Cannot add CDD items to response: %s\n", strerror(-r));
+            return r;
+        }
+    }
+
+    r = sd_bus_message_close_container(reply);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot close container in response: %s\n", strerror(-r));
         return r;
     }
 
@@ -667,6 +823,7 @@ static const sd_bus_vtable config_vtable[] = {
     SD_BUS_METHOD("SetACRange", "qq", "b", set_ac_range, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("SetConfigDataItem", "qay", "", set_config_data_item, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("GetConfigDataItem", "q", "ay", get_config_data_item, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("GetConfigDataContent", "", "a(qay)", get_config_data_content, SD_BUS_VTABLE_UNPRIVILEGED),
 
     /* Event generated when stack starts */
     SD_BUS_SIGNAL("StackStarted", "", 0),
@@ -732,6 +889,7 @@ static bool initialize_unmodifiable_variables()
                                &m_sink_config.app_config_max_size,
                                NULL,
                                "App Config Max size");
+    res &= get_value_from_node(WPC_get_mesh_API_version, &m_sink_config.mesh_api_version, NULL, "Mesh API Version");
 
     if (WPC_get_firmware_version(m_sink_config.version) == APP_RES_OK)
     {
