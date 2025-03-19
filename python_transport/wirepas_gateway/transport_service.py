@@ -930,6 +930,7 @@ class TransportService(BusClient):
 
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
+            logging.debug(f"Setting configuration data item for endpoint: {request.cdc_endpoint}")
             res = sink.set_configuration_data_item(request.cdc_endpoint, request.cdc_payload)
         else:
             res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
