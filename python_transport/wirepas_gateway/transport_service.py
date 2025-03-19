@@ -917,6 +917,7 @@ class TransportService(BusClient):
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
     @deferred_thread
+    @update_gateway_status_dec
     def _on_set_configuration_data_item_request_received(
         self, client, userdata, message
     ):
