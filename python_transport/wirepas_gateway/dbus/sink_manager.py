@@ -182,6 +182,9 @@ class Sink:
             # so app config cannot be accessed
             logging.warning("Cannot get App Config")
 
+        # Get config data items
+        config["configuration_data_content"] = self._get_configuration_data_content()
+
         # Add scratchpad related info
         self.get_scratchpad_status(config)
 
@@ -195,6 +198,20 @@ class Sink:
         self._last_config_dict = config.copy()
 
         return config, partial
+
+    def _get_configuration_data_content(self):
+        cdc_items = []
+        try:
+            cdc_items = self.proxy.GetConfigDataContent()
+        except GLib.Error:
+            logging.error("Cannot get config data content")
+
+        configuration_data_content = []
+        for endpoint, payload in cdc_items:
+            cdc_item = {"endpoint": endpoint, "payload": bytes(payload)}
+            configuration_data_content.append(cdc_item)
+
+        return configuration_data_content
 
     def _set_param(self, dic, key, attribute):
         try:
