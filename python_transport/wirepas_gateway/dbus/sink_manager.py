@@ -614,7 +614,7 @@ class Sink:
             # This is expected to happen if endpoint is too large to be uint16_t
             logging.error(f"Invalid config data item parameter value: {e}")
             return wmm.GatewayResultCode.GW_RES_INVALID_DEST_ENDPOINT
-        except:
+        except Exception:
             logging.exception("Unknown exception")
             return wmm.GatewayResultCode.GW_RES_INTERNAL_ERROR
 
@@ -632,7 +632,7 @@ class Sink:
             # This is expected to happen if endpoint is too large to be uint16_t
             logging.error(f"Invalid config data item parameter value: {e}")
             return (wmm.GatewayResultCode.GW_RES_INVALID_DEST_ENDPOINT, None)
-        except:
+        except Exception:
             logging.exception("Unknown exception")
             return (wmm.GatewayResultCode.GW_RES_INTERNAL_ERROR, None)
 
