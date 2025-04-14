@@ -44,15 +44,15 @@ class KeepAliveMessage():
         gateway_status: The running status of the gateway.
             Bit 0: Backhaul (MQTT broker) Connectivity (0 = Disconnected, 1 = Connected)
             Bits 1-7: Reserved for future use or other status indicators
-        rtc_timestamp_ms: Unix epoch timestamp in ms (milliseconds since January 1, 1970).
-        timezone_offset_mn: Time zone offset from UTC in minutes (-840 to +720).
+        rtc_timestamp_s: Unix epoch timestamp (seconds since January 1, 1970).
+        timezone_offset_mn: Time zone offset from UTC in minutes (-720 to +840).
         keep_alive_interval_s: Interval in seconds until the next keepalive message is expected.
     """
-    def __init__(self, version, gateway_status=None, rtc_timestamp_ms=None,
+    def __init__(self, version, gateway_status=None, rtc_timestamp_s=None,
                  timezone_offset_mn=None, keep_alive_interval_s=None):
         self.version = version
         self.gateway_status = gateway_status
-        self.rtc_timestamp_ms = rtc_timestamp_ms
+        self.rtc_timestamp_s = rtc_timestamp_s
         self.timezone_offset_mn = timezone_offset_mn
         self.keep_alive_interval_s = keep_alive_interval_s
 
@@ -82,7 +82,7 @@ class KeepAliveMessage():
         """
         logging.debug(f"Prepare keep alive message with version={self.version}, "
                       f"gateway_status={self.gateway_status}, "
-                      f"rtc_timestamp_ms={self.rtc_timestamp_ms}, "
+                      f"rtc_timestamp_s={self.rtc_timestamp_s}, "
                       f"timezone_offset_mn={self.timezone_offset_mn} and "
                       f"keep_alive_interval_s={self.keep_alive_interval_s}")
 
@@ -94,11 +94,11 @@ class KeepAliveMessage():
             buffer += KeepAliveMessage._encode_tlv_item(
                 KeepAliveType.GATEWAY_STATUS_TYPE, 1, self.gateway_status, "B"
             )
-        if self.rtc_timestamp_ms is not None:
+        if self.rtc_timestamp_s is not None and \
+                self.timezone_offset_mn is not None:
             buffer += KeepAliveMessage._encode_tlv_item(
-                KeepAliveType.RTC_TIMESTAMP_TYPE, 8, self.rtc_timestamp_ms, "Q",
+                KeepAliveType.RTC_TIMESTAMP_TYPE, 4, self.rtc_timestamp_s, "I",
             )
-        if self.timezone_offset_mn is not None:
             buffer += KeepAliveMessage._encode_tlv_item(
                 KeepAliveType.TIME_ZONE_OFFSET_TYPE, 2, self.timezone_offset_mn, "h"
             )
@@ -154,13 +154,13 @@ class KeepAliveServiceThread(Thread):
 
     def prepare_keep_alive_msg(self):
         """ Prepare and return a keep alive message. """
-        rtc_timestamp_ms = int(time() * 1000)
+        rtc_timestamp_s = int(time())
         time_zone_offset = self.get_timezone_offset_mns()
 
         gateway_status = int(self.mqtt_wrapper.connected)
         keep_alive_msg = KeepAliveMessage(KEEP_ALIVE_SERVICE_VERSION,
                                           gateway_status,
-                                          rtc_timestamp_ms,
+                                          rtc_timestamp_s,
                                           time_zone_offset,
                                           self.keep_alive_interval_s)
 
