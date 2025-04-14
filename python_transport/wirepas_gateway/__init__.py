@@ -12,6 +12,7 @@
 # flake8: noqa
 
 from . import dbus
+from . import keep_alive_service
 from . import protocol
 from . import utils
 
