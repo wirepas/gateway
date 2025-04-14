@@ -27,7 +27,7 @@ RUN ./utils/generate_wheel.sh
 USER wirepas
 
 # Needed by pydbus
-RUN pip3 install PyGObject~=3.0 pytz==2024.2 --user
+RUN pip3 install PyGObject~=3.0 --user
 
 # Install protobuf from source to get the UPB implementation
 RUN pip3 install dist/wirepas_gateway*.whl --no-binary protobuf --user
