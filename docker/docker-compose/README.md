@@ -74,6 +74,9 @@ The list of all possible parameters to configure the transport service are given
 | WM_GW_VERSION | Version of the gateway | None | Any string |
 | WM_GW_IGNORED_ENDPOINTS_FILTER | Destination endpoints list to ignore (not published) | None | List of endpoints (i.e. [1,2,3]), a range of endpoints (i.e. [1-3]), or a combination of both |
 | WM_GW_WHITENED_ENDPOINTS_FILTER | Destination endpoints list to whiten (no payload content, only size) | None | List of endpoints (i.e. [1,2,3]), a range of endpoints (i.e. [1-3]), or a combination of both |
+| WM_SERVICES_MQTT_RATE_LIMIT_PPS | Max rate limit for the mqtt client to publish on mqtt broker | 0 | Any integer |
+| WM_GW_BUFFERING_STOP_STACK | When true, when a black hole is detected, stack is stopped instead of increasing the sink cost | false | "yes", "true", "t", "y",  "1","no", "false", "f", "n", "0", "" |
+| WM_SERVICES_DEBUG_INCR_EVENT_ID | When true the data received event id will be incremental starting at 0 when service starts. Otherwise it will be random 64 bits id | false | "yes", "true", "t", "y",  "1","no", "false", "f", "n", "0", "" |
 | WM_DEBUG_LEVEL | Configure log level for the transport service. Please be aware that levels such as debug should not be used in a production system | info | debug, info, critical, fatal, error, warning |
 
 
