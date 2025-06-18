@@ -124,6 +124,132 @@ static void get_env_parameters(unsigned long * baudrate,
     }
 }
 
+/**
+ * \brief   Convert log level string to numeric value
+ *
+ * Numeric value is one of the values defined in logger.h of c-mesh-api.
+ *
+ * \param   level_str
+ *          Log level value. Should be one of the following:
+ *          - QUIET
+ *          - ERROR
+ *          - INFO
+ *          - WARN
+ *          - DEBUG
+ * \param   level_value
+ *          Pointer to set the numeric log level value
+ * \return  True if successful, false otherwise
+ */
+static bool parse_log_level_string(const char *const level_str, int *level_value)
+{
+    if (strcasecmp(level_str, "QUIET") == 0 )
+    {
+        *level_value = NO_LOG_LEVEL;
+        return true;
+    }
+    else if (strcasecmp(level_str, "ERROR") == 0 )
+    {
+        *level_value = ERROR_LOG_LEVEL;
+        return true;
+    }
+    else if (strcasecmp(level_str, "INFO") == 0 )
+    {
+        *level_value = INFO_LOG_LEVEL;
+        return true;
+    }
+    else if (strcasecmp(level_str, "WARN") == 0 )
+    {
+        *level_value = WARNING_LOG_LEVEL;
+        return true;
+    }
+    else if (strcasecmp(level_str, "DEBUG") == 0 )
+    {
+        *level_value = DEBUG_LOG_LEVEL;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * \brief   Set global log level from an envriornment variable
+ */
+static void set_global_log_level()
+{
+    const int DEFAULT_LOG_LEVEL = INFO_LOG_LEVEL;
+    const char *const env_value = getenv("WM_DEBUG_LEVEL");
+    if (env_value == NULL)
+    {
+        Platform_set_log_level(DEFAULT_LOG_LEVEL);
+        return;
+    }
+
+    int log_level = DEFAULT_LOG_LEVEL;
+    if (parse_log_level_string(env_value, &log_level))
+    {
+        Platform_set_log_level(log_level);
+        LOGD("Setting global level: %s\n", env_value);
+    }
+    else
+    {
+        Platform_set_log_level(DEFAULT_LOG_LEVEL);
+        LOGE("Invalid global log level parameter given, will use default log level.\n");
+    }
+}
+
+/**
+ * \brief   Set log levels for modules from an envriornment variable
+ *
+ * The environment variable should contain entries for each module for which a
+ * level is to be set. The entries are separated by ';', and each entry is a
+ * key-value pair holding module name and log level separated by ':'
+ *
+ * Below is an example:
+ * module1:DEBUG;module2:INFO;module3:QUIET
+ */
+static void set_module_log_levels()
+{
+    char *env_value = getenv("WM_MODULE_DEBUG_LEVEL");
+    if (env_value == NULL)
+    {
+        return;
+    }
+
+    char *configuration = strdup(env_value);
+    char *modules_context, *level_context;
+
+    const char MODULE_DELIMITER[] = ";";
+    const char LEVEL_DELIMITER[] = ":";
+
+    char *module_token = strtok_r(configuration, MODULE_DELIMITER, &modules_context);
+    while (NULL != module_token)
+    {
+        char *module_name = strtok_r(module_token, LEVEL_DELIMITER, &level_context);
+        char *module_log_level = strtok_r(NULL, LEVEL_DELIMITER, &level_context);
+        char *extra_token = strtok_r(NULL, LEVEL_DELIMITER, &level_context);
+        // A valid entry should have exactly 2 tokens
+        if (module_name == NULL || module_log_level == NULL || extra_token != NULL)
+        {
+            LOGE("Invalid module log level definition: %s\n", module_token);
+            break;
+        }
+
+        int log_level = NO_LOG_LEVEL;
+        if (!parse_log_level_string(module_log_level, &log_level))
+        {
+            LOGE("Invalid log level value for module: %s:%s\n", module_name, module_log_level);
+            break;
+        }
+
+        LOGD("Setting log level for module: %s:%s\n", module_name, module_log_level);
+        Platform_set_module_log_level(module_name, log_level);
+
+        module_token = strtok_r(NULL, MODULE_DELIMITER, &modules_context);
+    }
+
+    free(configuration);
+}
+
 // Usual baudrate to test in automatic mode
 // They are the ones frequently used in dual mcu application
 // 125000 is first as it was the original default value
@@ -184,6 +310,9 @@ int main(int argc, char * argv[])
     unsigned int max_poll_fail_duration = DEFAULT_MAX_POLL_FAIL_DURATION_S;
     unsigned int fragment_max_duration_s = DEFAULT_FRAGMENT_MAX_DURATION_S;
     unsigned int downlink_limit = 0;
+
+    set_global_log_level();
+    set_module_log_levels();
 
     if (!setup_signal_handlers_for_stopping())
     {
