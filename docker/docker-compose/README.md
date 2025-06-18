@@ -89,3 +89,49 @@ transport-service:
       WM_SERVICES_MQTT_HOSTNAME: "aBroker"
 ```
 
+## Sink service
+Similar to transport service, sink service can also be configured with
+environment variables. Below is a list of parameters for the sink service:
+
+
+| Parameter                          | Description                                                                                     | Default value           | Possible value       |
+| ---                                | ---                                                                                             | ---                     | ---                  |
+| WM_GW_SINK_BAUDRATE                | UART BAUD rate for sink. Detected automatically from default values if not provided.            | 125000, 115200, 1000000 | non-negative integer |
+| WM_GW_SINK_BITRATE                 | Alternative alias for WM_GW_SINK_BAUDRATE                                                       | 125000, 115200, 1000000 | non-negative integer |
+| WM_GW_SINK_ID                      | Sink ID                                                                                         | 0                       | non-negative integer |
+| WM_GW_SINK_UART_PORT               | UART port of the sink                                                                           | /dev/ttyACM0            | string               |
+| WM_GW_SINK_MAX_POLL_FAIL_DURATION  | Time to wait in seconds before exiting if sink is not responding                                | 120                     | non-negative integer |
+| WM_GW_SINK_MAX_FRAGMENT_DURATION_S | Maximum duration in seconds to keep fragment from incomplete data packets. Zero equals forever. | 900                     | non-negative integer |
+| WM_GW_SINK_DOWNLINK_LIMIT          | Max number of downlink messages being queued in parallel. Zero equals no limit.                 | 0                       | 0-16                 |
+| WM_DEBUG_LEVEL                     | Global log level. See section "Setting log level" for more information.                         | INFO                    | string               |
+| WM_MODULE_DEBUG_LEVEL              | Module specific log levels. See section "Setting log level" for more information.               | -                       | string               |
+
+### Setting log level
+The log level can be set with the WM_DEBUG_LEVEL and WM_MODULE_DEBUG_LEVEL environment variables.
+
+The following log levels are possible:
+ - QUIET
+ - ERROR
+ - INFO
+ - WARN
+ - DEBUG
+
+The parameter WM_DEBUG_LEVEL can be set to one of the valid log levels to make
+all the internal log modules use that level. Since setting the log level to
+DEBUG can produce a lot of logs, it is possible to override the log level for
+individual modules using the parameter WM_MODULE_DEBUG_LEVEL.
+
+WM_MODULE_DEBUG_LEVEL accepts a string containing module log level definitions
+separated by ";". Each entry is a pair of module name and log level separated
+by ":". Module names can be found by searching the source code for definitions
+of LOG_MODULE_NAME.
+
+To have a reasonable amount of debug logs, the parameters can be set to the
+following values:
+```bash
+WM_DEBUG_LEVEL="DEBUG"
+WM_MODULE_DEBUG_LEVEL="SLIP:INFO;linux_plat:INFO;wpc_int:INFO"
+```
+This would set the log level of every module to "DEBUG", and then set the log
+level of modules "SLIP", "linux_plat", and "wpc_int" to "INFO".
+
