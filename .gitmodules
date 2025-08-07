@@ -1,3 +1,0 @@
-[submodule "sink_service/c-mesh-api"]
-	path = sink_service/c-mesh-api
-	url = https://github.com/wirepas/c-mesh-api
