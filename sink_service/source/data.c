@@ -61,7 +61,7 @@ static int send_message(sd_bus_message * m, void * userdata, sd_bus_error * erro
     size_t n;
     int r;
     uint8_t qos;
-    uint8_t weight;
+    size_t weight = 0;
 
     /* Read the parameters */
     r = sd_bus_message_read(m,
