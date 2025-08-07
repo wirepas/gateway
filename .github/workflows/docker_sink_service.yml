@@ -28,9 +28,6 @@ jobs:
       - name: checkout code
         uses: actions/checkout@v4
 
-      - name: get c-mesh-api with submodule
-        run: git submodule update --init
-
       - name: Set up QEMU
         run: sudo apt-get update && sudo apt-get install qemu-user-static -y
 

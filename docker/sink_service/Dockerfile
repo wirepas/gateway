@@ -6,7 +6,7 @@ ARG GATEWAY_BUILD_SHA1=unset
 
 RUN adduser --disabled-password wirepas
 
-RUN apk add --no-cache gcc make cmake musl-dev dpkg elogind-dev linux-headers
+RUN apk add --no-cache gcc git make cmake musl-dev dpkg elogind-dev linux-headers
 
 USER wirepas
 
@@ -16,12 +16,11 @@ WORKDIR /home/wirepas
 
 COPY --chown=wirepas ./sink_service /home/wirepas/sink_service
 
-WORKDIR /home/wirepas/sink_service
-
-RUN make
+RUN CMAKE_BUILD_TYPE=Release cmake -S /home/wirepas/sink_service -B /home/wirepas/build
+RUN cmake --build /home/wirepas/build
 
 FROM scratch AS export
-COPY --from=builder /home/wirepas/sink_service/build/sinkService .
+COPY --from=builder /home/wirepas/build/sinkService .
 
 FROM $BASE_IMAGE
 
@@ -34,7 +33,7 @@ RUN addgroup wirepas dialout
 RUN apk add --no-cache libelogind coreutils
 
 # Copy the built service and its dependencies from builder
-COPY --from=builder /home/wirepas/sink_service/build/sinkService /home/wirepas/
+COPY --from=builder /home/wirepas/build/sinkService /home/wirepas/
 
 USER wirepas
 
