@@ -776,6 +776,129 @@ static int get_config_data_content(sd_bus_message *m, void *userdata, sd_bus_err
     return sd_bus_send(sd_bus_message_get_bus(reply), reply, NULL);
 }
 
+/**
+ * \brief Read security keys from the message
+ *
+ * Message is expected to have two byte arrays for cipher and authentication
+ * keys, and a key sequence.
+ *
+ * \param[in,out] message
+ *                Message to read the keys from
+ * \param[out]    error
+ *                Pointer to the sd_bus error of the request message
+ * \param[out]    security_keys
+ *                Address to write the security keys
+ * \return  On success, a non-negative value. On failure, a negative errno-style
+ *          code consistent with other sd_bus methods.
+ */
+static int read_security_keys_from_message(sd_bus_message *const message,
+                                           sd_bus_error *const error,
+                                           wpc_key_pair_t *const security_keys)
+{
+    const void *key_bytes;
+    size_t key_size;
+
+    int r = sd_bus_message_read_array(message, 'y', &key_bytes, &key_size);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Could not read the cipher key: %s\n", strerror(-r));
+        return r;
+    }
+    if (key_size != sizeof(security_keys->key_pair.encryption))
+    {
+        const app_res_e wpc_res = APP_RES_INVALID_VALUE;
+        SET_WPC_ERROR(error, __FUNCTION__, wpc_res);
+        LOGE("Invalid cipher key size (%zu) (ret=%d)\n", key_size, wpc_res);
+        return -EINVAL;
+    }
+
+    memcpy((void*)security_keys->key_pair.encryption, key_bytes, sizeof(security_keys->key_pair.encryption));
+
+    r = sd_bus_message_read_array(message, 'y', &key_bytes, &key_size);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Could not read the authentication key: %s\n", strerror(-r));
+        return r;
+    }
+    if (key_size != sizeof(security_keys->key_pair.authentication))
+    {
+        const app_res_e wpc_res = APP_RES_INVALID_VALUE;
+        SET_WPC_ERROR(error, __FUNCTION__, wpc_res);
+        LOGE("Invalid authentication key size (%zu) (ret=%d)\n", key_size, wpc_res);
+        return -EINVAL;
+    }
+
+    memcpy((void*)security_keys->key_pair.authentication, key_bytes, sizeof(security_keys->key_pair.authentication));
+
+    r = sd_bus_message_read(message, "y", &security_keys->sequence_number);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Could not read key sequence: %s\n", strerror(-r));
+        return r;
+    }
+
+    return 0;
+}
+
+/**
+ * \brief   Set network security keys for sink
+ * \param   ... (from sd_bus function signature)
+ */
+static int set_network_security_keys(sd_bus_message *m, void *userdata, sd_bus_error *error)
+{
+    wpc_key_pair_t network_keys;
+    const int r = read_security_keys_from_message(m, error, &network_keys);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot read network security keys: %s\n", strerror(-r));
+        return r;
+    }
+
+    LOGD("Set network keys with sequence:%d\n", network_keys.sequence_number);
+
+    const app_res_e wpc_res = WPC_set_network_key_pair(&network_keys);
+    if (APP_RES_OK != wpc_res)
+    {
+        SET_WPC_ERROR(error, "WPC_set_network_key_pair", wpc_res);
+        LOGE("Cannot set network key pair (ret=%d)\n", wpc_res);
+        return -EINVAL;
+    }
+
+    return sd_bus_reply_method_return(m, "");
+}
+
+/**
+ * \brief   Set management security keys for sink
+ * \param   ... (from sd_bus function signature)
+ */
+static int set_management_security_keys(sd_bus_message *m, void *userdata, sd_bus_error *error)
+{
+    wpc_key_pair_t management_keys;
+    const int r = read_security_keys_from_message(m, error, &management_keys);
+    if (r < 0)
+    {
+        sd_bus_error_set_errno(error, r);
+        LOGE("Cannot read management security keys: %s\n", strerror(-r));
+        return r;
+    }
+
+    LOGD("Set management keys with sequence:%d\n", management_keys.sequence_number);
+
+    const app_res_e wpc_res = WPC_set_management_key_pair(&management_keys);
+    if (APP_RES_OK != wpc_res)
+    {
+        SET_WPC_ERROR(error, "WPC_set_management_key_pair", wpc_res);
+        LOGE("Cannot set management key pair (ret=%d)\n", wpc_res);
+        return -EINVAL;
+    }
+
+    return sd_bus_reply_method_return(m, "");
+}
+
 /**********************************************************************
  *                   VTABLE for config module                         *
  **********************************************************************/
@@ -824,6 +947,8 @@ static const sd_bus_vtable config_vtable[] = {
     SD_BUS_METHOD("SetConfigDataItem", "qay", "", set_config_data_item, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("GetConfigDataItem", "q", "ay", get_config_data_item, SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("GetConfigDataContent", "", "a(qay)", get_config_data_content, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("SetNetworkSecurityKeys", "ayayy", "", set_network_security_keys, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("SetManagementSecurityKeys", "ayayy", "", set_management_security_keys, SD_BUS_VTABLE_UNPRIVILEGED),
 
     /* Event generated when stack starts */
     SD_BUS_SIGNAL("StackStarted", "", 0),
