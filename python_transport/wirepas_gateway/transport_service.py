@@ -379,7 +379,8 @@ class TransportService(BusClient):
         self.gw_version = settings.gateway_version
 
         self.gw_features = [
-            wmm.GatewayFeature.GW_FEATURE_CONFIGURATION_DATA_V1
+            wmm.GatewayFeature.GW_FEATURE_CONFIGURATION_DATA_V1,
+            wmm.GatewayFeature.GW_FEATURE_SINK_KEY_MANAGEMENT_V1
         ]
 
         self.whitened_ep_filter = settings.whitened_endpoints_filter

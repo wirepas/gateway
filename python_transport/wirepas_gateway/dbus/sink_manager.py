@@ -247,6 +247,48 @@ class Sink:
 
         return wmm.GatewayResultCode.GW_RES_OK
 
+    def _set_network_keys(self, config):
+        if "network_keys" in config:
+            try:
+                cipher = config["network_keys"]["cipher"]
+                auth = config["network_keys"]["authentication"]
+                seq = config["network_keys"]["sequence"]
+                logging.info(f"Setting network security keys with sequence {seq}")
+                self.proxy.SetNetworkSecurityKeys(cipher, auth, seq)
+            except GLib.Error as e:
+                error_code = ReturnCode.error_from_dbus_exception(str(e))
+                logging.error("Error when setting network keys: %s", error_code.name)
+                return error_code
+            except OverflowError:
+                logging.error("Invalid sequence when setting network keys")
+                return wmm.GatewayResultCode.GW_RES_INVALID_PARAM
+            except Exception:
+                logging.exception("Unknown error when setting network keys")
+                return wmm.GatewayResultCode.GW_RES_INTERNAL_ERROR
+
+        return wmm.GatewayResultCode.GW_RES_OK
+
+    def _set_management_keys(self, config):
+        if "management_keys" in config:
+            try:
+                cipher = config["management_keys"]["cipher"]
+                auth = config["management_keys"]["authentication"]
+                seq = config["management_keys"]["sequence"]
+                logging.info(f"Setting management security keys with sequence {seq}")
+                self.proxy.SetManagementSecurityKeys(cipher, auth, seq)
+            except GLib.Error as e:
+                error_code = ReturnCode.error_from_dbus_exception(str(e))
+                logging.error("Error when setting management keys: %s", error_code.name)
+                return error_code
+            except OverflowError:
+                logging.error("Invalid sequence when setting management keys")
+                return wmm.GatewayResultCode.GW_RES_INVALID_PARAM
+            except Exception:
+                logging.exception("Unknown error when setting management keys")
+                return wmm.GatewayResultCode.GW_RES_INTERNAL_ERROR
+
+        return wmm.GatewayResultCode.GW_RES_OK
+
     def write_config(self, config):
         # Force the node address if used
         try:
@@ -308,6 +350,14 @@ class Sink:
             # It may happens as protobuf has bigger container value
             res = wmm.GatewayResultCode.GW_RES_INVALID_PARAM
             logging.error("Invalid range value")
+
+        res_network_keys = self._set_network_keys(config)
+        if res_network_keys != wmm.GatewayResultCode.GW_RES_OK:
+            res = res_network_keys
+
+        res_management_keys = self._set_management_keys(config)
+        if res_management_keys != wmm.GatewayResultCode.GW_RES_OK:
+            res = res_management_keys
 
         # Set stack in state defined by new config or set it as it was
         # previously
