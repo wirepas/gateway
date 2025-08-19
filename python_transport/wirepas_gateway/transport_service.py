@@ -9,6 +9,7 @@ import wirepas_mesh_messaging as wmm
 from time import time, sleep
 from uuid import getnode
 from threading import Thread, Event
+from copy import deepcopy
 
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
@@ -364,6 +365,29 @@ class TransportService(BusClient):
 
     # Period in s to check for black hole issue
     MONITORING_BUFFERING_PERIOD_S = 1
+
+    class MaskedRequest:
+        """
+        Wrapper class to hide certain configuration fields of SetConfigRequest.
+        Can be used to exclude potentially sensitive fields from logs.
+        """
+        def __init__(self, request: wmm.SetConfigRequest):
+            self.orig_request = request
+
+        def __str__(self):
+            hidden_fields = [
+                "cipher_key",
+                "authentication_key",
+                "network_keys",
+                "management_keys",
+            ]
+
+            req_to_print = deepcopy(self.orig_request)
+            for key in req_to_print.new_config:
+                if key in hidden_fields:
+                    req_to_print.new_config[key] = '<HIDDEN>'
+
+            return str(req_to_print)
 
     def __init__(self, settings, **kwargs):
         logging.info("Version is: %s", transport_version)
@@ -732,7 +756,7 @@ class TransportService(BusClient):
             logging.error(str(e))
             return
 
-        logging.debug("Set sink config: %s", request)
+        logging.debug("Set sink config: %s", self.MaskedRequest(request))
         sink = self.sink_manager.get_sink(request.sink_id)
         if sink is not None:
             res = sink.write_config(request.new_config)

@@ -229,8 +229,7 @@ class Sink:
             # Exception raised when setting attribute
             error = ReturnCode.error_from_dbus_exception(str(e))
             logging.error(
-                "Cannot set %s for param %s on sink %s: %s (%s)",
-                value,
+                "Cannot set param %s on sink %s: %s (%s)",
                 key,
                 self.sink_id,
                 error.name,
@@ -241,7 +240,7 @@ class Sink:
         except OverflowError:
             # It may happens as protobuf has bigger container value
             logging.error(
-                "Invalid range value for param %s with value %s", key, value
+                "Invalid range value for param %s", key
             )
             return wmm.GatewayResultCode.GW_RES_INVALID_PARAM
 
@@ -338,11 +337,11 @@ class Sink:
             diag = config["app_config_diag"]
             data = config["app_config_data"]
 
-            logging.info("Set app config with %s", config)
+            logging.info(f"Set app config with seq: {seq}, diag: {diag}, data: {data}")
             self.proxy.SetAppConfig(seq, diag, data)
         except KeyError:
             # App config not defined in new config
-            logging.debug("Missing key app_config key in config: %s", config)
+            logging.debug("Missing app config related key in config; will not set app config")
         except GLib.Error as e:
             res = ReturnCode.error_from_dbus_exception(str(e))
             logging.error("Cannot set App Config: %s", res.name)
