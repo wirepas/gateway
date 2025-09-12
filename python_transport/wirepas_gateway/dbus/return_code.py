@@ -73,6 +73,8 @@ class ReturnCode:
             (27, GatewayResultCode.GW_RES_INVALID_REBOOT_DELAY),
             # APP_RES_INTERNAL_ERROR, WPC internal error
             (28, GatewayResultCode.GW_RES_INTERNAL_ERROR),
+            # APP_RES_OPERATION_NOT_SUPPORTED, Operation not supported
+            (29, GatewayResultCode.GW_RES_ACCESS_DENIED)
         ]
     )
 

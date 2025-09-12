@@ -627,7 +627,12 @@ static int get_cdd_items_and_append_to_message(sd_bus_message *const message,
     const app_res_e wpc_res = WPC_get_config_data_item_list(endpoints,
                                                             sizeof(endpoints),
                                                             &num_of_items);
-    if (APP_RES_OK != wpc_res)
+    if (APP_RES_OPERATION_NOT_SUPPORTED == wpc_res)
+    {
+        LOGW("Stack doesn't support getting config data item list, returning empty list.\n");
+        return 0;
+    }
+    else if (APP_RES_OK != wpc_res)
     {
         SET_WPC_ERROR(error, "WPC_get_config_data_item_list", wpc_res);
         LOGE("Cannot get config data item list (ret=%d)\n", wpc_res);
