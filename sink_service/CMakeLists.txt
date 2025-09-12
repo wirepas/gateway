@@ -14,7 +14,7 @@ include(FetchContent)
 FetchContent_Declare(
     c-mesh-api
     GIT_REPOSITORY https://github.com/wirepas/c-mesh-api/
-    GIT_TAG c566fdbd693eb3fb6027286679f53db9f9958e0a
+    GIT_TAG 1b8767b9f26717d1819a8043889d58f29f89da13
     SOURCE_SUBDIR lib
 )
 FetchContent_MakeAvailable(c-mesh-api)
