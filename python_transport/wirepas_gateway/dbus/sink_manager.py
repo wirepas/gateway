@@ -248,6 +248,14 @@ class Sink:
 
     def _set_network_keys(self, config):
         if "network_keys" in config:
+            # Stop the stack if not already stopped
+            try:
+                if self.proxy.StackStatus == 0:
+                    self.proxy.SetStackState(False)
+            except GLib.Error:
+                logging.error("Sink in invalid state")
+                return wmm.GatewayResultCode.GW_RES_INVALID_SINK_STATE
+
             try:
                 cipher = config["network_keys"]["cipher"]
                 auth = config["network_keys"]["authentication"]
@@ -269,6 +277,14 @@ class Sink:
 
     def _set_management_keys(self, config):
         if "management_keys" in config:
+            # Stop the stack if not already stopped
+            try:
+                if self.proxy.StackStatus == 0:
+                    self.proxy.SetStackState(False)
+            except GLib.Error:
+                logging.error("Sink in invalid state")
+                return wmm.GatewayResultCode.GW_RES_INVALID_SINK_STATE
+
             try:
                 cipher = config["management_keys"]["cipher"]
                 auth = config["management_keys"]["authentication"]
