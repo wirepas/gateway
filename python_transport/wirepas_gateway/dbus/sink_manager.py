@@ -464,25 +464,33 @@ class Sink:
             d["stored_type"] = dbus_to_gateway_type[stored_type]
         except GLib.Error:
             # Exception raised when getting attribute (probably not set)
-            logging.error("Cannot get stored type in config\n")
+            logging.error("Cannot get stored type in config")
 
         stored = {}
         self._get_param(stored, "seq", "StoredSeq")
         self._get_param(stored, "crc", "StoredCrc")
         self._get_param(stored, "len", "StoredLen")
-        d["stored_scratchpad"] = stored
+        if stored:
+            d["stored_scratchpad"] = stored
 
         processed = {}
         self._get_param(processed, "seq", "ProcessedSeq")
         self._get_param(processed, "crc", "ProcessedCrc")
         self._get_param(processed, "len", "ProcessedLen")
-        d["processed_scratchpad"] = processed
+        if processed:
+            d["processed_scratchpad"] = processed
 
         self._get_param(d, "firmware_area_id", "FirmwareAreaId")
 
-        # Read Target only if firmware is greater than 5.1
-        stack_version = self.proxy.FirmwareVersion
-        if stack_version[0] > 5 or (stack_version[0] == 5 and stack_version[1] > 0):
+        read_target_scratchpad = False
+        try:
+            stack_version = self.proxy.FirmwareVersion
+            # Read Target only if firmware is greater than 5.1
+            read_target_scratchpad = stack_version[0] > 5 or (stack_version[0] == 5 and stack_version[1] > 0)
+        except GLib.Error:
+            logging.error("Cannot read firmware version")
+
+        if read_target_scratchpad:
             # Target scratchpad should be supported (except if dualmcu is too old)
             try:
                 seq, crc, action, param = self.proxy.GetTargetScratchpad()

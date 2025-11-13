@@ -322,8 +322,14 @@ class SetStatusThread(Thread):
             # request will be served after this point
             self._set_status_event.clear()
 
-            if self._set_status() and attempt < self.MAX_FULL_STATUS_ATTEMPTS:
-                # Status is partial, retry few times with exponential delay
+            is_status_partial_or_missing = False
+            try:
+                is_status_partial_or_missing = self._set_status()
+            except Exception:
+                logging.exception("Error when setting status")
+                is_status_partial_or_missing = True
+            if is_status_partial_or_missing and attempt < self.MAX_FULL_STATUS_ATTEMPTS:
+                # Status is partial, or failed. Retry few times with exponential delay
                 # until we have a real one
                 next_delay_s = 2**attempt
                 attempt += 1
