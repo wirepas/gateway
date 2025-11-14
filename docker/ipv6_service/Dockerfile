@@ -45,7 +45,7 @@ RUN adduser --disabled-password wirepas
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
 
-RUN apk add --no-cache libelogind glib gobject-introspection
+RUN apk add --no-cache libelogind glib gobject-introspection ndisc6 iproute2 sudo
 
 # Allow wirepas user to execute some commands with sudo power without password
 COPY ./ipv6_service/wirepas_sudo_rights /etc/sudoers.d/

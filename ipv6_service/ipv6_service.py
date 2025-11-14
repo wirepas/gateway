@@ -264,7 +264,7 @@ class IPV6Sink(Thread):
 
         self.off_mesh_service = off_mesh_service
 
-        sink_config = self._sink.read_config()
+        sink_config, _ = self._sink.read_config()
         if not sink_config["started"]:
             # Do not add sink that are not started, will be done later
             logging.warning("Sink not started, do not add it yet")
@@ -403,7 +403,7 @@ class IPV6Sink(Thread):
 
     def _update_ipv6_config_to_app_config(self, sink_config=None):
         if sink_config is None:
-            sink_config = self._sink.read_config()
+            sink_config, _ = self._sink.read_config()
 
         new_config = None
         # Add network prefix to app_config tlv with id 66
