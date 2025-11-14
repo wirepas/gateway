@@ -1,21 +1,20 @@
-# Duplicate of transport service for now
-FROM python:3.8.8-alpine3.12 AS builder
+ARG BASE_IMAGE=python:3.13-alpine3.21
+FROM $BASE_IMAGE AS builder
 
 RUN adduser --disabled-password wirepas
 
 RUN apk add --no-cache \
-		gcc \
-		bash \
 		build-base \
-		make \
-		musl-dev \
+		# Needed for the wheel generation:
+		bash \
+		dpkg \
+		# Needed for dbus_c.c:
 		elogind-dev \
-		python3-dev \
-		py3-gobject3 \
+		# Needed for PyGObject:
 		cairo-dev \
 		gobject-introspection-dev
 
-RUN python3 -m pip install wheel setuptools pkgconfig
+RUN python3 -m pip install build
 
 USER wirepas
 WORKDIR /home/wirepas
@@ -27,24 +26,26 @@ RUN ./utils/generate_wheel.sh
 
 USER wirepas
 
-RUN pip3 install dist/wirepas_gateway*.whl --no-deps --user
+# Needed by pydbus
+RUN pip3 install PyGObject~=3.0 --user
 
-RUN pip3 install pydbus==0.6.0 PyYAML==5.4 --user
-RUN pip3 install gobject PyGObject --user
+# Install protobuf from source to get the UPB implementation
+RUN pip3 install dist/wirepas_gateway*.whl --no-binary protobuf --user
+
+# Special target to extract binaries
+FROM scratch AS export
+COPY --from=builder /home/wirepas/python_transport/dist/*.tar.gz .
 
 
 # Build the final image
-#FROM python:3.8.8-alpine3.12 as runner
-FROM wirepas/wmm_alpine_cpp:1.2 as runner
+FROM $BASE_IMAGE AS runner
 
-USER root
+RUN adduser --disabled-password wirepas
 
 # Variable set from CI
 ARG GATEWAY_BUILD_SHA1=unset
 
-RUN apk add --no-cache libelogind glib gobject-introspection ndisc6 iproute2 sudo
-
-RUN adduser wirepas wheel
+RUN apk add --no-cache libelogind glib gobject-introspection
 
 # Allow wirepas user to execute some commands with sudo power without password
 COPY ./ipv6_service/wirepas_sudo_rights /etc/sudoers.d/
@@ -55,6 +56,11 @@ ENV PATH="/home/wirepas/.local/bin:${PATH}"
 
 # Copy the built wheel and its dependencies from builder
 COPY --from=builder /home/wirepas/.local /home/wirepas/.local
+
+# Sanity check to confirm we have the UPB implementation for protobuf
+RUN python3 -c "import sys;\
+from google.protobuf.internal import api_implementation;\
+sys.exit(0 if api_implementation.Type() == 'upb' else 1)"
 
 COPY ./ipv6_service/*.py /home/wirepas/ipv6/
 

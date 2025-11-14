@@ -39,7 +39,7 @@ jobs:
 
       - name: Set tag for push
         if: github.event_name == 'push'
-        run: echo "TAG1=$IMAGE_NAME:edge" >> $GITHUB_ENV
+        run: echo "TAG1=$IMAGE_NAME:edge_new" >> $GITHUB_ENV
 
       - name: Set tag for manually triggered
         if: github.event_name == 'workflow_dispatch'
