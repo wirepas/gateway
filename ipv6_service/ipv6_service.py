@@ -246,7 +246,7 @@ class IPV6Sink(Thread):
 
     # Minimum time in S before adding again the same node to neighbor proxy in kernel
     # It is an optimization to avoid executing system call too often in case of heavy traffic
-    MIN_DELAY_UPDATE_NDPROXY_S = 600
+    MIN_DELAY_UPDATE_NDPROXY_S = 5
 
     """Class to represent a sink at ipv6 level"""
     def __init__(self, sink, nw_prefix, ext_interface_name, off_mesh_service = None):
