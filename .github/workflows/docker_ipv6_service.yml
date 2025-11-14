@@ -4,7 +4,7 @@ on:
   push:
     branches:
       # To be changed to master later
-      - ipv6
+      - ipv6-new
     paths:
       - 'docker/ipv6_service/Dockerfile'
       # This service depends on transport too
