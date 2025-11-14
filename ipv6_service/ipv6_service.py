@@ -24,7 +24,7 @@ class Ipv6Add:
     An ipv6 address has following format:
         - 64 bits network prefix
         - 32 bits for sink address
-        - 32 bits for node address 
+        - 32 bits for node address
     """
     def __init__(self, add_bytes, prefix_len=128):
         if add_bytes.__len__() < (prefix_len / 8):
@@ -84,7 +84,7 @@ class Ipv6Add:
                     full_g = '{:04x}'.format(int(g, base=16))
                     add_bytes.extend(bytearray.fromhex(full_g))
 
-        
+
         # Extract prefix length and address
         fields = add_str.split("/", 1)
         add_str = fields[0]
@@ -230,7 +230,7 @@ class IPV6NetworkConfig():
             # S = 1, C = 0, CC = 0
             config.append(0x80)
             config.extend(self.off_mesh_service.add)
-        
+
         return config
 
     def increment_nonce(self):
@@ -382,7 +382,7 @@ class IPV6Sink(Thread):
             pass
 
         add = Ipv6Add.from_prefix_sink_add_and_sink_node(self.nw_prefix, self.wp_address, node_address)
-        IPV6Transport._execute_cmd("sudo ip neigh add nud permanent proxy %s dev %s extern_learn" % (add, self._ext_interface),
+        IPV6Transport._execute_cmd("sudo ip neigh add nud permanent proxy %s dev %s" % (add, self._ext_interface),
                                     True)
 
         # Add node to our own cache (or update ts)
@@ -743,7 +743,7 @@ def main():
     )
 
     args = parser.parse_args()
-    
+
     logging.basicConfig(format='%(levelname)s %(asctime)s %(message)s', level=logging.INFO)
 
     off_mesh_service = None
