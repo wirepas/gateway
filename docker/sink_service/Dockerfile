@@ -28,7 +28,9 @@ FROM $BASE_IMAGE
 ARG GATEWAY_BUILD_SHA1=unset
 
 RUN adduser --disabled-password wirepas
+RUN addgroup -g 46 -S plugdev
 RUN addgroup wirepas dialout
+RUN addgroup wirepas plugdev
 
 RUN apk add --no-cache libelogind coreutils
 
