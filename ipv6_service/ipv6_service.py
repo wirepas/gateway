@@ -679,8 +679,9 @@ class IPV6Transport(BusClient):
 
             # Only propagate icmpv6 (58) and UDP traffic (17)
             next_header = packet[6]
-            if next_header != 58 and next_header != 17:
-                continue
+            # For testing purpose, do not filter traffic
+            #if next_header != 58 and next_header != 17:
+            #    continue
 
             # Todo, only do it under debug
             try:
