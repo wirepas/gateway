@@ -10,7 +10,7 @@ on:
       # This service depends on transport too
       - 'python_transport/**'
       - 'ipv6_service/**'
-      - '.github/workflows/docker_transport_service.yml'
+      - '.github/workflows/docker_ipv6_service.yml'
 
   workflow_dispatch:
     inputs:
