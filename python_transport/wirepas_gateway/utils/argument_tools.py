@@ -543,6 +543,15 @@ class ParserHelper:
             help=("Version of the gateway."),
         )
 
+        self.gateway.add_argument(
+            "-gmss",
+            "--gateway_max_scratchpad_size",
+            type=self.str2int,
+            default=os.environ.get("WM_GW_MAX_SCRAT_SIZE", None),
+            help=("Maximum scratchpad size a gateway can accept. If scratchpad is bigger"
+                  "it must be sent as chunks smaller or equal to this value"),
+        )
+
     def add_filtering_config(self):
         self.filtering.add_argument(
             "-iepf",
