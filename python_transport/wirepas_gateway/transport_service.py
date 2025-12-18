@@ -195,8 +195,9 @@ class SetStatusThread(Thread):
         gw_model,
         gw_version,
         gw_features,
+        max_scratchpad_size,
         agregate_delay_s=0.5,
-        backup_delay_s=3600
+        backup_delay_s=3600,
     ):
         """
         Thread sending periodically the gateway status
@@ -223,6 +224,7 @@ class SetStatusThread(Thread):
         self.gw_model = gw_model
         self.gw_version = gw_version
         self.gw_features = gw_features
+        self.max_scratchpad_size = max_scratchpad_size
 
         self.running = False
 
@@ -256,7 +258,8 @@ class SetStatusThread(Thread):
                 sink_configs=configs.values(),
                 gateway_model=self.gw_model,
                 gateway_version=self.gw_version,
-                gateway_features=self.gw_features
+                gateway_features=self.gw_features,
+                max_scratchpad_size=self.max_scratchpad_size
         )
 
         topic = TopicGenerator.make_status_topic(self.gw_id)
@@ -410,10 +413,13 @@ class TransportService(BusClient):
 
         self.gw_features = [
             wmm.GatewayFeature.GW_FEATURE_CONFIGURATION_DATA_V1,
-            wmm.GatewayFeature.GW_FEATURE_SINK_KEY_MANAGEMENT_V1
+            wmm.GatewayFeature.GW_FEATURE_SINK_KEY_MANAGEMENT_V1,
+            wmm.GatewayFeature.GW_FEATURE_SCRATCHPAD_CHUNK_V1,
         ]
 
         self.whitened_ep_filter = settings.whitened_endpoints_filter
+
+        self.max_scratchpad_size = settings.gateway_max_scratchpad_size
 
         last_will_topic = TopicGenerator.make_status_topic(self.gw_id)
         last_will_message = wmm.StatusEvent(
@@ -467,9 +473,14 @@ class TransportService(BusClient):
             self.gw_id,
             self.gw_model,
             self.gw_version,
-            self.gw_features
+            self.gw_features,
+            self.max_scratchpad_size
         )
         self.status_thread.start()
+
+        # Dictionnary to store scratchpad chunks
+        self._scratchpad_chunks = {}
+
 
     def _on_mqtt_wrapper_termination_cb(self):
         """
@@ -745,7 +756,8 @@ class TransportService(BusClient):
             gateway_model=self.gw_model,
             gateway_version=self.gw_version,
             implemented_api_version=IMPLEMENTED_API_VERSION,
-            gateway_features=self.gw_features
+            gateway_features=self.gw_features,
+            max_scratchpad_size=self.max_scratchpad_size
         )
 
         topic = TopicGenerator.make_get_gateway_info_response_topic(self.gw_id)
@@ -825,11 +837,26 @@ class TransportService(BusClient):
 
         self.mqtt_wrapper.publish(topic, response.payload, qos=2)
 
+    def _send_otap_response(self, request, result):
+        response = wmm.UploadScratchpadResponse(
+            request.req_id,
+            self.gw_id,
+            result,
+            request.sink_id,
+        )
+
+        topic = TopicGenerator.make_otap_upload_scratchpad_response_topic(
+            self.gw_id,
+            request.sink_id,
+        )
+
+        logging.debug("Publishing otap response for id %d", request.req_id)
+        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+
     @deferred_thread
     @update_gateway_status_dec
     def _on_otap_upload_scratchpad_request_received(self, client, userdata, message):
         # pylint: disable=unused-argument
-        logging.info("OTAP upload request received")
         try:
             request = wmm.UploadScratchpadRequest.from_payload(message.payload)
         except wmm.GatewayAPIParsingException as e:
@@ -839,23 +866,94 @@ class TransportService(BusClient):
         logging.info("OTAP upload request received for %s", request.sink_id)
 
         sink = self.sink_manager.get_sink(request.sink_id)
-        if sink is not None:
-            if request.scratchpad is None:
-                res = sink.clear_local_scratchpad()
-            else:
-                res = sink.upload_scratchpad(request.seq, request.scratchpad)
-        else:
-            res = wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
+        if sink is None:
+            self._send_otap_response(
+                request, wmm.GatewayResultCode.GW_RES_INVALID_SINK_ID
+            )
+            return
 
-        response = wmm.UploadScratchpadResponse(
-            request.req_id, self.gw_id, res, request.sink_id
+        # Check if it is a clear scratchpad
+        if request.scratchpad is None:
+            logging.info("Clear scratchpad")
+            res = sink.clear_local_scratchpad()
+
+            # Drop any pending incomplete upload for this sink
+            self._scratchpad_chunks.pop(request.sink_id, None)
+
+            self._send_otap_response(request, res)
+            return
+
+        # Check if it is a full scratchpad
+        if request.chunk_info is None:
+            logging.info("Full scratchpad")
+            # Drop any pending incomplete upload for this sink
+            self._scratchpad_chunks.pop(request.sink_id, None)
+
+            res = sink.upload_scratchpad(request.seq, request.scratchpad)
+            self._send_otap_response(request, res)
+            return
+
+        # It is a chunk of scratchpad
+        chunk_info = request.chunk_info
+        total_size = chunk_info["total_size"]
+        offset = chunk_info["offset"]
+        chunk = request.scratchpad
+
+        acc = self._scratchpad_chunks.get(request.sink_id)
+
+        # New req_id for same sink → discard previous incomplete upload
+        if acc is not None:
+            if (acc["seq"] != request.seq
+                or acc["total_size"] != total_size
+                or offset == 0):
+                logging.warning(
+                    "New scratchpad upload detected for sink %s, "
+                    "discarding previous incomplete upload",
+                    request.sink_id,
+                )
+                self._scratchpad_chunks.pop(request.sink_id)
+                acc = None
+
+        # Initialize accumulator if needed
+        if acc is None:
+            acc = {
+                "seq": request.seq,
+                "total_size": total_size,
+                "buffer": bytearray(total_size),
+                "received": set(),
+            }
+            self._scratchpad_chunks[request.sink_id] = acc
+
+        # Copy chunk into buffer
+        acc["buffer"][offset : offset + len(chunk)] = chunk
+        acc["received"].add((offset, len(chunk)))
+
+        received_size = sum(length for _, length in acc["received"])
+        logging.info(
+            "Received chunk %d–%d (%d/%d bytes)",
+            offset,
+            offset + len(chunk),
+            received_size,
+            total_size,
         )
 
-        topic = TopicGenerator.make_otap_upload_scratchpad_response_topic(
-            self.gw_id, request.sink_id
-        )
+        # Check if it is full
+        if received_size < total_size:
+            # Answer the chunk, wait for next ones
+            self._send_otap_response(request, wmm.GatewayResultCode.GW_RES_OK)
+            return
 
-        self.mqtt_wrapper.publish(topic, response.payload, qos=2)
+        # Scratchpad is full
+        logging.info("Scratchpad fully received for %s", request.sink_id)
+
+        try:
+            res = wmm.GatewayResultCode.GW_RES_INTERNAL_ERROR
+            res = sink.upload_scratchpad(request.seq, acc["buffer"])
+        finally:
+            # Cleanup accumulator
+            self._scratchpad_chunks.pop(request.sink_id, None)
+
+        self._send_otap_response(request, res)
 
     @deferred_thread
     def _on_otap_process_scratchpad_request_received(self, client, userdata, message):
