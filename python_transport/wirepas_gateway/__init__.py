@@ -14,6 +14,7 @@
 from . import dbus
 from . import protocol
 from . import utils
+import importlib.metadata
 
 from .__about__ import (
     __author__,
@@ -25,6 +26,8 @@ from .__about__ import (
     __pkg_name__,
     __title__,
     __url__,
-    __version__,
     __keywords__,
 )
+
+__version__ = importlib.metadata.version(__pkg_name__)
+
