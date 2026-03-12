@@ -1,4 +1,4 @@
 [build-system]
-requires = ["setuptools>=61.0", "pkgconfig"]
+requires = ["setuptools>=61.0", "pkgconfig", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 

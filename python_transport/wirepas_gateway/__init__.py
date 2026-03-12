@@ -15,6 +15,8 @@ from . import dbus
 from . import protocol
 from . import utils
 
+from ._version import __version__
+
 from .__about__ import (
     __author__,
     __author_email__,
@@ -25,6 +27,6 @@ from .__about__ import (
     __pkg_name__,
     __title__,
     __url__,
-    __version__,
     __keywords__,
 )
+

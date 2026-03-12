@@ -16,6 +16,7 @@ build-*.txt
 
 sink_service/build/
 python_transport/docs/source/api/*
+python_transport/wirepas_gateway/_version.py
 
 public/
 packets/

@@ -4,6 +4,10 @@ on:
   release:
     types: [created]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to use'
+        required: true
 
 jobs:
   build:
@@ -17,6 +21,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set version for manually triggered
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          echo "WM_TRANSPORT_VERSION=${VERSION#v}" >> $GITHUB_ENV
+
+      - name: Set version for release
+        if: github.event_name == 'release'
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          echo "WM_TRANSPORT_VERSION=${VERSION#v}" >> $GITHUB_ENV
+
       - name: Build and extract transportService wheel
         uses: docker/build-push-action@v6
         with:
@@ -25,6 +41,7 @@ jobs:
           platforms: linux/amd64
           push: false
           target: export
+          build-args: WM_TRANSPORT_VERSION=${{ env.WM_TRANSPORT_VERSION }}
           outputs: ./artifacts/transportService/
 
       - name: Move transport service wheel

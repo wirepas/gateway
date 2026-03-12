@@ -72,7 +72,12 @@ with open(get_absolute_path("./wirepas_gateway/__about__.py")) as f:
 
 setup(
     name=about["__pkg_name__"],
-    version=about["__version__"],
+    # Version can be overriden with the
+    # SETUPTOOLS_SCM_PRETEND_VERSION_FOR_WIREPAS_GATEWAY environment variable
+    use_scm_version={
+        "version_file": "wirepas_gateway/_version.py",
+        "root": ".."
+    },
     description=about["__description__"],
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -84,7 +89,7 @@ setup(
     keywords=about["__keywords__"],
     packages=find_packages(exclude=["contrib", "docs", "tests", "examples"]),
     install_requires=get_requirements("requirements.txt"),
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     ext_modules=[
         Extension(
             "dbusCExtension",
