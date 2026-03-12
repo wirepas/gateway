@@ -436,10 +436,6 @@ class TransportService(BusClient):
             last_will_message,
         )
 
-        self.mqtt_wrapper.start()
-
-        logging.info("Gateway started with id: %s", self.gw_id)
-
         self.monitoring_thread = None
         self.minimum_sink_cost = settings.buffering_minimal_sink_cost
 
@@ -480,6 +476,10 @@ class TransportService(BusClient):
 
         # Dictionnary to store scratchpad chunks
         self._scratchpad_chunks = {}
+
+        self.mqtt_wrapper.start()
+
+        logging.info("Gateway started with id: %s", self.gw_id)
 
 
     def _on_mqtt_wrapper_termination_cb(self):

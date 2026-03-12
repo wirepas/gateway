@@ -52,6 +52,8 @@ class MQTTWrapper(Thread):
             self._use_websockets = False
 
         self._client = mqtt.Client(
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
+            protocol=mqtt.MQTTProtocolVersion.MQTTv311,
             client_id=settings.gateway_id,
             clean_session=not settings.mqtt_persist_session,
             transport=transport,
@@ -133,7 +135,7 @@ class MQTTWrapper(Thread):
         if self.on_connect_cb is not None:
             self.on_connect_cb()
 
-    def _on_disconnect(self, userdata, rc):
+    def _on_disconnect(self, client, userdata, rc):
         if rc != 0:
             logging.error(
                 "MQTT unexpected disconnection (network or broker originated):"
@@ -172,19 +174,6 @@ class MQTTWrapper(Thread):
                     topic, payload, qos, retain = self._publish_queue.get()
                     info = self._client.publish(topic, payload, qos=qos, retain=retain)
                     self._unpublished_mid_set.add(info.mid)
-
-                    # FIX: read internal sockpairR as it is written but
-                    # never read as we don't use the internal paho loop
-                    # but we have spurious timeout / broken pipe from
-                    # this socket pair
-                    # pylint: disable=protected-access
-                    try:
-                        self._client._sockpairR.recv(1)
-                    except Exception:
-                        # This socket is not used at all, so if something is wrong,
-                        # not a big issue. Just keep going
-                        pass
-
             except queue.Empty:
                 # No more packet to publish
                 pass
