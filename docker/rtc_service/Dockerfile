@@ -22,7 +22,7 @@ WORKDIR /home/wirepas
 COPY --chown=wirepas ./python_transport /home/wirepas/python_transport
 WORKDIR /home/wirepas/python_transport
 
-RUN ./utils/generate_wheel.sh
+RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_WIREPAS_GATEWAY=0.0.0 ./utils/generate_wheel.sh
 
 USER wirepas
 
