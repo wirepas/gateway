@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=alpine:3.21
+ARG BASE_IMAGE=alpine:3.23
 FROM $BASE_IMAGE AS builder
 
 # Variable set from CI

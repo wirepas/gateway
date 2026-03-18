@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=python:3.13-alpine3.21
+ARG BASE_IMAGE=python:3.13-alpine3.23
 ARG WM_TRANSPORT_VERSION=0.0.0.dev0
 
 FROM $BASE_IMAGE AS builder

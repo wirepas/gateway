@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=python:3.13-alpine3.21
+ARG BASE_IMAGE=python:3.13-alpine3.23
 FROM $BASE_IMAGE AS builder
 
 RUN adduser --disabled-password wirepas
