@@ -10,11 +10,15 @@ set(CMAKE_C_FLAGS_RELEASE "-O2")
 
 add_compile_options(-Wall -Werror -Wextra -Wno-unused-parameter)
 
+set(SINK_SERVICE_VERSION "<unknown>" CACHE STRING "Sink service version string")
+
+set(C_MESH_API_COMMIT_HASH b70b379c8bb4f44b151f99d0af321abe84b63455)
+
 include(FetchContent)
 FetchContent_Declare(
     c-mesh-api
     GIT_REPOSITORY https://github.com/wirepas/c-mesh-api/
-    GIT_TAG b70b379c8bb4f44b151f99d0af321abe84b63455
+    GIT_TAG ${C_MESH_API_COMMIT_HASH}
     SOURCE_SUBDIR lib
 )
 FetchContent_MakeAvailable(c-mesh-api)
@@ -27,6 +31,11 @@ add_executable(${CMAKE_PROJECT_NAME}
     source/config.c
     source/data.c
     source/otap.c
+)
+
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+    SINK_SERVICE_VERSION="${SINK_SERVICE_VERSION}"
+    C_MESH_API_COMMIT_HASH="${C_MESH_API_COMMIT_HASH}"
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} wpc PkgConfig::systemd)

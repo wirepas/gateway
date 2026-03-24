@@ -300,6 +300,33 @@ static bool setup_signal_handlers_for_stopping()
     return true;
 }
 
+static void print_version_to_stdout()
+{
+    printf("Sink service version: %s\n", SINK_SERVICE_VERSION);
+    printf("c-mesh-api version: %s\n", C_MESH_API_COMMIT_HASH);
+}
+
+static void print_version_to_log()
+{
+    LOGI("Sink service version: %s\n", SINK_SERVICE_VERSION);
+    LOGI("c-mesh-api version: %s\n", C_MESH_API_COMMIT_HASH);
+}
+
+static void print_usage()
+{
+    printf("Parameters:\n"
+           " -b <baudrate>                 UART BAUD rate\n"
+           " -p <port_name>                UART port\n"
+           " -i <sink_id>                  sink ID\n"
+           " -d <max_poll_fail_duration>   max poll fail duration\n"
+           " -f <fragment_max_duration_s>  fragment max duration\n"
+           " -l <downlink_limit>           downlink limit\n"
+           "\n"
+           " -V  display version\n"
+           " -h  display this help message\n"
+    );
+}
+
 int main(int argc, char * argv[])
 {
     unsigned long baudrate = 0;
@@ -324,14 +351,13 @@ int main(int argc, char * argv[])
                        &fragment_max_duration_s, &downlink_limit);
 
     /* Parse command line arguments - take precedence over environmental ones */
-    while ((c = getopt(argc, argv, "b:p:i:d:f:l:")) != -1)
+    while ((c = getopt(argc, argv, "b:p:i:d:f:l:Vh")) != -1)
     {
         switch (c)
         {
             case 'b':
                 /* Get the baudrate */
                 baudrate = strtoul(optarg, NULL, 0);
-                LOGI("Baudrate set to %d\n", baudrate);
                 break;
             case 'p':
                 /* Get the port name */
@@ -350,13 +376,19 @@ int main(int argc, char * argv[])
             case 'l':
                 downlink_limit = strtoul(optarg, NULL, 0);
                 break;
+            case 'V':
+                print_version_to_stdout();
+                return EXIT_SUCCESS;
+            case 'h':
+                print_usage();
+                return EXIT_SUCCESS;
             case '?':
             default:
-                LOGE("Error in argument parsing\n");
-                LOGE("Parameters are: -b <baudrate> -p <port> -i <sink_id> -f <fragment max duration> -l <downlink limit>\n");
+                fprintf(stderr, "Try -h parameter for help.\n");
                 return EXIT_FAILURE;
         }
     }
+    print_version_to_log();
 
     if (downlink_limit > 16)
     {
