@@ -16,7 +16,10 @@ WORKDIR /home/wirepas
 
 COPY --chown=wirepas ./sink_service /home/wirepas/sink_service
 
-RUN CMAKE_BUILD_TYPE=Release cmake -S /home/wirepas/sink_service -B /home/wirepas/build
+RUN CMAKE_BUILD_TYPE=Release cmake \
+  -S /home/wirepas/sink_service \
+  -B /home/wirepas/build \
+  -DSINK_SERVICE_VERSION="${GATEWAY_BUILD_SHA1}"
 RUN cmake --build /home/wirepas/build
 
 FROM scratch AS export
