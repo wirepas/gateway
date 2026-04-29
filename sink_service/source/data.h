@@ -8,6 +8,7 @@
 #define SINK_MANAGER_SOURCE_DATA_H_
 
 #include <systemd/sd-bus.h>
+#include "event_queue.h"
 
 /**
  * \brief   Initialize the data module
@@ -24,4 +25,12 @@ int Data_Init(sd_bus * bus, char * object, char * interface, size_t downlink_lim
 
 void Data_Close();
 
+/**
+ * \brief  Send a MessageReceived dbus signal
+ * \param  data
+ *         The received data event from the event queue
+ */
+void Data_SendDataReceivedSignal(const event_data_received_t *const data);
+
 #endif /* SINK_MANAGER_SOURCE_DATA_H_ */
+

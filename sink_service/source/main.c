@@ -3,6 +3,9 @@
  * See file LICENSE for full license details.
  *
  */
+
+#define _GNU_SOURCE // For ppoll()
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -11,6 +14,7 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <signal.h>
+#include <poll.h>
 
 #include <systemd/sd-bus.h>
 
@@ -18,6 +22,7 @@
 #include "config.h"
 #include "data.h"
 #include "otap.h"
+#include "event_queue.h"
 
 #define LOG_MODULE_NAME "Main"
 #define MAX_LOG_LEVEL INFO_LOG_LEVEL
@@ -300,6 +305,129 @@ static bool setup_signal_handlers_for_stopping()
     return true;
 }
 
+static void process_pending_events(const int event_fd)
+{
+    uint64_t val;
+    int r = read(event_fd, &val, sizeof(val));
+    if (r < 0)
+    {
+        LOGE("Could not read from event_fd: %s\n", strerror(errno));
+    }
+
+    event_t event;
+    while (EventQueue_Pop(&event))
+    {
+        switch (event.type)
+        {
+            case EVENT_TYPE_DATA_RECEIVED:
+                Data_SendDataReceivedSignal(&event.event.data_received);
+                break;
+            case EVENT_TYPE_STACK_STATUS:
+                Config_HandleStackStatusChange(event.event.stack_status.status);
+                break;
+            default:
+                LOGE("Unknown event type: %d\n", event.type);
+                break;
+        }
+    }
+}
+
+static int ppoll_with_sd_bus_timeout(struct pollfd *const fds, const nfds_t nfds)
+{
+    uint64_t deadline_usec;
+    int r = sd_bus_get_timeout(m_bus, &deadline_usec);
+    if (r < 0)
+    {
+        LOGE("Failed to get dbus timeout: %s\n", strerror(-r));
+        errno = -r;
+        return -1;
+    }
+
+    if (deadline_usec == UINT64_MAX)
+    {
+        return ppoll(fds, nfds, NULL, NULL);
+    }
+
+    struct timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
+    {
+        LOGE("Could not get current time: %s\n", strerror(errno));
+        return -1;
+    }
+
+    static const uint64_t US_PER_SEC = 1000000;
+    static const uint64_t NS_PER_US = 1000;
+
+    const uint64_t now_usec = ((uint64_t) now.tv_sec * US_PER_SEC) + (now.tv_nsec / NS_PER_US);
+    const uint64_t delta_usec = (deadline_usec > now_usec) ? (deadline_usec - now_usec) : 0;
+
+    struct timespec timeout = {
+        .tv_sec  = delta_usec / US_PER_SEC,
+        .tv_nsec = (delta_usec % US_PER_SEC) * NS_PER_US,
+    };
+
+    return ppoll(fds, nfds, &timeout, NULL);
+}
+
+static int do_main_loop()
+{
+    int r = 0;
+    int event_fd = EventQueue_get_fd();
+    if (event_fd < 0)
+    {
+        LOGE("Event queue fd not available\n");
+        return -1;
+    }
+
+    while (!m_stop_requested)
+    {
+        int dbus_fd = sd_bus_get_fd(m_bus);
+        if (dbus_fd < 0)
+        {
+            LOGE("Failed to get dbus fd: %s\n", strerror(-dbus_fd));
+            return dbus_fd;
+        }
+
+        int dbus_events = sd_bus_get_events(m_bus);
+        if (dbus_events < 0)
+        {
+            LOGE("Failed to get dbus events: %s\n", strerror(-dbus_events));
+            return dbus_events;
+        }
+
+        struct pollfd fds[2] = {
+            { .fd = dbus_fd,  .events = dbus_events },
+            { .fd = event_fd, .events = POLLIN },
+        };
+
+        r = ppoll_with_sd_bus_timeout(fds, (sizeof(fds) / sizeof(fds[0])));
+
+        if (r < 0)
+        {
+            if (errno == EINTR)
+            {
+                continue;
+            }
+            LOGE("poll failed: %s\n", strerror(errno));
+            return -errno;
+        }
+
+        r = sd_bus_process(m_bus, NULL);
+        if (r < 0)
+        {
+            LOGE("Failed to process dbus: %s\n", strerror(-r));
+            return r;
+        }
+
+        if (fds[1].revents & POLLIN)
+        {
+            process_pending_events(event_fd);
+        }
+    }
+
+    return 0;
+}
+
 static void print_version_to_stdout()
 {
     printf("Sink service version: %s\n", SINK_SERVICE_VERSION);
@@ -462,6 +590,12 @@ int main(int argc, char * argv[])
         return EXIT_FAILURE;
     }
 
+    if (!EventQueue_Init())
+    {
+        LOGE("Cannot initialize event queue\n");
+        return EXIT_FAILURE;
+    }
+
     /* Connect to the user bus */
     r = sd_bus_open_system(&m_bus);
     if (r < 0)
@@ -499,38 +633,17 @@ int main(int argc, char * argv[])
         goto finish;
     }
 
-    while (!m_stop_requested)
-    {
-        /* Process requests */
-        r = sd_bus_process(m_bus, NULL);
-        if (r < 0)
-        {
-            LOGE("Failed to process bus: %s\n", strerror(-r));
-            goto finish;
-        }
-
-        /* we processed a request, try to process another one, right-away */
-        if (r > 0)
-            continue;
-
-        /* Wait for the next request to process */
-        /* sd_bus_wait uses ppoll() internally, and also returns if a signal is */
-        /* caught. */
-        r = sd_bus_wait(m_bus, (uint64_t) -1);
-        if (r < 0)
-        {
-            LOGE("Failed to wait on bus: %s\n", strerror(-r));
-            goto finish;
-        }
-    }
+    r = do_main_loop();
 
 finish:
     LOGI("Exiting\n");
+    WPC_close();
     Otap_Close();
     Data_Close();
     Config_Close();
+    EventQueue_Close();
     sd_bus_unref(m_bus);
-    WPC_close();
 
     return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
+
