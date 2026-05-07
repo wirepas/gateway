@@ -418,6 +418,8 @@ class Sink:
         if new_cost is None or new_cost < 0 or new_cost > 254:
             raise ValueError("Wrong sink cost value {}".format(new_cost))
 
+        logging.debug(f"Setting cost {new_cost} for sink {self.sink_id}")
+
         try:
             self.proxy.SinkCost = new_cost
         except GLib.Error as err:
@@ -842,3 +844,8 @@ class SinkManager:
         except KeyError:
             logging.error("Unknown sink %s from sink list", short_name)
             return None
+
+    def set_sink_costs(self, cost):
+        for sink in self.get_sinks():
+            sink.cost = cost
+

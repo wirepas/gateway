@@ -76,10 +76,6 @@ class ConnectionToBackendMonitorThread(Thread):
         self.max_delay_without_publish = max_delay_without_publish
         self.stop_stack = stop_stack
 
-    def _set_sinks_cost(self, cost):
-        for sink in self.sink_manager.get_sinks():
-            sink.cost = cost
-
     def _stop_sinks(self):
         for sink in self.sink_manager.get_sinks():
             sink.write_config({"started": False})
@@ -89,10 +85,10 @@ class ConnectionToBackendMonitorThread(Thread):
             sink.write_config({"started": True})
 
     def _set_sinks_cost_high(self):
-        self._set_sinks_cost(self.SINK_COST_HIGH)
+        self.sink_manager.set_sink_costs(self.SINK_COST_HIGH)
 
     def _set_sinks_cost_low(self):
-        self._set_sinks_cost(self.minimum_sink_cost)
+        self.sink_manager.set_sink_costs(self.minimum_sink_cost)
 
     def _is_publish_delay_over(self):
         if self.max_delay_without_publish <= 0:
@@ -115,9 +111,6 @@ class ConnectionToBackendMonitorThread(Thread):
         Main loop that check periodically the status of the published queue and compare
         it to threshold set when starting Transport
         """
-
-        # Initialize already detected sinks
-        self._set_sinks_cost_low()
 
         self.running = True
 
@@ -438,6 +431,7 @@ class TransportService(BusClient):
 
         self.monitoring_thread = None
         self.minimum_sink_cost = settings.buffering_minimal_sink_cost
+        self.sink_manager.set_sink_costs(self.minimum_sink_cost)
 
         if settings.buffering_max_buffered_packets > 0 or settings.buffering_max_delay_without_publish > 0:
             logging.info(
