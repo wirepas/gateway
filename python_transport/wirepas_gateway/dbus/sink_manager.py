@@ -846,6 +846,12 @@ class SinkManager:
             return None
 
     def set_sink_costs(self, cost):
+        """
+        Sets sink cost for all the existing sinks
+
+        Args:
+            cost: new sink cost
+        """
+
         for sink in self.get_sinks():
             sink.cost = cost
-
