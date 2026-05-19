@@ -143,6 +143,7 @@ class SinkConfigurator(BusClient):
         start=None,
         authentication_key=None,
         cipher_key=None,
+        diag_interval=None,
     ):
         sink = self.sink_manager.get_sink(sink_name)
         if sink is None:
@@ -165,6 +166,11 @@ class SinkConfigurator(BusClient):
             config["cipher_key"] = cipher_key
         if authentication_key is not None:
             config["authentication_key"] = authentication_key
+        if diag_interval is not None:
+            seq, diag, data = sink.proxy.GetAppConfig()
+            config["app_config_seq"] = seq
+            config["app_config_diag"] = diag_interval
+            config["app_config_data"] = bytearray(data)
 
         ret = sink.write_config(config)
         print("Configuration done with result = {}".format(ret))
@@ -337,6 +343,16 @@ def main():
         help="Start the sink after configuration",
     )
 
+    parser.add_argument(
+        "-d",
+        "--diag_interval",
+        type=int_type,
+        default=get_default_value_from_env("WM_CN_DIAGNOSTIC_INTERVAL"),
+        help="Diagnostic interval in network expressed in seconds. "
+        "Ex: -d 60 "
+        "Note: Value should be one of [0, 30, 60, 120, 300, 600, 1800]. Value 0 means that no diagnostic will be sent.",
+    )
+
     args = parser.parse_args()
 
     sink_configurator = SinkConfigurator()
@@ -354,6 +370,7 @@ def main():
             start=args.start,
             authentication_key=args.authentication_key,
             cipher_key=args.cipher_key,
+            diag_interval=args.diag_interval,
         )
 
 
