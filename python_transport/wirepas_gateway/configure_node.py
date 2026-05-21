@@ -350,7 +350,8 @@ def main():
         default=get_default_value_from_env("WM_CN_DIAGNOSTIC_INTERVAL"),
         help="Diagnostic interval in network expressed in seconds. "
         "Ex: -d 60 "
-        "Note: Value should be one of [0, 30, 60, 120, 300, 600, 1800]. Value 0 means that no diagnostic will be sent.",
+        "Note: Value should be one of [0, 30, 60, 120, 300, 600, 1800]. "
+        "Value 0 means that no diagnostic will be sent.",
     )
 
     args = parser.parse_args()
