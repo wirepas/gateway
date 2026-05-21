@@ -167,7 +167,7 @@ class SinkConfigurator(BusClient):
         if authentication_key is not None:
             config["authentication_key"] = authentication_key
         if diag_interval is not None:
-            seq, diag, data = sink.proxy.GetAppConfig()
+            seq, _, data = sink.proxy.GetAppConfig()
             config["app_config_seq"] = seq
             config["app_config_diag"] = diag_interval
             config["app_config_data"] = bytearray(data)
