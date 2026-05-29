@@ -426,7 +426,6 @@ class Sink:
             res = ReturnCode.error_from_dbus_exception(err.message)
             if res == wmm.GatewayResultCode.GW_RES_INVALID_ROLE:
                 logging.warning("Node role is not a sink, sink cost cannot be modified")
-                raise ValueError("Wrong role to set cost value {}".format(new_cost))
             else:
                 logging.error("Cannot set sink cost for sink {} ({})".format(self.sink_id, res))
 

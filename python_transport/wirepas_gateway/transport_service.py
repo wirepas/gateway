@@ -656,10 +656,7 @@ class TransportService(BusClient):
                         name, self.minimum_sink_cost
                     )
                 )
-                try:
-                    sink.cost = self.minimum_sink_cost
-                except ValueError:
-                    logging.debug("Cannot set cost, probably not a sink")
+                sink.cost = self.minimum_sink_cost
 
     @update_gateway_status_dec
     def on_sink_disconnected(self, name):
