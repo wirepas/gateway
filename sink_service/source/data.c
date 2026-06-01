@@ -62,6 +62,7 @@ static int send_message(sd_bus_message * m, void * userdata, sd_bus_error * erro
     int r;
     uint8_t qos;
     size_t weight = 0;
+    int is_unack_csma_ca = 0;
 
     /* Read the parameters */
     r = sd_bus_message_read(m,
@@ -71,7 +72,7 @@ static int send_message(sd_bus_message * m, void * userdata, sd_bus_error * erro
                             &message.dst_ep,
                             &message.buffering_delay,
                             &qos,
-                            &message.is_unack_csma_ca,
+                            &is_unack_csma_ca,
                             &message.hop_limit);
     if (r < 0)
     {
@@ -82,6 +83,8 @@ static int send_message(sd_bus_message * m, void * userdata, sd_bus_error * erro
 
     /* Update QoS Enum field (in case app_qos_e is encoded on more than 1 byte) */
     message.qos = qos;
+
+    message.is_unack_csma_ca = is_unack_csma_ca;
 
     r = sd_bus_message_read_array(m, 'y', &data, &n);
     if (r < 0)
