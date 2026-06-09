@@ -429,8 +429,19 @@ class SelectableQueue(queue.LifoQueue):
 
 class PublishMonitor:
     """
-        Object dedicated to MQTT publish monitoring, in a simple
-        and "Thread-safe" way.
+    Thread-safe monitor for outstanding MQTT publishes.
+
+    "Size" is the number of publishes that have been requested
+    (on_publish_request) but not yet completed (on_publish_done, i.e.
+    acknowledged by the MQTT broker).
+
+    It is NOT the number of items currently held in MQTTWrapper._publish_queue.
+    An item stays counted from the moment it is requested until the broker
+    confirms it, including while it sits in the queue and while it is in flight
+    to the broker.
+
+    It also keeps the timestamp of the last publish event, used to measure how
+    long publishing has been stalled (i.e. disconnected from broker).
     """
 
     def __init__(self):
@@ -439,10 +450,18 @@ class PublishMonitor:
         self._last_publish_event_timestamp = 0  # valid if size != 0
 
     def get_publish_queue_size(self):
+        """
+        Return the number of publishes requested but not yet completed.
+        """
         with self._lock:
             return self._size
 
     def get_publish_waiting_time_s(self):
+        """
+        Return the seconds elapsed since the last publish event while publishes
+        are still outstanding, or 0 if none are pending. A growing value means
+        publishing is stalled.
+        """
         with self._lock:
             if self._size == 0:
                 return 0
@@ -451,12 +470,18 @@ class PublishMonitor:
                 return delta.total_seconds()
 
     def on_publish_request(self):
+        """
+        Register that a publish has been requested.
+        """
         with self._lock:
             if self._size == 0:
                 self._last_publish_event_timestamp = datetime.now()
             self._size = self._size + 1
 
     def on_publish_done(self):
+        """
+        Register that a publish has completed (acknowledged by the broker).
+        """
         with self._lock:
             self._size = self._size - 1
             self._last_publish_event_timestamp = datetime.now()
