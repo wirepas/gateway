@@ -9,7 +9,6 @@ import ssl
 from select import select
 from threading import Thread, Lock
 from time import sleep, monotonic
-from datetime import datetime
 from random import randrange
 
 from paho.mqtt import client as mqtt
@@ -466,8 +465,7 @@ class PublishMonitor:
             if self._size == 0:
                 return 0
             else:
-                delta = datetime.now() - self._last_publish_event_timestamp
-                return delta.total_seconds()
+                return monotonic() - self._last_publish_event_timestamp
 
     def on_publish_request(self):
         """
@@ -475,7 +473,7 @@ class PublishMonitor:
         """
         with self._lock:
             if self._size == 0:
-                self._last_publish_event_timestamp = datetime.now()
+                self._last_publish_event_timestamp = monotonic()
             self._size = self._size + 1
 
     def on_publish_done(self):
@@ -484,4 +482,4 @@ class PublishMonitor:
         """
         with self._lock:
             self._size = self._size - 1
-            self._last_publish_event_timestamp = datetime.now()
+            self._last_publish_event_timestamp = monotonic()
