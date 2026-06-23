@@ -1,3 +1,8 @@
+> [!WARNING]
+> This branch is intended for **AMIv2 projects only**.
+> It contains project-specific adaptations and may not be suitable for general use.
+> For standard usage, use the `master` branch or specific tags for stable and supported versions.
+
 # Wirepas Linux Gateway
 
 <!-- MarkdownTOC levels="1,2" autolink="true"  -->
