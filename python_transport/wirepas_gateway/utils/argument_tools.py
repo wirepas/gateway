@@ -13,6 +13,7 @@ import argparse
 import sys
 import os
 import yaml
+from enum import Enum
 
 from .serialization_tools import serialize
 
@@ -30,6 +31,15 @@ class Settings:
 
     def __str__(self):
         return str(self.__dict__)
+
+
+class BufferingAction(Enum):
+    RAISE_SINK_COST = "raise_sink_cost"
+    STOP_STACK = "stop_stack"
+    DROP_PACKETS = "drop_packets"
+
+    def __str__(self):
+        return self.value
 
 
 class ParserHelper:
@@ -384,7 +394,7 @@ class ParserHelper:
             type=self.str2int,
             help=(
                 "Maximum number of messages to buffer before "
-                "rising sink cost (0 will disable feature)"
+                "taking an action (see --buffering_action). 0 will disable feature"
             ),
         )
 
@@ -396,17 +406,21 @@ class ParserHelper:
             help=(
                 "Maximum time to wait in seconds without any "
                 "successful publish with packet queued "
-                "before rising sink cost (0 will disable feature)"
+                "before taking an action (see --buffering_action). 0 will disable feature"
             ),
         )
 
         self.buffering.add_argument(
-            "--buffering_stop_stack",
-            default=os.environ.get("WM_GW_BUFFERING_STOP_STACK", False),
-            type=self.str2bool,
+            "--buffering_action",
+            default=os.environ.get("WM_GW_BUFFERING_ACTION", None),
+            type=BufferingAction,
+            choices=list(BufferingAction),
             help=(
-                "When true, when a black hole is detected, stack is stopped instead of "
-                " increasing the sink cost"
+                "Action to take when the buffer limit is reached. "
+                "'raise_sink_cost': Increases the sink cost. "
+                "'stop_stack': Stops the sink stack. "
+                "'drop_packets': Limits the publish queue size to "
+                "buffering_max_buffered_packets and drops the oldest packets if necessary."
             ),
         )
 
@@ -507,6 +521,13 @@ class ParserHelper:
             default=None,
             type=self.str2none,
             help=ParserHelper._deprecated_message("gateway_id"),
+        )
+
+        self.deprecated.add_argument(
+            "--buffering_stop_stack",
+            default=os.environ.get("WM_GW_BUFFERING_STOP_STACK", None),
+            type=self.str2bool,
+            help=ParserHelper._deprecated_message("buffering_stop_stack"),
         )
 
     def add_gateway_config(self):
