@@ -15,6 +15,7 @@ from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
 from wirepas_gateway.protocol.mqtt_wrapper import MQTTWrapper
 from wirepas_gateway.utils import ParserHelper
+from wirepas_gateway.utils.argument_tools import BufferingAction
 
 from wirepas_gateway import __version__ as transport_version
 from wirepas_gateway import __pkg_name__
@@ -75,6 +76,18 @@ class ConnectionToBackendMonitorThread(Thread):
         self.max_buffered_packets = max_buffered_packets
         self.max_delay_without_publish = max_delay_without_publish
         self.stop_stack = stop_stack
+
+    @staticmethod
+    def is_black_hole_detection_enabled(settings):
+        is_threshold_set = (
+            settings.buffering_max_buffered_packets > 0
+            or settings.buffering_max_delay_without_publish > 0
+        )
+        is_relevant_action = (
+            settings.buffering_action == BufferingAction.RAISE_SINK_COST
+            or settings.buffering_action == BufferingAction.STOP_STACK
+        )
+        return is_threshold_set and is_relevant_action
 
     def _stop_sinks(self):
         for sink in self.sink_manager.get_sinks():
@@ -163,8 +176,8 @@ class ConnectionToBackendMonitorThread(Thread):
         Args:
             name: name of sink to initialize
         """
-        # It is only required if black hole is managed by sink cost
-        if not self.stop_stack:
+        # It is only required if black hole is managed by sink cost.
+        if self.buffering_action == BufferingAction.RAISE_SINK_COST:
             sink = self.sink_manager.get_sink(name)
 
             logging.info("Initialize sinkCost of sink %s", name)
@@ -433,14 +446,15 @@ class TransportService(BusClient):
         self.minimum_sink_cost = settings.buffering_minimal_sink_cost
         self.sink_manager.set_sink_costs(self.minimum_sink_cost)
 
-        if settings.buffering_max_buffered_packets > 0 or settings.buffering_max_delay_without_publish > 0:
+        if ConnectionToBackendMonitorThread.is_black_hole_detection_enabled(settings):
+            stop_stack = settings.buffering_action == BufferingAction.STOP_STACK
             logging.info(
-                " Black hole detection enabled: max_packets=%s packets, max_delay=%s, stop_stack=%s",
-                settings.buffering_max_buffered_packets,
-                settings.buffering_max_delay_without_publish,
-                settings.buffering_stop_stack
+                "Black hole detection enabled:"
+                f"max_packets={settings.buffering_max_buffered_packets}, "
+                f"max_delay={settings.buffering_max_delay_without_publish}, "
+                f"stop_stack={stop_stack}"
             )
-            # Create and start a monitoring thread for black hole issue
+            # Create and start a monitoring thread for the buffering limitation
             self.monitoring_thread = ConnectionToBackendMonitorThread(
                 self.MONITORING_BUFFERING_PERIOD_S,
                 self.mqtt_wrapper,
@@ -448,7 +462,7 @@ class TransportService(BusClient):
                 settings.buffering_minimal_sink_cost,
                 settings.buffering_max_buffered_packets,
                 settings.buffering_max_delay_without_publish,
-                settings.buffering_stop_stack
+                stop_stack
             )
             self.monitoring_thread.start()
 
@@ -1231,6 +1245,20 @@ def _update_parameters(settings):
             logging.error("Wrong format for whitened_endpoints_filter EP list (%s)", e)
             exit()
 
+    if settings.buffering_stop_stack is not None:
+        logging.warning("Param buffering_stop_stack is deprecated, please use buffering_action instead")
+        if settings.buffering_action is not None:
+            logging.error("Param buffering_stop_stack and buffering_action cannot be set at the same time")
+            exit()
+
+    # Default buffering_action is RAISE_SINK_COST. If not set, it might be
+    # changed by the deprecated buffering_stop_stack parameter.
+    if settings.buffering_action is None:
+        if settings.buffering_stop_stack:
+            settings.buffering_action = BufferingAction.STOP_STACK
+        else:
+            settings.buffering_action = BufferingAction.RAISE_SINK_COST
+
 
 def _check_parameters(settings):
     if settings.mqtt_force_unsecure and settings.mqtt_certfile:
@@ -1248,6 +1276,12 @@ def _check_parameters(settings):
     except TypeError:
         # One of the filter list is None
         pass
+
+    if settings.buffering_action == BufferingAction.DROP_PACKETS and \
+            settings.buffering_max_delay_without_publish != 0:
+        logging.error("Parameter buffering_max_delay_without_publish "
+                      "cannot be used together with buffering_action DROP_PACKETS")
+        exit()
 
 
 def main():
