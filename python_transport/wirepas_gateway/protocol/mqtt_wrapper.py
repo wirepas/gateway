@@ -6,6 +6,7 @@ import logging
 import queue
 import socket
 import ssl
+from collections import deque
 from select import select
 from threading import Thread, Lock
 from time import sleep, monotonic
@@ -13,6 +14,8 @@ from random import randrange
 
 from paho.mqtt import client as mqtt
 from paho.mqtt.client import connack_string
+
+from wirepas_gateway.utils.argument_tools import BufferingAction
 
 
 class MQTTWrapper(Thread):
@@ -115,7 +118,13 @@ class MQTTWrapper(Thread):
         if not self._use_websockets and self._client.socket() is not None:
             self._client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
 
-        self._publish_queue = SelectableQueue(rate_limit_pps=settings.mqtt_rate_limit_pps)
+        max_queue_size = None
+        if settings.buffering_action == BufferingAction.DROP_PACKETS:
+            max_queue_size = settings.buffering_max_buffered_packets
+        self._publish_queue = SelectableQueue(
+            rate_limit_pps=settings.mqtt_rate_limit_pps,
+            max_size=max_queue_size,
+        )
         if settings.mqtt_rate_limit_pps >= 0:
             logging.info("Rate control set to %s", settings.mqtt_rate_limit_pps)
 
@@ -284,8 +293,11 @@ class MQTTWrapper(Thread):
 
         """
         # Send it to the queue to be published from Mqtt thread
-        self._publish_queue.put((topic, payload, qos, retain))
-        self._publish_monitor.on_publish_request()
+        if self._publish_queue.put((topic, payload, qos, retain)):
+            # Only count the request if the queue grew. If a queued message was
+            # replaced due to queue size limit, the pending message count stays
+            # the same.
+            self._publish_monitor.on_publish_request()
 
     def subscribe(self, topic, cb, qos=2) -> None:
         logging.debug("Subscribing to: {}".format(topic))
@@ -301,17 +313,24 @@ class MQTTWrapper(Thread):
         return self._publish_monitor.get_publish_waiting_time_s()
 
 
-class SelectableQueue(queue.LifoQueue):
+class SelectableQueue:
     """
-    Wrapper arround a Queue to make it selectable with an associated
-    socket and with a built-in rate limit in term of reading
+    LIFO queue made selectable with an associated socket pair
+    and with a built-in rate limit in term of reading
+
+    When max_size is given and the limit is reached, each insertion to the
+    queue drops the oldest element so that the queue size stays the same.
 
     Args:
-        rate_limit_pps: maximum number of get during one second, None for unlimited
+        rate_limit_pps: maximum number of get during one second, None for
+                        unlimited
+        max_size: maximum number of items the queue can hold. None or 0 for
+                  unlimited
     """
 
-    def __init__(self, rate_limit_pps=None):
-        super().__init__()
+    DROP_LOG_PERIOD_S = 60
+
+    def __init__(self, rate_limit_pps=None, max_size=None):
         self._putsocket, self._getsocket = socket.socketpair()
         if rate_limit_pps == 0:
             # 0 is same as no limit
@@ -320,7 +339,14 @@ class SelectableQueue(queue.LifoQueue):
         self._get_ts_list = list()
         self._signal_scheduled = False
         self._signaled = False
-        self._signal_lock = Lock()
+        if max_size is not None and max_size <= 0:
+            max_size = None
+        if max_size is not None:
+            logging.info(f"Publish queue size limited to {max_size}")
+        self._queue = deque(maxlen=max_size)
+        self._dropped_count = 0
+        self._last_drop_log_ts = monotonic()
+        self._lock = Lock()
 
     def fileno(self):
         """
@@ -329,40 +355,76 @@ class SelectableQueue(queue.LifoQueue):
         """
         return self._getsocket.fileno()
 
-    def put(self, item, block=True, timeout=None):
-        # Insert item in queue
-        super().put(item, block, timeout)
-        self._signal()
+    def put(self, item):
+        """
+        Insert an item in the queue.
 
-    def _signal(self, delay_s=0):
-        with self._signal_lock:
-            if self._signaled:
-                return
+        Returns:
+            True if the queue size increased, False if the oldest item was
+            dropped to make room for the new one (queue full).
+        """
+        with self._lock:
+            previous_len = len(self._queue)
+            self._queue.append(item)
+            new_len = len(self._queue)
+            increased = previous_len != new_len
+            if not increased:
+                self._dropped_count += 1
+            drop_log = self._check_and_get_drop_log_locked()
+            self._signal_locked()
 
-            if self._signal_scheduled:
-                return
+        if drop_log is not None:
+            logging.warning(drop_log)
 
-            def _signal_with_delay(delay_s):
-                sleep(delay_s)
-                with self._signal_lock:
-                    self._signal_scheduled = False
-                    self._putsocket.send(b"x")
-                    self._signaled = True
+        return increased
 
-            if delay_s > 0:
-                self._signal_scheduled = True
-                Thread(target=_signal_with_delay, args=[delay_s]).start()
-            else:
-                # No delay needed, signal directly
-                self._putsocket.send(b"x")
-                self._signaled = True
+    def _check_and_get_drop_log_locked(self):
+        if self._dropped_count <= 0:
+            return None
 
-    def _unsignal(self):
-        with self._signal_lock:
+        now = monotonic()
+        elapsed = now - self._last_drop_log_ts
+        if elapsed < self.DROP_LOG_PERIOD_S:
+            return None
+
+        report = f"Dropped {self._dropped_count} MQTT messages in the last {int(elapsed)} seconds"
+        self._dropped_count = 0
+        self._last_drop_log_ts = now
+
+        return report
+
+    def _signal_locked(self):
+        if self._signaled or self._signal_scheduled:
+            return
+
+        self._putsocket.send(b"x")
+        self._signaled = True
+
+    def _schedule_signal_locked(self, delay_s):
+        if self._signaled or self._signal_scheduled:
+            return
+
+        if delay_s is not None and delay_s > 0:
+            self._signal_scheduled = True
+            Thread(target=self._signal_after_delay, args=[delay_s]).start()
+        else:
+            # No delay needed, signal directly
+            self._putsocket.send(b"x")
+            self._signaled = True
+
+    def _signal_after_delay(self, delay_s):
+        sleep(delay_s)
+        with self._lock:
+            self._signal_scheduled = False
+            self._putsocket.send(b"x")
+            self._signaled = True
+
+    def _consume_signal_locked(self):
+        if self._signaled:
             self._getsocket.recv(1)
             self._signaled = False
 
-    def _get_current_rate(self):
+    def _get_current_rate_locked(self):
         # First of all, remove the element that are older than 1 second
         now = monotonic()
         for i in range(len(self._get_ts_list) - 1, -1, -1):
@@ -372,12 +434,12 @@ class SelectableQueue(queue.LifoQueue):
 
         return len(self._get_ts_list)
 
-    def _get_next_time(self):
+    def _get_next_time_locked(self):
         # Compute when next room will be available
         # in moving window
         # Return value is between 0 and 1
 
-        # Note that _get_current_rate should have been called before
+        # Note that _get_current_rate_locked should have been called before
         # so that items are all queued for less than 1s
         now = monotonic()
         if len(self._get_ts_list) > 0:
@@ -387,43 +449,51 @@ class SelectableQueue(queue.LifoQueue):
 
             return 0
 
-    def _is_rate_limit_reached(self):
+    def _is_rate_limit_reached_locked(self):
         # Rate limit is computed on last second
         if self.rate_limit_pps is None:
             # No rate control
             return False
 
-        if self._get_current_rate() >= self.rate_limit_pps:
+        if self._get_current_rate_locked() >= self.rate_limit_pps:
             # We have reached rate limit
             # compute when new room is present
-            logging.debug("Over the rate limit still {} paquet queued".format(self.qsize()))
+            logging.debug("Over the rate limit still {} paquet queued".format(len(self._queue)))
             # How many time remains for first entry
             return True
 
         return False
 
     def get(self):
-        if self._is_rate_limit_reached():
-            # We are over the limit so clear select
-            self._unsignal()
-            # Start a task to signal available messages
-            self._signal(delay_s=self._get_next_time())
-            # There is something to get but rate limit is reached
-            # so it is empty from consumer point of view
-            raise queue.Empty
+        """
+        Get the most recent item from the queue.
 
-        # Get item first so get can be called and
-        # raise empty exception
-        try:
-            item = super().get(False, None)
-            # If rate limt set, add the get
+        Raises:
+            queue.Empty if there is nothing to get or the rate limit is reached
+        """
+        with self._lock:
+            if self._is_rate_limit_reached_locked():
+                # We are over the limit so clear select
+                self._consume_signal_locked()
+                # Start a task to signal available messages
+                self._schedule_signal_locked(self._get_next_time_locked())
+                # There is something to get but rate limit is reached
+                # so it is empty from consumer point of view
+                raise queue.Empty
+
+            # Get item first so pop can be called and
+            # raise empty exception
+            try:
+                item = self._queue.pop()
+            except IndexError:
+                self._consume_signal_locked()
+                raise queue.Empty
+
+            # If rate limit set, add the get
             if self.rate_limit_pps is not None:
                 self._get_ts_list.append(monotonic())
 
             return item
-        except queue.Empty as e:
-            self._unsignal()
-            raise e
 
 
 class PublishMonitor:
