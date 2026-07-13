@@ -177,7 +177,7 @@ class ConnectionToBackendMonitorThread(Thread):
             name: name of sink to initialize
         """
         # It is only required if black hole is managed by sink cost.
-        if self.buffering_action == BufferingAction.RAISE_SINK_COST:
+        if not self.stop_stack:
             sink = self.sink_manager.get_sink(name)
 
             logging.info("Initialize sinkCost of sink %s", name)
