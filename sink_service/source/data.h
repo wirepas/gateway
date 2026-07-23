@@ -8,7 +8,7 @@
 #define SINK_MANAGER_SOURCE_DATA_H_
 
 #include <systemd/sd-bus.h>
-#include "event_queue.h"
+#include "event_types.h"
 
 /**
  * \brief   Initialize the data module
