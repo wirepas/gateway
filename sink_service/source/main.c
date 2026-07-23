@@ -307,13 +307,6 @@ static bool setup_signal_handlers_for_stopping()
 
 static void process_pending_events(const int event_fd)
 {
-    uint64_t val;
-    int r = read(event_fd, &val, sizeof(val));
-    if (r < 0)
-    {
-        LOGE("Could not read from event_fd: %s\n", strerror(errno));
-    }
-
     event_t event;
     while (EventQueue_Pop(&event))
     {

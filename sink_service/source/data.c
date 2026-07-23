@@ -280,7 +280,6 @@ void Data_SendDataReceivedSignal(const event_data_received_t *const data)
         return;
     }
 
-
     r = sd_bus_message_append(msg,
                               "tuuyyuyy",
                               data->timestamp_ms,

@@ -61,10 +61,11 @@ bool EventQueue_Init(void);
 void EventQueue_Close(void);
 
 /**
- * \brief   Get the eventfd which is written when events queued.
+ * \brief   Get the eventfd which is written when events are queued.
  *
  *          The main loop should poll this file descriptor and drain the queue
- *          when readable. A dummy value of 1 is written to it.
+ *          by calling EventQueue_Pop when readable. The eventfd should not be
+ *          read directly, it is done in EventQueue_Pop.
  * \return  The eventfd file descriptor, or -1 if not initialized.
  */
 int EventQueue_get_fd(void);
@@ -81,6 +82,9 @@ bool EventQueue_Push(const event_t *const event);
 
 /**
  * \brief       Pop an event from the queue.
+ *
+ *              If the queue is empty after the operation, drains the eventfd
+ *              (see EventQueue_get_fd).
  * \param[out]  event
  *              The dequeued event
  * \return      true if an event was dequeued,

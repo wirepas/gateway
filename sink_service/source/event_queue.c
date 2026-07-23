@@ -40,6 +40,11 @@ static bool is_buffer_full_locked()
     return m_read_idx == get_next_write_idx_locked();
 }
 
+static bool is_buffer_empty_locked()
+{
+    return m_read_idx == m_write_idx;
+}
+
 /**
  * \brief   Wait until queue is not full
  * \return  true on successful wait (including timeout),
@@ -81,6 +86,15 @@ static void wake_eventfd()
     if (0 != eventfd_write(m_event_fd, 1))
     {
         LOGE("Failed to write to eventfd: %s\n", strerror(errno));
+    }
+}
+
+static void drain_eventfd()
+{
+    eventfd_t val;
+    if (0 != eventfd_read(m_event_fd, &val) && EAGAIN != errno)
+    {
+        LOGE("Failed to drain eventfd: %s\n", strerror(errno));
     }
 }
 
@@ -267,9 +281,13 @@ bool EventQueue_Push(const event_t *const event)
             }
             LOGD("Added event with type: %d\n", event->type);
 
+            // eventfd is written to outside of the mutex as an optimization;
+            // it is acceptable in our case to have it written if the queue is
+            // emptied before this point.
+            wake_eventfd();
+
             // Return true even if writing to eventfd fails because event was
             // added to the queue.
-            wake_eventfd();
             return true;
         }
     }
@@ -298,8 +316,8 @@ bool EventQueue_Pop(event_t *const event)
         return false;
     }
 
-    const bool is_buffer_empty = (m_read_idx == m_write_idx);
-    if (!is_buffer_empty)
+    const bool was_empty = is_buffer_empty_locked();
+    if (!was_empty)
     {
         *event = m_buffer[m_read_idx];
         m_read_idx = (m_read_idx + 1) % EVENT_QUEUE_CAPACITY;
@@ -312,12 +330,17 @@ bool EventQueue_Pop(event_t *const event)
         }
     }
 
+    if (is_buffer_empty_locked())
+    {
+        drain_eventfd();
+    }
+
     ret = pthread_mutex_unlock(&m_lock);
     if (ret != 0)
     {
         LOGE("Could not unlock mutex after popping: %s\n", strerror(ret));
     }
 
-    return !is_buffer_empty;
+    return !was_empty;
 }
 
