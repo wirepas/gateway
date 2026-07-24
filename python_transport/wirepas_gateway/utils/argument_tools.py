@@ -70,7 +70,7 @@ class ParserHelper:
     def __init__(
         self,
         description="argument parser",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         version=None,
     ):
         super(ParserHelper, self).__init__()
@@ -195,53 +195,90 @@ class ParserHelper:
             return None
         return value
 
+    def add_env_argument(self,
+                         group,
+                         env_variable,
+                         *args,
+                         **kwargs):
+        """
+        Wrapper for adding an argument which can be set with an environment
+        variable. Arbitrary arguments are passed to argparse.
+        """
+        default = kwargs.get("default")
+        kwargs["default"] = os.environ.get(env_variable, default)
+
+        help_text = []
+        if "help" in kwargs:
+            help_text.append(kwargs["help"])
+        if "choices" in kwargs:
+            choice_strs = [str(choice) for choice in kwargs["choices"]]
+            result = '[%s]' % ', '.join(choice_strs)
+            help_text.append(f"(choices: {result})")
+        help_text.append(f"(default: {default})")
+
+        kwargs["help"] = " ".join(help_text)
+        kwargs["metavar"] = "$" + env_variable
+        group.add_argument(*args, **kwargs)
+
     def add_file_settings(self):
         """ For file setting handling"""
-        self.file_settings.add_argument(
+        self.add_env_argument(
+            self.file_settings,
+            "WM_GW_FILE_SETTINGS",
             "--settings",
             type=self.str2none,
             required=False,
-            default=os.environ.get("WM_GW_FILE_SETTINGS", None),
+            default=None,
             help="A yaml file with argument parameters (see help for options).",
         )
 
     def add_mqtt(self):
         """ Commonly used MQTT arguments """
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_HOSTNAME",
             "--mqtt_hostname",
-            default=os.environ.get("WM_SERVICES_MQTT_HOSTNAME", None),
+            default=None,
             action="store",
             type=self.str2none,
             help="MQTT broker hostname.",
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_USERNAME",
             "--mqtt_username",
-            default=os.environ.get("WM_SERVICES_MQTT_USERNAME", None),
+            default=None,
             action="store",
             type=self.str2none,
             help="MQTT broker username.",
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_PASSWORD",
             "--mqtt_password",
-            default=os.environ.get("WM_SERVICES_MQTT_PASSWORD", None),
+            default=None,
             action="store",
             type=self.str2none,
             help="MQTT broker password.",
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_PORT",
             "--mqtt_port",
-            default=os.environ.get("WM_SERVICES_MQTT_PORT", 8883),
+            default=8883,
             action="store",
             type=self.str2int,
             help="MQTT broker port.",
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CA_CERTS",
             "--mqtt_ca_certs",
-            default=os.environ.get("WM_SERVICES_MQTT_CA_CERTS", None),
+            default=None,
             action="store",
             type=self.str2none,
             help=(
@@ -252,17 +289,21 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CLIENT_CRT",
             "--mqtt_certfile",
-            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_CRT", None),
+            default=None,
             action="store",
             type=self.str2none,
             help=("Path to the PEM encoded client certificate."),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CLIENT_KEY",
             "--mqtt_keyfile",
-            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_KEY", None),
+            default=None,
             action="store",
             type=self.str2none,
             help=(
@@ -272,9 +313,11 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CERT_REQS",
             "--mqtt_cert_reqs",
-            default=os.environ.get("WM_SERVICES_MQTT_CERT_REQS", "CERT_REQUIRED"),
+            default="CERT_REQUIRED",
             choices=["CERT_REQUIRED", "CERT_OPTIONAL", "CERT_NONE"],
             action="store",
             type=self.str2none,
@@ -285,9 +328,11 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_TLS_VERSION",
             "--mqtt_tls_version",
-            default=os.environ.get("WM_SERVICES_MQTT_TLS_VERSION", "PROTOCOL_TLSv1_2"),
+            default="PROTOCOL_TLSv1_2",
             choices=[
                 "PROTOCOL_TLS",
                 "PROTOCOL_TLS_CLIENT",
@@ -301,9 +346,11 @@ class ParserHelper:
             help=("Specifies the version of the SSL / TLS protocol to be used."),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CIPHERS",
             "--mqtt_ciphers",
-            default=os.environ.get("WM_SERVICES_MQTT_CIPHERS", None),
+            default=None,
             action="store",
             type=self.str2none,
             help=(
@@ -313,9 +360,11 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_PERSIST_SESSION",
             "--mqtt_persist_session",
-            default=os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False),
+            default=False,
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -325,27 +374,33 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_FORCE_UNSECURE",
             "--mqtt_force_unsecure",
-            default=os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False),
+            default=False,
             type=self.str2bool,
             nargs="?",
             const=True,
             help=("When True the broker will skip the TLS handshake."),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_ALLOW_UNTRUSTED",
             "--mqtt_allow_untrusted",
-            default=os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False),
+            default=False,
             type=self.str2bool,
             nargs="?",
             const=True,
             help=("When true the client will skip the certificate name check."),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_RECONNECT_DELAY",
             "--mqtt_reconnect_delay",
-            default=os.environ.get("WM_SERVICES_MQTT_RECONNECT_DELAY", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
@@ -354,17 +409,21 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_MAX_INFLIGHT_MESSAGES",
             "--mqtt_max_inflight_messages",
-            default=os.environ.get("WM_SERVICES_MQTT_MAX_INFLIGHT_MESSAGES", 20),
+            default=20,
             action="store",
             type=self.str2int,
             help=("Max inflight messages for messages with qos > 0"),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_USE_WEBSOCKET",
             "--mqtt_use_websocket",
-            default=os.environ.get("WM_SERVICES_MQTT_USE_WEBSOCKET", False),
+            default=False,
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -373,9 +432,11 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_RATE_LIMIT_PPS",
             "--mqtt_rate_limit_pps",
-            default=os.environ.get("WM_SERVICES_MQTT_RATE_LIMIT_PPS", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
@@ -387,9 +448,11 @@ class ParserHelper:
 
     def add_buffering_settings(self):
         """ Parameters used to avoid black hole case """
-        self.buffering.add_argument(
+        self.add_env_argument(
+            self.buffering,
+            "WM_GW_BUFFERING_MAX_BUFFERED_PACKETS",
             "--buffering_max_buffered_packets",
-            default=os.environ.get("WM_GW_BUFFERING_MAX_BUFFERED_PACKETS", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
@@ -398,9 +461,11 @@ class ParserHelper:
             ),
         )
 
-        self.buffering.add_argument(
+        self.add_env_argument(
+            self.buffering,
+            "WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH",
             "--buffering_max_delay_without_publish",
-            default=os.environ.get("WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
@@ -410,9 +475,11 @@ class ParserHelper:
             ),
         )
 
-        self.buffering.add_argument(
+        self.add_env_argument(
+            self.buffering,
+            "WM_GW_BUFFERING_ACTION",
             "--buffering_action",
-            default=os.environ.get("WM_GW_BUFFERING_ACTION", None),
+            default=None,
             type=BufferingAction,
             choices=list(BufferingAction),
             help=(
@@ -426,9 +493,11 @@ class ParserHelper:
 
         # This minimal sink cost could be moved somewhere as it can be used even
         # buffering limitation is not in use
-        self.buffering.add_argument(
+        self.add_env_argument(
+            self.buffering,
+            "WM_GW_BUFFERING_MINIMAL_SINK_COST",
             "--buffering_minimal_sink_cost",
-            default=os.environ.get("WM_GW_BUFFERING_MINIMAL_SINK_COST", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
@@ -439,9 +508,11 @@ class ParserHelper:
         )
 
     def add_debug_settings(self):
-        self.debug.add_argument(
+        self.add_env_argument(
+            self.debug,
+            "WM_SERVICES_DEBUG_INCR_EVENT_ID",
             "--debug_incr_data_event_id",
-            default=os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID", False),
+            default=False,
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -523,17 +594,21 @@ class ParserHelper:
             help=ParserHelper._deprecated_message("gateway_id"),
         )
 
-        self.deprecated.add_argument(
+        self.add_env_argument(
+            self.deprecated,
+            "WM_GW_BUFFERING_STOP_STACK",
             "--buffering_stop_stack",
-            default=os.environ.get("WM_GW_BUFFERING_STOP_STACK", None),
+            default=None,
             type=self.str2bool,
-            help=ParserHelper._deprecated_message("buffering_stop_stack"),
+            help=ParserHelper._deprecated_message("buffering_action"),
         )
 
     def add_gateway_config(self):
-        self.gateway.add_argument(
+        self.add_env_argument(
+            self.gateway,
+            "WM_GW_ID",
             "--gateway_id",
-            default=os.environ.get("WM_GW_ID", None),
+            default=None,
             type=self.str2none,
             help=("Id of the gateway. It must be unique on same broker."),
         )
@@ -548,45 +623,55 @@ class ParserHelper:
             help=("Do not use C extension for optimization."),
         )
 
-        self.gateway.add_argument(
+        self.add_env_argument(
+            self.gateway,
+            "WM_GW_MODEL",
             "-gm",
             "--gateway_model",
             type=self.str2none,
-            default=os.environ.get("WM_GW_MODEL", None),
+            default=None,
             help=("Model name of the gateway."),
         )
 
-        self.gateway.add_argument(
+        self.add_env_argument(
+            self.gateway,
+            "WM_GW_VERSION",
             "-gv",
             "--gateway_version",
             type=self.str2none,
-            default=os.environ.get("WM_GW_VERSION", None),
+            default=None,
             help=("Version of the gateway."),
         )
 
-        self.gateway.add_argument(
+        self.add_env_argument(
+            self.gateway,
+            "WM_GW_MAX_SCRAT_SIZE",
             "-gmss",
             "--gateway_max_scratchpad_size",
             type=self.str2int,
-            default=os.environ.get("WM_GW_MAX_SCRAT_SIZE", None),
+            default=None,
             help=("Maximum scratchpad size a gateway can accept. If scratchpad is bigger"
                   "it must be sent as chunks smaller or equal to this value"),
         )
 
     def add_filtering_config(self):
-        self.filtering.add_argument(
+        self.add_env_argument(
+            self.filtering,
+            "WM_GW_IGNORED_ENDPOINTS_FILTER",
             "-iepf",
             "--ignored_endpoints_filter",
             type=self.str2none,
-            default=os.environ.get("WM_GW_IGNORED_ENDPOINTS_FILTER", None),
+            default=None,
             help=("Destination endpoints list to ignore (not published)."),
         )
 
-        self.filtering.add_argument(
+        self.add_env_argument(
+            self.filtering,
+            "WM_GW_WHITENED_ENDPOINTS_FILTER",
             "-wepf",
             "--whitened_endpoints_filter",
             type=self.str2none,
-            default=os.environ.get("WM_GW_WHITENED_ENDPOINTS_FILTER", None),
+            default=None,
             help=(
                 "Destination endpoints list to whiten "
                 "(no payload content, only size)."
