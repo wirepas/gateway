@@ -324,11 +324,7 @@ class ParserHelper:
             default=None,
             action="store",
             type=self.str2none,
-            help=(
-                "Path to the PEM "
-                "encoded client private keys "
-                "respectively."
-            ),
+            help=("Path to the PEM encoded client private key."),
         )
 
         self.add_env_argument(
@@ -400,7 +396,7 @@ class ParserHelper:
             type=self.str2bool,
             nargs="?",
             const=True,
-            help=("When True the broker will skip the TLS handshake."),
+            help=("When true, connect to the broker without TLS."),
         )
 
         self.add_env_argument(
@@ -422,8 +418,9 @@ class ParserHelper:
             action="store",
             type=self.str2int,
             help=(
-                "Delay in seconds to try to reconnect when connection to"
-                "broker is lost (0 to try forever)"
+                "Time in seconds to keep trying to reconnect when the "
+                "connection to the broker is lost. If it expires, the "
+                "service exits. 0 to retry forever."
             ),
         )
 
@@ -460,7 +457,8 @@ class ParserHelper:
             help=(
                 "Max rate limit for the mqtt client to publish on mqtt broker. It can be set to "
                 "protect the broker from very high usage when one or more gateways are offline for a while "
-                "and publish all their buffers when connection to broker is restored"
+                "and publish all their buffers when connection to broker is restored. "
+                "0 to disable the limit."
             ),
         )
 
