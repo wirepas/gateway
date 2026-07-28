@@ -401,17 +401,6 @@ class ParserHelper:
 
         self.add_env_argument(
             self.mqtt,
-            "WM_SERVICES_MQTT_ALLOW_UNTRUSTED",
-            "--mqtt_allow_untrusted",
-            default=False,
-            type=self.str2bool,
-            nargs="?",
-            const=True,
-            help=("When true the client will skip the certificate name check."),
-        )
-
-        self.add_env_argument(
-            self.mqtt,
             "WM_SERVICES_MQTT_RECONNECT_DELAY",
             "--mqtt_reconnect_delay",
             default=0,
@@ -587,14 +576,16 @@ class ParserHelper:
         )
 
     @staticmethod
-    def _deprecated_message(new_arg_name, deprecated_from="2.x"):
+    def _deprecated_message(new_arg_name="", deprecated_from="2.x"):
         """ Alerts the user that an argument will be deprecated within the
         next release version
         """
         msg = (
             "Deprecated argument (it will be dropped "
-            "from version {} onwards) please use --{} instead."
-        ).format(deprecated_from, new_arg_name)
+            f"from version {deprecated_from} onwards)"
+        )
+        if new_arg_name:
+            msg += f" please use --{new_arg_name} instead."
         return msg
 
     def add_deprecated_args(self):
@@ -655,6 +646,17 @@ class ParserHelper:
             default=None,
             type=self.str2none,
             help=ParserHelper._deprecated_message("gateway_id"),
+        )
+
+        self.add_env_argument(
+            self.deprecated,
+            "WM_SERVICES_MQTT_ALLOW_UNTRUSTED",
+            "--mqtt_allow_untrusted",
+            default=False,
+            type=self.str2bool,
+            nargs="?",
+            const=True,
+            help="Not in use. " + ParserHelper._deprecated_message(),
         )
 
         self.add_env_argument(

@@ -1245,6 +1245,9 @@ def _update_parameters(settings):
             logging.error("Wrong format for whitened_endpoints_filter EP list (%s)", e)
             exit()
 
+    if settings.mqtt_allow_untrusted:
+        logging.warning("Param mqtt_allow_untrusted is deprecated and is not in use.")
+
     if settings.buffering_stop_stack is not None:
         logging.warning("Param buffering_stop_stack is deprecated, please use buffering_action instead")
         if settings.buffering_action is not None:

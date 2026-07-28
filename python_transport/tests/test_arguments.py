@@ -17,7 +17,6 @@ env_vars["WM_SERVICES_MQTT_CIPHERS"] = "path/mqtt_ciphers"
 # FALSE, means that we don't set it
 env_vars["WM_SERVICES_MQTT_PERSIST_SESSION"] = True
 env_vars["WM_SERVICES_MQTT_FORCE_UNSECURE"] = True
-env_vars["WM_SERVICES_MQTT_ALLOW_UNTRUSTED"] = True
 
 env_vars["WM_GW_BUFFERING_MAX_BUFFERED_PACKETS"] = 1000
 env_vars["WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH"] = 128
@@ -45,7 +44,6 @@ file_vars["mqtt_certfile"] = env_vars["WM_SERVICES_MQTT_CLIENT_CRT"]
 file_vars["mqtt_ciphers"] = env_vars["WM_SERVICES_MQTT_CIPHERS"]
 file_vars["mqtt_persist_session"] = env_vars["WM_SERVICES_MQTT_PERSIST_SESSION"]
 file_vars["mqtt_force_unsecure"] = env_vars["WM_SERVICES_MQTT_FORCE_UNSECURE"]
-file_vars["mqtt_allow_untrusted"] = env_vars["WM_SERVICES_MQTT_ALLOW_UNTRUSTED"]
 file_vars["mqtt_reconnect_delay"] = env_vars["WM_SERVICES_MQTT_RECONNECT_DELAY"]
 file_vars["buffering_max_buffered_packets"] = env_vars[
     "WM_GW_BUFFERING_MAX_BUFFERED_PACKETS"
@@ -64,7 +62,6 @@ file_vars["whitened_endpoints_filter"] = env_vars["WM_GW_WHITENED_ENDPOINTS_FILT
 booleans = [
     "WM_SERVICES_MQTT_PERSIST_SESSION",
     "WM_SERVICES_MQTT_FORCE_UNSECURE",
-    "WM_SERVICES_MQTT_ALLOW_UNTRUSTED",
 ]
 
 
@@ -132,13 +129,6 @@ def content_tests(settings, vcopy):
     else:
         assert vcopy["WM_SERVICES_MQTT_FORCE_UNSECURE"] == settings.mqtt_force_unsecure
 
-    if "WM_SERVICES_MQTT_ALLOW_UNTRUSTED" not in vcopy:
-        assert settings.mqtt_allow_untrusted is False
-    else:
-        assert (
-            vcopy["WM_SERVICES_MQTT_ALLOW_UNTRUSTED"] == settings.mqtt_allow_untrusted
-        )
-
     assert vcopy["WM_SERVICES_MQTT_RECONNECT_DELAY"] == settings.mqtt_reconnect_delay
     assert (
         vcopy["WM_GW_BUFFERING_MAX_BUFFERED_PACKETS"]
@@ -198,7 +188,6 @@ def test_defaults():
     assert settings.mqtt_ciphers is None
     assert settings.mqtt_persist_session is False
     assert settings.mqtt_force_unsecure is False
-    assert settings.mqtt_allow_untrusted is False
     assert settings.mqtt_reconnect_delay == 0
     assert settings.buffering_max_buffered_packets == 0
     assert settings.buffering_max_delay_without_publish == 0
