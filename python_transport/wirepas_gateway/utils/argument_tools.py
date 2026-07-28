@@ -71,14 +71,14 @@ class ParserHelper:
 
     def __init__(
         self,
-        description="argument parser",
+        description=None,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         version=None,
     ):
         super(ParserHelper, self).__init__()
-        self._parser = argparse.ArgumentParser(
-            description=description, formatter_class=formatter_class
-        )
+        self._parser = argparse.ArgumentParser(formatter_class=formatter_class)
+        if description is not None:
+            self.add_wrapped_description(self._parser, description)
 
         self._groups = dict()
         self._unknown_arguments = None

@@ -10,6 +10,7 @@ from time import time, sleep
 from uuid import getnode
 from threading import Thread, Event
 from copy import deepcopy
+import textwrap
 
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
@@ -1293,8 +1294,14 @@ def main():
 
     """
     parse = ParserHelper(
-        description="Wirepas Gateway Transport service arguments",
         version=transport_version,
+        description=textwrap.dedent("""\
+        Wirepas Gateway Transport Service
+
+        Each parameter below can also be set with the environment variable
+        shown next to it (i.e. $WM_GW_ID). A parameter given on the command
+        line overrides the environment variable.
+        """)
     )
 
     parse.add_file_settings()
