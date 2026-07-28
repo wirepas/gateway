@@ -726,6 +726,21 @@ class ParserHelper:
         )
 
     def add_filtering_config(self):
+        self.add_wrapped_description(
+            self.filtering,
+            textwrap.dedent("""\
+            Filters to limit which packets received from the Wirepas
+            network are published to the MQTT broker. Both filters apply
+            to uplink traffic only and select packets based on their
+            destination endpoint. Downlink traffic is never filtered.
+
+            Both parameters accept a list of endpoints (i.e. [1,2,3]), a
+            range of endpoints (i.e. [1-3]), or a combination of both
+            (i.e. [1,2,10-15]). Valid endpoint values are 0-255. An
+            endpoint cannot be in both lists at the same time.
+            """),
+        )
+
         self.add_env_argument(
             self.filtering,
             "WM_GW_IGNORED_ENDPOINTS_FILTER",
@@ -733,7 +748,10 @@ class ParserHelper:
             "--ignored_endpoints_filter",
             type=self.str2none,
             default=None,
-            help=("Destination endpoints list to ignore (not published)."),
+            help=(
+                "Destination endpoints list to ignore. Packets sent to "
+                "these endpoints are not published at all."
+            ),
         )
 
         self.add_env_argument(
@@ -744,8 +762,9 @@ class ParserHelper:
             type=self.str2none,
             default=None,
             help=(
-                "Destination endpoints list to whiten "
-                "(no payload content, only size)."
+                "Destination endpoints list to whiten (i.e. blank out the "
+                "payload). Packets sent to these endpoints are published "
+                "without the payload content, only the payload size is kept."
             ),
         )
 
