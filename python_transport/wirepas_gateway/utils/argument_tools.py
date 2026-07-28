@@ -13,6 +13,8 @@ import argparse
 import sys
 import os
 import yaml
+import textwrap
+import shutil
 from enum import Enum
 
 from .serialization_tools import serialize
@@ -219,6 +221,22 @@ class ParserHelper:
         kwargs["help"] = " ".join(help_text)
         kwargs["metavar"] = "$" + env_variable
         group.add_argument(*args, **kwargs)
+
+    def add_wrapped_description(self, target, description, indentation = 2):
+        """
+        Wraps the given description to fit the terminal while keeping line
+        beaks and adds it to the given target (for example argument group).
+        """
+        width = shutil.get_terminal_size().columns - indentation
+        lines = []
+        for paragraph in description.splitlines():
+            if not paragraph:
+                lines.append("")
+                continue
+            wrapped = textwrap.wrap(paragraph, width, replace_whitespace=False)
+            lines.extend(wrapped)
+
+        target.description = "\n".join(lines)
 
     def add_file_settings(self):
         """ For file setting handling"""
@@ -448,6 +466,57 @@ class ParserHelper:
 
     def add_buffering_settings(self):
         """ Parameters used to avoid black hole case """
+        self.add_wrapped_description(
+            self.buffering,
+            textwrap.dedent("""\
+            If the MQTT connection is lost, transport service might end up
+            buffering uplink packets and never send them to the MQTT broker,
+            becoming a "black hole".
+
+            Transport service can be configured to detect this and avoid it in
+            different ways, which can be selected by WM_GW_BUFFERING_ACTION
+            parameter. By default, transport service will buffer outgoing MQTT
+            messages without any limit and retry connecting to the broker.
+
+            The black hole prevention can be enabled by setting
+            WM_GW_BUFFERING_MAX_BUFFERED_PACKETS or
+            WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH parameter.
+
+            Different actions are described below:
+
+            * 'raise_sink_cost'
+              Sink costs of sinks connected to this gateway are raised to
+              discourage nodes from connecting to sinks under this gateway.
+
+            * 'stop_stack'
+              Sinks connected to this gateway are stopped to ensure nodes are
+              not connected to sinks under this gateway.
+
+            * 'drop_packets'
+              Enabled only by WM_GW_BUFFERING_MAX_BUFFERED_PACKETS;
+              WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH cannot be used with
+              this action. Internal publish queue size is limited to
+              WM_GW_BUFFERING_MAX_BUFFERED_PACKETS and the oldest MQTT messages
+              are dropped if necessary. Drops are reported in the log
+              periodically.
+
+            Once the MQTT connection is reestablished, the transport service
+            waits until all buffered messages have been successfully published
+            before lowering sink costs or starting sinks again. This is done to
+            prevent modifying sink parameters in unstable connections with
+            intermittent disconnects. Also see the WM_SERVICES_MQTT_RATE_LIMIT_PPS
+            parameter.
+
+            When lowering sink costs, the value of
+            WM_GW_BUFFERING_MINIMAL_SINK_COST is used. It is also applied to
+            sinks at startup, even when black hole prevention is disabled:
+            unlike most sink configuration parameters, sink cost cannot be set
+            over the MQTT interface, so a raised cost left behind by an earlier
+            gateway configuration could not be lowered by the backend
+            otherwise.
+            """),
+        )
+
         self.add_env_argument(
             self.buffering,
             "WM_GW_BUFFERING_MAX_BUFFERED_PACKETS",
@@ -457,7 +526,7 @@ class ParserHelper:
             type=self.str2int,
             help=(
                 "Maximum number of messages to buffer before "
-                "taking an action (see --buffering_action). 0 will disable feature"
+                "taking an action. 0 will disable feature"
             ),
         )
 
@@ -471,7 +540,7 @@ class ParserHelper:
             help=(
                 "Maximum time to wait in seconds without any "
                 "successful publish with packet queued "
-                "before taking an action (see --buffering_action). 0 will disable feature"
+                "before taking an action. 0 will disable feature"
             ),
         )
 
@@ -482,12 +551,8 @@ class ParserHelper:
             default=None,
             type=BufferingAction,
             choices=list(BufferingAction),
-            help=(
-                "Action to take when the buffer limit is reached. "
-                "'raise_sink_cost': Increases the sink cost. "
-                "'stop_stack': Stops the sink stack. "
-                "'drop_packets': Limits the publish queue size to "
-                "buffering_max_buffered_packets and drops the oldest packets if necessary."
+            help=("Action to take when the buffer limit is reached. "
+                  "When empty, it is assumed to be 'raise_sink_cost'."
             ),
         )
 
