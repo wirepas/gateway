@@ -222,7 +222,7 @@ class ParserHelper:
         kwargs["metavar"] = "$" + env_variable
         group.add_argument(*args, **kwargs)
 
-    def add_wrapped_description(self, target, description, indentation = 2):
+    def add_wrapped_description(self, target, description, indentation=2):
         """
         Wraps the given description to fit the terminal while keeping line
         beaks and adds it to the given target (for example argument group).
@@ -444,10 +444,11 @@ class ParserHelper:
             action="store",
             type=self.str2int,
             help=(
-                "Max rate limit for the mqtt client to publish on mqtt broker. It can be set to "
-                "protect the broker from very high usage when one or more gateways are offline for a while "
-                "and publish all their buffers when connection to broker is restored. "
-                "0 to disable the limit."
+                "Max rate limit for the mqtt client to publish on mqtt broker. "
+                "It can be set to protect the broker from very high usage "
+                "when one or more gateways are offline for a while and "
+                " publish all their buffers when connection to broker is "
+                "restored. 0 to disable the limit."
             ),
         )
 
@@ -735,8 +736,11 @@ class ParserHelper:
             "--gateway_max_scratchpad_size",
             type=self.str2int,
             default=None,
-            help=("Maximum scratchpad size a gateway can accept. If scratchpad is bigger "
-                  "it must be sent as chunks smaller or equal to this value"),
+            help=(
+                "Maximum scratchpad size a gateway can accept. If scratchpad "
+                "is bigger it must be sent as chunks smaller or equal to "
+                "this value"
+            ),
         )
 
     def add_filtering_config(self):
