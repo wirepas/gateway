@@ -13,6 +13,8 @@ import argparse
 import sys
 import os
 import yaml
+import textwrap
+import shutil
 from enum import Enum
 
 from .serialization_tools import serialize
@@ -69,14 +71,14 @@ class ParserHelper:
 
     def __init__(
         self,
-        description="argument parser",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=None,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         version=None,
     ):
         super(ParserHelper, self).__init__()
-        self._parser = argparse.ArgumentParser(
-            description=description, formatter_class=formatter_class
-        )
+        self._parser = argparse.ArgumentParser(formatter_class=formatter_class)
+        if description is not None:
+            self.add_wrapped_description(self._parser, description)
 
         self._groups = dict()
         self._unknown_arguments = None
@@ -190,58 +192,111 @@ class ParserHelper:
 
     @staticmethod
     def str2none(value):
-        """ Ensures string to bool conversion """
+        """ Converts empty strings to None """
         if value == "":
             return None
         return value
 
+    def add_env_argument(self,
+                         group,
+                         env_variable,
+                         *args,
+                         **kwargs):
+        """
+        Wrapper for adding an argument which can be set with an environment
+        variable. Arbitrary arguments are passed to argparse.
+        """
+        default = kwargs.get("default")
+        kwargs["default"] = os.environ.get(env_variable, default)
+
+        help_text = []
+        if "help" in kwargs:
+            help_text.append(kwargs["help"])
+        if "choices" in kwargs:
+            choice_strs = [str(choice) for choice in kwargs["choices"]]
+            result = '[%s]' % ', '.join(choice_strs)
+            help_text.append(f"(choices: {result})")
+        help_text.append(f"(default: {default})")
+
+        kwargs["help"] = " ".join(help_text)
+        kwargs["metavar"] = "$" + env_variable
+        group.add_argument(*args, **kwargs)
+
+    def add_wrapped_description(self, target, description, indentation=2):
+        """
+        Wraps the given description to fit the terminal while keeping line
+        beaks and adds it to the given target (for example argument group).
+        """
+        width = shutil.get_terminal_size().columns - indentation
+        lines = []
+        for paragraph in description.splitlines():
+            if not paragraph:
+                lines.append("")
+                continue
+            wrapped = textwrap.wrap(paragraph, width, replace_whitespace=False)
+            lines.extend(wrapped)
+
+        target.description = "\n".join(lines)
+
     def add_file_settings(self):
         """ For file setting handling"""
-        self.file_settings.add_argument(
+        self.add_env_argument(
+            self.file_settings,
+            "WM_GW_FILE_SETTINGS",
             "--settings",
             type=self.str2none,
             required=False,
-            default=os.environ.get("WM_GW_FILE_SETTINGS", None),
+            default=None,
             help="A yaml file with argument parameters (see help for options).",
         )
 
     def add_mqtt(self):
         """ Commonly used MQTT arguments """
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_HOSTNAME",
             "--mqtt_hostname",
-            default=os.environ.get("WM_SERVICES_MQTT_HOSTNAME", None),
+            default=None,
             action="store",
             type=self.str2none,
             help="MQTT broker hostname.",
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_USERNAME",
             "--mqtt_username",
-            default=os.environ.get("WM_SERVICES_MQTT_USERNAME", None),
+            default=None,
             action="store",
             type=self.str2none,
             help="MQTT broker username.",
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_PASSWORD",
             "--mqtt_password",
-            default=os.environ.get("WM_SERVICES_MQTT_PASSWORD", None),
+            default=None,
             action="store",
             type=self.str2none,
             help="MQTT broker password.",
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_PORT",
             "--mqtt_port",
-            default=os.environ.get("WM_SERVICES_MQTT_PORT", 8883),
+            default=8883,
             action="store",
             type=self.str2int,
             help="MQTT broker port.",
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CA_CERTS",
             "--mqtt_ca_certs",
-            default=os.environ.get("WM_SERVICES_MQTT_CA_CERTS", None),
+            default=None,
             action="store",
             type=self.str2none,
             help=(
@@ -252,29 +307,31 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CLIENT_CRT",
             "--mqtt_certfile",
-            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_CRT", None),
+            default=None,
             action="store",
             type=self.str2none,
             help=("Path to the PEM encoded client certificate."),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CLIENT_KEY",
             "--mqtt_keyfile",
-            default=os.environ.get("WM_SERVICES_MQTT_CLIENT_KEY", None),
+            default=None,
             action="store",
             type=self.str2none,
-            help=(
-                "Path to the PEM "
-                "encoded client private keys "
-                "respectively."
-            ),
+            help=("Path to the PEM encoded client private key."),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CERT_REQS",
             "--mqtt_cert_reqs",
-            default=os.environ.get("WM_SERVICES_MQTT_CERT_REQS", "CERT_REQUIRED"),
+            default="CERT_REQUIRED",
             choices=["CERT_REQUIRED", "CERT_OPTIONAL", "CERT_NONE"],
             action="store",
             type=self.str2none,
@@ -285,9 +342,11 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_TLS_VERSION",
             "--mqtt_tls_version",
-            default=os.environ.get("WM_SERVICES_MQTT_TLS_VERSION", "PROTOCOL_TLSv1_2"),
+            default="PROTOCOL_TLSv1_2",
             choices=[
                 "PROTOCOL_TLS",
                 "PROTOCOL_TLS_CLIENT",
@@ -301,9 +360,11 @@ class ParserHelper:
             help=("Specifies the version of the SSL / TLS protocol to be used."),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_CIPHERS",
             "--mqtt_ciphers",
-            default=os.environ.get("WM_SERVICES_MQTT_CIPHERS", None),
+            default=None,
             action="store",
             type=self.str2none,
             help=(
@@ -313,9 +374,11 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_PERSIST_SESSION",
             "--mqtt_persist_session",
-            default=os.environ.get("WM_SERVICES_MQTT_PERSIST_SESSION", False),
+            default=False,
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -325,46 +388,46 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_FORCE_UNSECURE",
             "--mqtt_force_unsecure",
-            default=os.environ.get("WM_SERVICES_MQTT_FORCE_UNSECURE", False),
+            default=False,
             type=self.str2bool,
             nargs="?",
             const=True,
-            help=("When True the broker will skip the TLS handshake."),
+            help=("When true, connect to the broker without TLS."),
         )
 
-        self.mqtt.add_argument(
-            "--mqtt_allow_untrusted",
-            default=os.environ.get("WM_SERVICES_MQTT_ALLOW_UNTRUSTED", False),
-            type=self.str2bool,
-            nargs="?",
-            const=True,
-            help=("When true the client will skip the certificate name check."),
-        )
-
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_RECONNECT_DELAY",
             "--mqtt_reconnect_delay",
-            default=os.environ.get("WM_SERVICES_MQTT_RECONNECT_DELAY", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
-                "Delay in seconds to try to reconnect when connection to"
-                "broker is lost (0 to try forever)"
+                "Time in seconds to keep trying to reconnect when the "
+                "connection to the broker is lost. If it expires, the "
+                "service exits. 0 to retry forever."
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_MAX_INFLIGHT_MESSAGES",
             "--mqtt_max_inflight_messages",
-            default=os.environ.get("WM_SERVICES_MQTT_MAX_INFLIGHT_MESSAGES", 20),
+            default=20,
             action="store",
             type=self.str2int,
             help=("Max inflight messages for messages with qos > 0"),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_USE_WEBSOCKET",
             "--mqtt_use_websocket",
-            default=os.environ.get("WM_SERVICES_MQTT_USE_WEBSOCKET", False),
+            default=False,
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -373,62 +436,121 @@ class ParserHelper:
             ),
         )
 
-        self.mqtt.add_argument(
+        self.add_env_argument(
+            self.mqtt,
+            "WM_SERVICES_MQTT_RATE_LIMIT_PPS",
             "--mqtt_rate_limit_pps",
-            default=os.environ.get("WM_SERVICES_MQTT_RATE_LIMIT_PPS", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
-                "Max rate limit for the mqtt client to publish on mqtt broker. It can be set to "
-                "protect the broker from very high usage when one or more gateways are offline for a while "
-                "and publish all their buffers when connection to broker is restored"
+                "Max rate limit for the mqtt client to publish on mqtt broker. "
+                "It can be set to protect the broker from very high usage "
+                "when one or more gateways are offline for a while and "
+                " publish all their buffers when connection to broker is "
+                "restored. 0 to disable the limit."
             ),
         )
 
     def add_buffering_settings(self):
         """ Parameters used to avoid black hole case """
-        self.buffering.add_argument(
+        self.add_wrapped_description(
+            self.buffering,
+            textwrap.dedent("""\
+            If the MQTT connection is lost, transport service might end up
+            buffering uplink packets and never send them to the MQTT broker,
+            becoming a "black hole".
+
+            Transport service can be configured to detect this and avoid it in
+            different ways, which can be selected by WM_GW_BUFFERING_ACTION
+            parameter. By default, transport service will buffer outgoing MQTT
+            messages without any limit and retry connecting to the broker.
+
+            The black hole prevention can be enabled by setting
+            WM_GW_BUFFERING_MAX_BUFFERED_PACKETS or
+            WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH parameter.
+
+            Different actions are described below:
+
+            * 'raise_sink_cost'
+              Sink costs of sinks connected to this gateway are raised to
+              discourage nodes from connecting to sinks under this gateway.
+
+            * 'stop_stack'
+              Sinks connected to this gateway are stopped to ensure nodes are
+              not connected to sinks under this gateway.
+
+            * 'drop_packets'
+              Enabled only by WM_GW_BUFFERING_MAX_BUFFERED_PACKETS;
+              WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH cannot be used with
+              this action. Internal publish queue size is limited to
+              WM_GW_BUFFERING_MAX_BUFFERED_PACKETS and the oldest MQTT messages
+              are dropped if necessary. Drops are reported in the log
+              periodically.
+
+            Once the MQTT connection is reestablished, the transport service
+            waits until all buffered messages have been successfully published
+            before lowering sink costs or starting sinks again. This is done to
+            prevent modifying sink parameters in unstable connections with
+            intermittent disconnects. Also see the WM_SERVICES_MQTT_RATE_LIMIT_PPS
+            parameter.
+
+            When lowering sink costs, the value of
+            WM_GW_BUFFERING_MINIMAL_SINK_COST is used. It is also applied to
+            sinks at startup, even when black hole prevention is disabled:
+            unlike most sink configuration parameters, sink cost cannot be set
+            over the MQTT interface, so a raised cost left behind by an earlier
+            gateway configuration could not be lowered by the backend
+            otherwise.
+            """),
+        )
+
+        self.add_env_argument(
+            self.buffering,
+            "WM_GW_BUFFERING_MAX_BUFFERED_PACKETS",
             "--buffering_max_buffered_packets",
-            default=os.environ.get("WM_GW_BUFFERING_MAX_BUFFERED_PACKETS", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
                 "Maximum number of messages to buffer before "
-                "taking an action (see --buffering_action). 0 will disable feature"
+                "taking an action. 0 will disable feature"
             ),
         )
 
-        self.buffering.add_argument(
+        self.add_env_argument(
+            self.buffering,
+            "WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH",
             "--buffering_max_delay_without_publish",
-            default=os.environ.get("WM_GW_BUFFERING_MAX_DELAY_WITHOUT_PUBLISH", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
                 "Maximum time to wait in seconds without any "
                 "successful publish with packet queued "
-                "before taking an action (see --buffering_action). 0 will disable feature"
+                "before taking an action. 0 will disable feature"
             ),
         )
 
-        self.buffering.add_argument(
+        self.add_env_argument(
+            self.buffering,
+            "WM_GW_BUFFERING_ACTION",
             "--buffering_action",
-            default=os.environ.get("WM_GW_BUFFERING_ACTION", None),
+            default=None,
             type=BufferingAction,
             choices=list(BufferingAction),
-            help=(
-                "Action to take when the buffer limit is reached. "
-                "'raise_sink_cost': Increases the sink cost. "
-                "'stop_stack': Stops the sink stack. "
-                "'drop_packets': Limits the publish queue size to "
-                "buffering_max_buffered_packets and drops the oldest packets if necessary."
+            help=("Action to take when the buffer limit is reached. "
+                  "When empty, it is assumed to be 'raise_sink_cost'."
             ),
         )
 
         # This minimal sink cost could be moved somewhere as it can be used even
         # buffering limitation is not in use
-        self.buffering.add_argument(
+        self.add_env_argument(
+            self.buffering,
+            "WM_GW_BUFFERING_MINIMAL_SINK_COST",
             "--buffering_minimal_sink_cost",
-            default=os.environ.get("WM_GW_BUFFERING_MINIMAL_SINK_COST", 0),
+            default=0,
             action="store",
             type=self.str2int,
             help=(
@@ -439,9 +561,25 @@ class ParserHelper:
         )
 
     def add_debug_settings(self):
-        self.debug.add_argument(
+        self.add_env_argument(
+            self.debug,
+            "WM_DEBUG_LEVEL",
+            "--log_level",
+            default="info",
+            type=str,
+            choices=["debug", "info", "warning", "error", "critical"],
+            help=(
+                "Log level of the transport service. 'debug' level might "
+                "generate too much logs and is not recommended to be used in a "
+                "production system."
+            ),
+        )
+
+        self.add_env_argument(
+            self.debug,
+            "WM_SERVICES_DEBUG_INCR_EVENT_ID",
             "--debug_incr_data_event_id",
-            default=os.environ.get("WM_SERVICES_DEBUG_INCR_EVENT_ID", False),
+            default=False,
             type=self.str2bool,
             nargs="?",
             const=True,
@@ -453,14 +591,16 @@ class ParserHelper:
         )
 
     @staticmethod
-    def _deprecated_message(new_arg_name, deprecated_from="2.x"):
+    def _deprecated_message(new_arg_name="", deprecated_from="2.x"):
         """ Alerts the user that an argument will be deprecated within the
         next release version
         """
         msg = (
             "Deprecated argument (it will be dropped "
-            "from version {} onwards) please use --{} instead."
-        ).format(deprecated_from, new_arg_name)
+            f"from version {deprecated_from} onwards)"
+        )
+        if new_arg_name:
+            msg += f" please use --{new_arg_name} instead."
         return msg
 
     def add_deprecated_args(self):
@@ -523,19 +663,40 @@ class ParserHelper:
             help=ParserHelper._deprecated_message("gateway_id"),
         )
 
-        self.deprecated.add_argument(
-            "--buffering_stop_stack",
-            default=os.environ.get("WM_GW_BUFFERING_STOP_STACK", None),
+        self.add_env_argument(
+            self.deprecated,
+            "WM_SERVICES_MQTT_ALLOW_UNTRUSTED",
+            "--mqtt_allow_untrusted",
+            default=False,
             type=self.str2bool,
-            help=ParserHelper._deprecated_message("buffering_stop_stack"),
+            nargs="?",
+            const=True,
+            help="Not in use. " + ParserHelper._deprecated_message(),
+        )
+
+        self.add_env_argument(
+            self.deprecated,
+            "WM_GW_BUFFERING_STOP_STACK",
+            "--buffering_stop_stack",
+            default=None,
+            type=self.str2bool,
+            help=ParserHelper._deprecated_message("buffering_action"),
         )
 
     def add_gateway_config(self):
-        self.gateway.add_argument(
+        self.add_env_argument(
+            self.gateway,
+            "WM_GW_ID",
             "--gateway_id",
-            default=os.environ.get("WM_GW_ID", None),
+            default=None,
             type=self.str2none,
-            help=("Id of the gateway. It must be unique on same broker."),
+            help=(
+                "Id of the gateway. It must be unique on same broker. "
+                "When empty, an id is generated based on the network "
+                "interface MAC address (uuid.getnode()). The id is used "
+                "in MQTT topics without escaping, so special MQTT "
+                "characters (+, #, /) should be avoided."
+            ),
         )
 
         self.gateway.add_argument(
@@ -548,48 +709,80 @@ class ParserHelper:
             help=("Do not use C extension for optimization."),
         )
 
-        self.gateway.add_argument(
+        self.add_env_argument(
+            self.gateway,
+            "WM_GW_MODEL",
             "-gm",
             "--gateway_model",
             type=self.str2none,
-            default=os.environ.get("WM_GW_MODEL", None),
+            default=None,
             help=("Model name of the gateway."),
         )
 
-        self.gateway.add_argument(
+        self.add_env_argument(
+            self.gateway,
+            "WM_GW_VERSION",
             "-gv",
             "--gateway_version",
             type=self.str2none,
-            default=os.environ.get("WM_GW_VERSION", None),
+            default=None,
             help=("Version of the gateway."),
         )
 
-        self.gateway.add_argument(
+        self.add_env_argument(
+            self.gateway,
+            "WM_GW_MAX_SCRAT_SIZE",
             "-gmss",
             "--gateway_max_scratchpad_size",
             type=self.str2int,
-            default=os.environ.get("WM_GW_MAX_SCRAT_SIZE", None),
-            help=("Maximum scratchpad size a gateway can accept. If scratchpad is bigger"
-                  "it must be sent as chunks smaller or equal to this value"),
+            default=None,
+            help=(
+                "Maximum scratchpad size a gateway can accept. If scratchpad "
+                "is bigger it must be sent as chunks smaller or equal to "
+                "this value"
+            ),
         )
 
     def add_filtering_config(self):
-        self.filtering.add_argument(
+        self.add_wrapped_description(
+            self.filtering,
+            textwrap.dedent("""\
+            Filters to limit which packets received from the Wirepas
+            network are published to the MQTT broker. Both filters apply
+            to uplink traffic only and select packets based on their
+            destination endpoint. Downlink traffic is never filtered.
+
+            Both parameters accept a list of endpoints (i.e. [1,2,3]), a
+            range of endpoints (i.e. [1-3]), or a combination of both
+            (i.e. [1,2,10-15]). Valid endpoint values are 0-255. An
+            endpoint cannot be in both lists at the same time.
+            """),
+        )
+
+        self.add_env_argument(
+            self.filtering,
+            "WM_GW_IGNORED_ENDPOINTS_FILTER",
             "-iepf",
             "--ignored_endpoints_filter",
             type=self.str2none,
-            default=os.environ.get("WM_GW_IGNORED_ENDPOINTS_FILTER", None),
-            help=("Destination endpoints list to ignore (not published)."),
+            default=None,
+            help=(
+                "Destination endpoints list to ignore. Packets sent to "
+                "these endpoints are not published at all."
+            ),
         )
 
-        self.filtering.add_argument(
+        self.add_env_argument(
+            self.filtering,
+            "WM_GW_WHITENED_ENDPOINTS_FILTER",
             "-wepf",
             "--whitened_endpoints_filter",
             type=self.str2none,
-            default=os.environ.get("WM_GW_WHITENED_ENDPOINTS_FILTER", None),
+            default=None,
             help=(
-                "Destination endpoints list to whiten "
-                "(no payload content, only size)."
+                "Destination endpoints list to whiten (i.e. blank out the "
+                "payload). Packets sent to these endpoints are published "
+                "without the payload content, only the payload size is kept."
             ),
         )
 
