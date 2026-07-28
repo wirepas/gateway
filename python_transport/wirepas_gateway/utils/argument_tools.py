@@ -562,6 +562,20 @@ class ParserHelper:
     def add_debug_settings(self):
         self.add_env_argument(
             self.debug,
+            "WM_DEBUG_LEVEL",
+            "--log_level",
+            default="info",
+            type=str,
+            choices=["debug", "info", "warning", "error", "critical"],
+            help=(
+                "Log level of the transport service. 'debug' level might "
+                "generate too much logs and is not recommended to be used in a "
+                "production system."
+            ),
+        )
+
+        self.add_env_argument(
+            self.debug,
             "WM_SERVICES_DEBUG_INCR_EVENT_ID",
             "--debug_incr_data_event_id",
             default=False,
