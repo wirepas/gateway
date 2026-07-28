@@ -675,7 +675,13 @@ class ParserHelper:
             "--gateway_id",
             default=None,
             type=self.str2none,
-            help=("Id of the gateway. It must be unique on same broker."),
+            help=(
+                "Id of the gateway. It must be unique on same broker. "
+                "When empty, an id is generated based on the network "
+                "interface MAC address (uuid.getnode()). The id is used "
+                "in MQTT topics without escaping, so special MQTT "
+                "characters (+, #, /) should be avoided."
+            ),
         )
 
         self.gateway.add_argument(
@@ -715,7 +721,7 @@ class ParserHelper:
             "--gateway_max_scratchpad_size",
             type=self.str2int,
             default=None,
-            help=("Maximum scratchpad size a gateway can accept. If scratchpad is bigger"
+            help=("Maximum scratchpad size a gateway can accept. If scratchpad is bigger "
                   "it must be sent as chunks smaller or equal to this value"),
         )
 
