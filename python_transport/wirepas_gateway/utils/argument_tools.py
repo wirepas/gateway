@@ -192,7 +192,7 @@ class ParserHelper:
 
     @staticmethod
     def str2none(value):
-        """ Ensures string to bool conversion """
+        """ Converts empty strings to None """
         if value == "":
             return None
         return value
