@@ -10,6 +10,7 @@ We provide some gateway configuration examples. These are listed below:
 | Configuration | Purpose | Link |
 | ------------- | ----    | ---  |
 |Single transport | A simple use case with a single sink and a single transport | [Single transport](./single_transport/docker-compose.yml) |
+|Single transport with local MQTT | Single transport configuration with a local MQTT broker | [Single transport with local MQTT](./single_transport_local_mqtt/docker-compose.yml) |
 | Dual transport  | Use case with two transports to route traffic from selected endpoints to two distinct backends. This can be used for instance to route traffic from an application to a customer backend and diagnostic traffic to WNT | [Dual transport](./dual_transport/docker-compose.yml) |
 
 All the example templates provided (docker-compose.yml) can be updated to fit your environment. 
