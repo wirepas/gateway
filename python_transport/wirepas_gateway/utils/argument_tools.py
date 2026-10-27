@@ -463,8 +463,14 @@ class ParserHelper:
 
             Transport service can be configured to detect this and avoid it in
             different ways, which can be selected by WM_GW_BUFFERING_ACTION
-            parameter. By default, transport service will buffer outgoing MQTT
-            messages without any limit and retry connecting to the broker.
+            parameter.
+
+            By default, transport service will buffer outgoing MQTT messages
+            without any internal limit and retry connecting to the broker. In
+            practice the limit is then the memory available in the system
+            (unless something else such as a container setting limits it
+            further). If memory runs out, the transport service might get
+            terminated by the operating system.
 
             The black hole prevention can be enabled by setting
             WM_GW_BUFFERING_MAX_BUFFERED_PACKETS or
