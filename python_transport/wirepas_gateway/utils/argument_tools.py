@@ -225,7 +225,7 @@ class ParserHelper:
     def add_wrapped_description(self, target, description, indentation=2):
         """
         Wraps the given description to fit the terminal while keeping line
-        beaks and adds it to the given target (for example argument group).
+        breaks and adds it to the given target (for example argument group).
         """
         width = shutil.get_terminal_size().columns - indentation
         lines = []

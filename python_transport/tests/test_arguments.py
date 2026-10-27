@@ -24,6 +24,7 @@ env_vars["WM_GW_BUFFERING_MINIMAL_SINK_COST"] = 240
 env_vars["WM_GW_ID"] = "1"
 env_vars["WM_GW_MODEL"] = "test"
 env_vars["WM_GW_VERSION"] = "pytest"
+env_vars["WM_GW_MAX_SCRAT_SIZE"] = 4096
 env_vars["WM_GW_IGNORED_ENDPOINTS_FILTER"] = "[10-25,200-220]"
 env_vars["WM_GW_WHITENED_ENDPOINTS_FILTER"] = "[27-30,100-120]"
 env_vars["WM_SERVICES_MQTT_CERT_REQS"] = "CERT_OPTIONAL"
@@ -56,6 +57,7 @@ file_vars["buffering_minimal_sink_cost"] = env_vars["WM_GW_BUFFERING_MINIMAL_SIN
 file_vars["gateway_id"] = env_vars["WM_GW_ID"]
 file_vars["gateway_model"] = env_vars["WM_GW_MODEL"]
 file_vars["gateway_version"] = env_vars["WM_GW_VERSION"]
+file_vars["gateway_max_scratchpad_size"] = env_vars["WM_GW_MAX_SCRAT_SIZE"]
 file_vars["ignored_endpoints_filter"] = env_vars["WM_GW_IGNORED_ENDPOINTS_FILTER"]
 file_vars["whitened_endpoints_filter"] = env_vars["WM_GW_WHITENED_ENDPOINTS_FILTER"]
 
@@ -147,6 +149,7 @@ def content_tests(settings, vcopy):
     assert vcopy["WM_GW_ID"] == settings.gateway_id
     assert vcopy["WM_GW_MODEL"] == settings.gateway_model
     assert vcopy["WM_GW_VERSION"] == settings.gateway_version
+    assert vcopy["WM_GW_MAX_SCRAT_SIZE"] == settings.gateway_max_scratchpad_size
     assert vcopy["WM_GW_IGNORED_ENDPOINTS_FILTER"] == settings.ignored_endpoints_filter
     assert (
         vcopy["WM_GW_WHITENED_ENDPOINTS_FILTER"] == settings.whitened_endpoints_filter
@@ -195,6 +198,7 @@ def test_defaults():
     assert settings.gateway_id is None
     assert settings.gateway_model is None
     assert settings.gateway_version is None
+    assert settings.gateway_max_scratchpad_size is None
     assert settings.ignored_endpoints_filter is None
     assert settings.whitened_endpoints_filter is None
     assert settings.mqtt_cert_reqs == "CERT_REQUIRED"
