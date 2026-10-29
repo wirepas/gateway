@@ -430,6 +430,23 @@ class Sink:
                 logging.error("Cannot set sink cost for sink {} ({})".format(self.sink_id, res))
 
     def get_scratchpad_status(self, out_d=None):
+        """
+        Reads scratchpad and OTAP data.
+
+        The dictionary is updated with the following keys:
+        - "stored_scratchpad"
+        - "stored_status"
+        - "stored_type"
+        - "processed_scratchpad"
+        - "firmware_area_id"
+        - "target_and_action"
+
+        Args:
+            out_d: Dictionary to be updated. If none given, an empty dictionary
+            is created.
+
+        Returns: Updated dictionary containing the information
+        """
         if out_d is None:
             d = {}
         else:
@@ -492,41 +509,58 @@ class Sink:
             logging.error("Cannot read firmware version")
 
         if read_target_scratchpad:
-            # Target scratchpad should be supported (except if dualmcu is too old)
-            try:
-                seq, crc, action, param = self.proxy.GetTargetScratchpad()
-                target_and_action = {}
-                target_and_action["action"] = wmm.ScratchpadAction(
-                    action + 1
-                )  # Plus one as dualmcu version starts at 0, and we start at 1
-                target_and_action["target_sequence"] = seq
-                target_and_action["target_crc"] = crc
-                if target_and_action["action"] == wmm.ScratchpadAction.ACTION_PROPAGATE_AND_PROCESS_WITH_DELAY:
-                    # check if delay is in predifined list
-                    param_to_delay_dic = {
-                        0x4A: wmm.ProcessingDelay.DELAY_TEN_MINUTES,
-                        0x5E: wmm.ProcessingDelay.DELAY_THIRTY_MINUTES,
-                        0x81: wmm.ProcessingDelay.DELAY_ONE_HOUR,
-                        0x86: wmm.ProcessingDelay.DELAY_SIX_HOURS,
-                        0xC1: wmm.ProcessingDelay.DELAY_ONE_DAY,
-                        0xC2: wmm.ProcessingDelay.DELAY_TWO_DAYS,
-                        0xC5: wmm.ProcessingDelay.DELAY_FIVE_DAYS
-                    }
-
-                    try:
-                        target_and_action["delay"] = param_to_delay_dic[param]
-                    except KeyError:
-                        logging.debug("Delay not in predifined list: %d", param)
-                        target_and_action["param"] = param
-
-                else:
-                    target_and_action["param"] = param
-
+            target_and_action = self._get_target_scratchpad()
+            if target_and_action:
                 d["target_and_action"] = target_and_action
-            except GLib.Error:
-                logging.warning("Cannot get Target Scratchpad")
 
         return d
+
+    def _get_target_scratchpad(self):
+        """
+        Reads target scratchpad and action
+
+        Returns: Dictionary containing target scratchpad and action to be used
+        with wirepas_mesh_messaging library. On error, returns None.
+        """
+
+        try:
+            seq, crc, action_raw, param = self.proxy.GetTargetScratchpad()
+        except GLib.Error:
+            logging.warning("Cannot get Target Scratchpad")
+            return None
+
+        try:
+            # Plus one as dualmcu version starts at 0, and we start at 1
+            action = wmm.ScratchpadAction(action_raw + 1)
+        except ValueError:
+            logging.error(f"Unknown scratchpad action: {action_raw}")
+            return None
+
+        target_and_action = {}
+        target_and_action["action"] = action
+        target_and_action["target_sequence"] = seq
+        target_and_action["target_crc"] = crc
+        if target_and_action["action"] == wmm.ScratchpadAction.ACTION_PROPAGATE_AND_PROCESS_WITH_DELAY:
+            # check if delay is in predifined list
+            param_to_delay_dic = {
+                0x4A: wmm.ProcessingDelay.DELAY_TEN_MINUTES,
+                0x5E: wmm.ProcessingDelay.DELAY_THIRTY_MINUTES,
+                0x81: wmm.ProcessingDelay.DELAY_ONE_HOUR,
+                0x86: wmm.ProcessingDelay.DELAY_SIX_HOURS,
+                0xC1: wmm.ProcessingDelay.DELAY_ONE_DAY,
+                0xC2: wmm.ProcessingDelay.DELAY_TWO_DAYS,
+                0xC5: wmm.ProcessingDelay.DELAY_FIVE_DAYS
+            }
+
+            try:
+                target_and_action["delay"] = param_to_delay_dic[param]
+            except KeyError:
+                logging.debug("Delay not in predifined list: %d", param)
+                target_and_action["param"] = param
+        else:
+            target_and_action["param"] = param
+
+        return target_and_action
 
     def process_scratchpad(self):
         ret = wmm.GatewayResultCode.GW_RES_OK
