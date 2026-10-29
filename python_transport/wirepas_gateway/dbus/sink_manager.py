@@ -661,6 +661,7 @@ class Sink:
         if (
             action == wmm.ScratchpadAction.ACTION_NO_OTAP
             or action == wmm.ScratchpadAction.ACTION_LEGACY_OTAP
+            or action == wmm.ScratchpadAction.ACTION_INVENTORY_MODE
         ):
             # There is no target with those actions, default to 0
             target_seq = 0
