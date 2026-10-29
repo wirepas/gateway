@@ -1,5 +1,5 @@
 # Duplicate of transport service for now
-ARG BASE_IMAGE=python:3.13-alpine3.23
+ARG BASE_IMAGE=python:3.15-alpine3.24
 FROM $BASE_IMAGE AS builder
 
 RUN adduser --disabled-password wirepas
