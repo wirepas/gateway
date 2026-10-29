@@ -483,6 +483,8 @@ class Sink:
         except GLib.Error:
             # Exception raised when getting attribute (probably not set)
             logging.error("Cannot get stored type in config")
+        except KeyError:
+            logging.error(f"Unknown stored scratchpad type: {stored_type}")
 
         stored = {}
         self._get_param(stored, "seq", "StoredSeq")
