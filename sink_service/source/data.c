@@ -7,11 +7,12 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <errno.h>
+#include <string.h>
 #include <time.h>
 
 #include "data.h"
 #include "wpc.h"
+#include "event_queue.h"
 
 #define LOG_MODULE_NAME "Data"
 #define MAX_LOG_LEVEL INFO_LOG_LEVEL
@@ -160,9 +161,6 @@ static bool onDataReceived(const uint8_t * bytes,
                            uint8_t hop_count,
                            unsigned long long timestamp_ms)
 {
-    __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *m = NULL;
-    int r;
-
     LOGD("%llu -> Data received on EP %d of len %d from 0x%x to 0x%x\n",
          timestamp_ms,
          dst_ep,
@@ -170,43 +168,34 @@ static bool onDataReceived(const uint8_t * bytes,
          src_addr,
          dst_addr);
 
-    /* Create a new signal to be generated on Dbus */
-    r = sd_bus_message_new_signal(m_bus, &m, m_object, m_interface, "MessageReceived");
 
-    if (r < 0)
+    if (num_bytes > EVENT_DATA_MAX_PAYLOAD)
     {
-        LOGE("Cannot create signal error=%s\n", strerror(-r));
+        LOGE("Payload too large: %zu > %d\n", num_bytes, EVENT_DATA_MAX_PAYLOAD);
         return false;
     }
 
-    /* Load all parameters */
-    // clang-format off
-    r = sd_bus_message_append(m,
-                              "tuuyyuyy",
-                              timestamp_ms,
-                              src_addr,
-                              dst_addr,
-                              src_ep,
-                              dst_ep,
-                              travel_time,
-                              qos,
-                              hop_count);
-    // clang-format on
-    if (r < 0)
+    event_t event = {
+        .type = EVENT_TYPE_DATA_RECEIVED,
+        .event.data_received = {
+            .timestamp_ms = timestamp_ms,
+            .num_bytes    = num_bytes,
+            .src_addr     = src_addr,
+            .dst_addr     = dst_addr,
+            .travel_time  = travel_time,
+            .qos          = (uint8_t) qos,
+            .src_ep       = src_ep,
+            .dst_ep       = dst_ep,
+            .hop_count    = hop_count,
+        },
+    };
+    memcpy(event.event.data_received.payload, bytes, num_bytes);
+
+    if (!EventQueue_Push(&event))
     {
-        LOGE("Cannot append info error=%s\n", strerror(-r));
+        LOGE("Failed to enqueue data received event\n");
         return false;
     }
-
-    r = sd_bus_message_append_array(m, 'y', bytes, num_bytes);
-    if (r < 0)
-    {
-        LOGE("Cannot append array error=%s\n", strerror(-r));
-        return false;
-    }
-
-    /* Send the signal on bus */
-    sd_bus_send(m_bus, m, NULL);
 
     return true;
 }
@@ -282,3 +271,45 @@ void Data_Close()
         sd_bus_slot_unref(m_slot);
     }
 }
+
+void Data_SendDataReceivedSignal(const event_data_received_t *const data)
+{
+    __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *msg = NULL;
+
+    int r = sd_bus_message_new_signal(m_bus, &msg, m_object, m_interface, "MessageReceived");
+    if (r < 0)
+    {
+        LOGE("Cannot create dbus signal:%s\n", strerror(-r));
+        return;
+    }
+
+    r = sd_bus_message_append(msg,
+                              "tuuyyuyy",
+                              data->timestamp_ms,
+                              data->src_addr,
+                              data->dst_addr,
+                              data->src_ep,
+                              data->dst_ep,
+                              data->travel_time,
+                              data->qos,
+                              data->hop_count);
+    if (r < 0)
+    {
+        LOGE("Cannot append to signal: %s\n", strerror(-r));
+        return;
+    }
+
+    r = sd_bus_message_append_array(msg, 'y', data->payload, data->num_bytes);
+    if (r < 0)
+    {
+        LOGE("Cannot append array to signal: %s\n", strerror(-r));
+        return;
+    }
+
+    r = sd_bus_send(m_bus, msg, NULL);
+    if (r < 0)
+    {
+        LOGE("Cannot send signal: %s\n", strerror(-r));
+    }
+}
+

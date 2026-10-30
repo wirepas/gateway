@@ -30,6 +30,7 @@ add_executable(${CMAKE_PROJECT_NAME}
     source/main.c
     source/config.c
     source/data.c
+    source/event_queue.c
     source/otap.c
 )
 
@@ -38,5 +39,5 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     C_MESH_API_COMMIT_HASH="${C_MESH_API_COMMIT_HASH}"
 )
 
-target_link_libraries(${CMAKE_PROJECT_NAME} wpc PkgConfig::systemd)
+target_link_libraries(${CMAKE_PROJECT_NAME} wpc PkgConfig::systemd pthread)
 

@@ -8,6 +8,7 @@
 #define SINK_MANAGER_SOURCE_CONFIG_H_
 
 #include <systemd/sd-bus.h>
+#include <stdint.h>
 
 /**
  * \brief   Initialize the config module
@@ -22,4 +23,14 @@ int Config_Init(sd_bus * bus, char * object, char * interface);
 
 void Config_Close();
 
+/**
+ * \brief  Handle a stack status change
+ *         Re-reads some node attributes and sends StackStarted or
+ *         StackStopped dbus signal.
+ * \param  status
+ *         0 = stack started, otherwise stack stopped
+ */
+void Config_HandleStackStatusChange(const uint8_t status);
+
 #endif /* SINK_MANAGER_SOURCE_CONFIG_H_ */
+
