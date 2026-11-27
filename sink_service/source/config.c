@@ -11,6 +11,7 @@
 
 #include "config.h"
 #include "config_macros.h"
+#include "event_queue.h"
 #include "wpc.h"
 
 #define LOG_MODULE_NAME "Config"
@@ -1044,6 +1045,19 @@ static bool initialize_unmodifiable_variables()
 
 static void on_stack_boot_status(uint8_t status)
 {
+    const event_t event = {
+        .type = EVENT_TYPE_STACK_STATUS,
+        .event.stack_status.status = status
+    };
+
+    if (!EventQueue_Push(&event))
+    {
+        LOGE("Failed to enqueue stack status event\n");
+    }
+}
+
+void Config_HandleStackStatusChange(const uint8_t status)
+{
     /* After a reboot, read again the variable as it can be because
      * of an otap and variables may change
      */
@@ -1108,3 +1122,4 @@ void Config_Close()
         sd_bus_slot_unref(m_slot);
     }
 }
+
