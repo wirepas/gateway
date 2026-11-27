@@ -27,4 +27,12 @@ cmake --build build
 ```
 Built sinkService will be generated under build/ folder. 
 
+### Using a local copy of c-mesh-api for development purposes
+
+To use a local copy of the c-mesh-api dependency, the cmake command can be
+invoked like the following:
+
+```shell
+cmake -DFETCHCONTENT_SOURCE_DIR_C-MESH-API=<path_to_c-mesh-api> -S . -B build
+```
 

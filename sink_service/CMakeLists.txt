@@ -12,7 +12,7 @@ add_compile_options(-Wall -Werror -Wextra -Wno-unused-parameter)
 
 set(SINK_SERVICE_VERSION "<unknown>" CACHE STRING "Sink service version string")
 
-set(C_MESH_API_COMMIT_HASH b70b379c8bb4f44b151f99d0af321abe84b63455)
+set(C_MESH_API_COMMIT_HASH 8ff812452b50ee962f16f55fedf386da8797e380)
 
 include(FetchContent)
 FetchContent_Declare(
