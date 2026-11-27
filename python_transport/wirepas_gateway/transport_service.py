@@ -10,6 +10,7 @@ from time import time, sleep
 from uuid import getnode
 from threading import Thread, Event
 from copy import deepcopy
+import textwrap
 
 from wirepas_gateway.dbus.dbus_client import BusClient
 from wirepas_gateway.protocol.topic_helper import TopicGenerator, TopicParser
@@ -1245,6 +1246,9 @@ def _update_parameters(settings):
             logging.error("Wrong format for whitened_endpoints_filter EP list (%s)", e)
             exit()
 
+    if settings.mqtt_allow_untrusted:
+        logging.warning("Param mqtt_allow_untrusted is deprecated and is not in use.")
+
     if settings.buffering_stop_stack is not None:
         logging.warning("Param buffering_stop_stack is deprecated, please use buffering_action instead")
         if settings.buffering_action is not None:
@@ -1290,8 +1294,14 @@ def main():
 
     """
     parse = ParserHelper(
-        description="Wirepas Gateway Transport service arguments",
         version=transport_version,
+        description=textwrap.dedent("""\
+        Wirepas Gateway Transport Service
+
+        Each parameter below can also be set with the environment variable
+        shown next to it (i.e. $WM_GW_ID). A parameter given on the command
+        line overrides the environment variable.
+        """)
     )
 
     parse.add_file_settings()
@@ -1304,8 +1314,7 @@ def main():
 
     settings = parse.settings()
 
-    # Set default debug level
-    debug_level = "info"
+    debug_level = settings.log_level
     try:
         debug_level = os.environ["DEBUG_LEVEL"]
         print(
@@ -1313,11 +1322,6 @@ def main():
             "(it will be dropped from version 2.x onwards)"
             " please use WM_DEBUG_LEVEL instead."
         )
-    except KeyError:
-        pass
-
-    try:
-        debug_level = os.environ["WM_DEBUG_LEVEL"]
     except KeyError:
         pass
 

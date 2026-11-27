@@ -5,7 +5,6 @@
 import logging
 from threading import Thread
 from pydbus import SystemBus
-import dbusCExtension
 from gi.repository import GLib, GObject
 from .sink_manager import SinkManager
 
@@ -24,8 +23,12 @@ class DbusEventHandler(Thread):
         """
         Thread.__init__(self)
 
-
-        dbusCExtension.setCallback(cb)
+        # Imported here instead of module level because importing the C
+        # extension requires a running system bus. This allows running "--help"
+        # without connecting to a dbus daemon.
+        import dbusCExtension
+        self._dbus_c_extension = dbusCExtension
+        self._dbus_c_extension.setCallback(cb)
         self.daemon = True  # Daemonize thread
 
     def run(self) -> None:
@@ -34,7 +37,7 @@ class DbusEventHandler(Thread):
         :return: None, as it is an infinite loop in C
         """
         while True:
-            dbusCExtension.infiniteEventLoop()
+            self._dbus_c_extension.infiniteEventLoop()
             logging.error("C extension loop has exited")
 
 
